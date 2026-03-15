@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using ExtenderApp.ECS.Interfaces;
 
 namespace ExtenderApp.ECS.Managers
@@ -10,7 +8,7 @@ namespace ExtenderApp.ECS.Managers
     public class ComponentManager
     {
         /// <summary>
-        /// 内部存储：组件类型 ->（实体标识 -> 组件实例）。
+        /// 内部存储：组件类型 -&gt;（实体标识 -&gt; 组件实例）。
         /// </summary>
         private readonly Dictionary<Type, Dictionary<int, IComponent>> _components = new();
 
@@ -77,6 +75,39 @@ namespace ExtenderApp.ECS.Managers
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 从实体上移除全部组件。
+        /// </summary>
+        /// <param name="entityId">实体标识。</param>
+        /// <returns>
+        /// 若至少移除一个组件返回 true；否则返回 false。
+        /// </returns>
+        public bool RemoveAllComponents(int entityId)
+        {
+            var removedAny = false;
+            var emptyTypes = new List<Type>();
+
+            foreach (var pair in _components)
+            {
+                if (pair.Value.Remove(entityId))
+                {
+                    removedAny = true;
+                }
+
+                if (pair.Value.Count == 0)
+                {
+                    emptyTypes.Add(pair.Key);
+                }
+            }
+
+            for (var i = 0; i < emptyTypes.Count; i++)
+            {
+                _components.Remove(emptyTypes[i]);
+            }
+
+            return removedAny;
         }
 
         /// <summary>

@@ -26,11 +26,5 @@
         /// <param name="entity">要检查的实体。</param>
         /// <returns>存活返回 true；否则返回 false。</returns>
         bool IsAlive(Entity entity);
-
-        /// <summary>
-        /// 获取当前所有存活实体。
-        /// </summary>
-        /// <returns>存活实体集合。</returns>
-        IEnumerable<Entity> GetAliveEntities();
     }
 }
