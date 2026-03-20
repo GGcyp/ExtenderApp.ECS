@@ -1,3 +1,8 @@
 <Solution>
-  <Project Path="ExtenderApp.ECS/ExtenderApp.ECS.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/ExtenderApp.ECS/ExtenderApp.ECS.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/ECSTest/ECSTest.csproj" Id="4066515f-cb7e-49cd-9a2a-283c32da514b" />
+  </Folder>
 </Solution>
