@@ -8,8 +8,7 @@ using System.Text;
 namespace ExtenderApp.ECS
 {
     /// <summary>
-    /// 组件掩码：使用多个 64 位无符号整数表示组件存在位的集合。
-    /// 每一位对应一个组件类型索引，用于快速集合运算（包含、交集、编码位置等）。
+    /// 组件掩码：使用多个 64 位无符号整数表示组件存在位的集合。 每一位对应一个组件类型索引，用于快速集合运算（包含、交集、编码位置等）。
     /// </summary>
     [DebuggerDisplay("{ToString()}")]
     public struct ComponentMask : IEquatable<ComponentMask>, IEnumerable<ComponentType>
@@ -30,12 +29,12 @@ namespace ExtenderApp.ECS
         private const int MaxComponentCount = SegmentCount * SegmentBits;
 
         /// <summary>
-        /// 段内位掩码（用于计算 index % 64）。
+        /// 段内位掩码（用于计算 ChunkIndex % 64）。
         /// </summary>
         private const int SegmentMask = SegmentBits - 1;
 
         /// <summary>
-        /// 将索引右移以获得段序号（等价于 index / 64）。
+        /// 将索引右移以获得段序号（等价于 ChunkIndex / 64）。
         /// </summary>
         private const int IndexShift = 6;
 
@@ -160,10 +159,10 @@ namespace ExtenderApp.ECS
         /// </summary>
         /// <typeparam name="T">要添加的组件类型（值类型并实现 IComponent）。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add<T>() where T : struct, IComponent => Add(ComponentType.Create<T>());
+        public void Add<T>() where T : struct => Add(ComponentType.Create<T>());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>() where T : struct, IComponent => SetComponent(ComponentType.Create<T>());
+        public void SetComponent<T>() where T : struct => SetComponent(ComponentType.Create<T>());
 
         /// <summary>
         /// 将指定组件类型的对应位设置为 1，表示包含该组件。
@@ -186,16 +185,15 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 将指定索引位置的位设置为 1。
-        /// 索引范围在 0 到 MaxComponentCount-1 之间（包含）。
+        /// 将指定索引位置的位设置为 1。 索引范围在 0 到 MaxComponentCount-1 之间（包含）。
         /// </summary>
         /// <param name="index">组件类型的整数索引。</param>
         /// <exception cref="ArgumentOutOfRangeException">当索引超出范围时抛出。</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetBit(int index)
         {
-            int ulongIndex = index >> IndexShift; // index / 64
-            int bitOffset = index & SegmentMask; // index % 64
+            int ulongIndex = index >> IndexShift; // ChunkIndex / 64
+            int bitOffset = index & SegmentMask; // ChunkIndex % 64
 
             ref ulong segment = ref GetMaskUlongRef(ulongIndex);
             segment |= 1UL << bitOffset;
@@ -213,18 +211,17 @@ namespace ExtenderApp.ECS
         /// </summary>
         /// <typeparam name="T">要移除的组件类型（值类型并实现 IComponent）。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Remove<T>() where T : struct, IComponent => Remove(ComponentType.Create<T>());
+        public void Remove<T>() where T : struct => Remove(ComponentType.Create<T>());
 
         /// <summary>
-        /// 将指定索引位置的位设置为 0。
-        /// 索引范围在 0 到 MaxComponentCount-1 之间（包含）。
+        /// 将指定索引位置的位设置为 0。 索引范围在 0 到 MaxComponentCount-1 之间（包含）。
         /// </summary>
         /// <param name="index">组件类型的整数索引。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearBit(int index)
         {
-            int ulongIndex = index >> IndexShift; // index / 64
-            int bitOffset = index & SegmentMask; // index % 64
+            int ulongIndex = index >> IndexShift; // ChunkIndex / 64
+            int bitOffset = index & SegmentMask; // ChunkIndex % 64
 
             ref ulong segment = ref GetMaskUlongRef(ulongIndex);
             segment &= ~(1UL << bitOffset);
@@ -250,16 +247,25 @@ namespace ExtenderApp.ECS
         /// <typeparam name="T">要检查的组件类型（值类型并实现 IComponent）。</typeparam>
         /// <returns>包含返回 true，否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool On<T>() where T : struct, IComponent => On(ComponentType.Create<T>());
+        public bool On<T>() where T : struct => On(ComponentType.Create<T>());
 
         /// <summary>
-        /// 判断当前掩码是否包含另一个掩码的所有组件（位包含）。
-        /// 若 other 的任何位在当前掩码中为 1，则该位必须在当前掩码中也是 1。
+        /// 判断当前掩码是否包含另一个掩码的所有组件（位包含）。 若 other 的任何位在当前掩码中为 1，则该位必须在当前掩码中也是 1。
         /// </summary>
         /// <param name="other">要比较的另一个掩码。</param>
         /// <returns>如果当前掩码包含 other 的所有位则返回 true。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool All(in ComponentMask other) => GetMaskSpan().SequenceEqual(other.GetMaskSpan());
+        public bool All(in ComponentMask other)
+        {
+            return (u0 & other.u0) == other.u0
+                && (u1 & other.u1) == other.u1
+                && (u2 & other.u2) == other.u2
+                && (u3 & other.u3) == other.u3
+                && (u4 & other.u4) == other.u4
+                && (u5 & other.u5) == other.u5
+                && (u6 & other.u6) == other.u6
+                && (u7 & other.u7) == other.u7;
+        }
 
         /// <summary>
         /// 判断当前掩码与另一个掩码是否有任意共同的组件（交集不为空）。
@@ -288,9 +294,25 @@ namespace ExtenderApp.ECS
         public bool None(in ComponentMask other) => !Any(other);
 
         /// <summary>
-        /// 尝试计算指定组件在当前掩码中的编码位置（基于已设置位的顺序，0-based）。
-        /// 例如：掩码中有 3 个有效组件，若目标组件是第二个被编码的，则返回 1（从 0 开始）。
-        /// 若组件位未设置则返回 false。
+        /// 获取当前掩码与指定掩码中相同组件类型的数量（交集位数量）。
+        /// </summary>
+        /// <param name="other">要比较的掩码。</param>
+        /// <returns>两个掩码中相同组件类型的个数。</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetSameTypeCount(in ComponentMask other)
+        {
+            return BitOperations.PopCount(u0 & other.u0)
+                + BitOperations.PopCount(u1 & other.u1)
+                + BitOperations.PopCount(u2 & other.u2)
+                + BitOperations.PopCount(u3 & other.u3)
+                + BitOperations.PopCount(u4 & other.u4)
+                + BitOperations.PopCount(u5 & other.u5)
+                + BitOperations.PopCount(u6 & other.u6)
+                + BitOperations.PopCount(u7 & other.u7);
+        }
+
+        /// <summary>
+        /// 尝试计算指定组件在当前掩码中的编码位置（基于已设置位的顺序，0-based）。 例如：掩码中有 3 个有效组件，若目标组件是第二个被编码的，则返回 1（从 0 开始）。 若组件位未设置则返回 false。
         /// </summary>
         /// <param name="componentType">要查询的组件类型。</param>
         /// <param name="position">输出的 0-based 编码位置（若返回 true）。</param>
@@ -329,13 +351,53 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
+        /// 尝试计算指定掩码中所有组件在当前掩码中的编码位置，跳过未设置的组件。 positions 数组长度必须至少等于 mask 中组件数量。
+        /// </summary>
+        /// <param name="mask">要查询的掩码。</param>
+        /// <param name="positions">输出的编码位置数组。</param>
+        /// <returns>若成功获取所有编码位置则返回 true，否则返回 false。</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetEncodedPosition(in ComponentMask mask, scoped Span<int> positions)
+        {
+            int i = 0;
+            int position = 0;
+            foreach (var componentType in mask)
+            {
+                if (positions.Length <= i)
+                    return false;
+
+                int index = componentType.TypeIndex;
+                int ulongIndex = index >> IndexShift;
+                int bitOffset = index & SegmentMask;
+
+                // 检查该位是否存在
+                ulong maskBit = 1UL << bitOffset;
+
+                if ((GetMaskUlongRef(ulongIndex) & maskBit) == 0)
+                    continue;
+
+                // 加上目标段中目标位之前的 1 的数量
+                position += BitCountBefore(GetMaskUlongRef(ulongIndex), bitOffset);
+
+                positions[i] = position;
+                i++;
+            }
+            return true;
+
+            int BitCountBefore(ulong value, int bitOffset)
+            {
+                return BitOperations.PopCount(value & ((bitOffset == 0) ? 0UL : ((1UL << bitOffset) - 1UL)));
+            }
+        }
+
+        /// <summary>
         /// 尝试计算指定泛型组件在当前掩码中的编码位置（等同于 TryGetEncodedPosition(ComponentType, out int) 的泛型重载）。
         /// </summary>
         /// <typeparam name="T">要查询的组件类型（值类型并实现 IComponent）。</typeparam>
         /// <param name="position">输出的 0-based 编码位置（若返回 true）。</param>
         /// <returns>若找到则返回 true 并设置 position；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetEncodedPosition<T>(out int position) where T : struct, IComponent => TryGetEncodedPosition(ComponentType.Create<T>(), out position);
+        public bool TryGetEncodedPosition<T>(out int position) where T : struct => TryGetEncodedPosition(ComponentType.Create<T>(), out position);
 
         /// <summary>
         /// 获取一个 ReadOnlySpan，包含掩码的所有段（u0..u7）。通过 MemoryMarshal 创建 Span 以避免数组分配。
@@ -368,7 +430,7 @@ namespace ExtenderApp.ECS
         /// </summary>
         /// <param name="other">另一个掩码。</param>
         /// <returns>若相等则返回 true。</returns>
-        public bool Equals(ComponentMask other) => All(other);
+        public bool Equals(ComponentMask other) => GetMaskSpan().SequenceEqual(other.GetMaskSpan());
 
         /// <summary>
         /// 判断对象是否是相同的掩码实例。
@@ -436,8 +498,7 @@ namespace ExtenderApp.ECS
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         /// <summary>
-        /// ComponentMask 的结构化枚举器：按位扫描每个 64 位段，返回 ComponentType。
-        /// 使用位操作（TrailingZeroCount 与清除最低位）高效遍历。
+        /// ComponentMask 的结构化枚举器：按位扫描每个 64 位段，返回 ComponentType。 使用位操作（TrailingZeroCount 与清除最低位）高效遍历。
         /// </summary>
         public struct Enumerator : IEnumerator<ComponentType>
         {
@@ -524,8 +585,7 @@ namespace ExtenderApp.ECS
             private ComponentType _current;
 
             /// <summary>
-            /// 当前段的基偏移（以位为单位）：0、64、128 或 192 等。
-            /// 用于将段内的位索引转换为全局组件索引。
+            /// 当前段的基偏移（以位为单位）：0、64、128 或 192 等。 用于将段内的位索引转换为全局组件索引。
             /// </summary>
             private int _baseOffset;
 
@@ -654,8 +714,7 @@ namespace ExtenderApp.ECS
             }
 
             /// <summary>
-            /// 将段内最低位的位索引转换为 ComponentType。
-            /// 使用 BitOperations.TrailingZeroCount 获取最低 1 位的位置。
+            /// 将段内最低位的位索引转换为 ComponentType。 使用 BitOperations.TrailingZeroCount 获取最低 1 位的位置。
             /// </summary>
             /// <param name="w">要计算的段值。</param>
             /// <returns>对应的 ComponentType。</returns>

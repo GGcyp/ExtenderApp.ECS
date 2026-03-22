@@ -19,12 +19,12 @@ namespace ExtenderApp.ECS
         /// 实体的版本号，用于区分不同生命周期的实体实例。
         /// </summary>
         [FieldOffset(0)]
-        internal readonly ushort Version;
+        internal readonly uint Version;
 
         /// <summary>
         /// 实体的唯一标识符，用于区分不同的实体实例。
         /// </summary>
-        [FieldOffset(2)]
+        [FieldOffset(4)]
         internal readonly int Id;
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace ExtenderApp.ECS
         /// <param name="worldId">实体所属世界的唯一标识符。</param>
         /// <param name="id">实体标识。</param>
         /// <param name="version">实体版本号。</param>
-        internal Entity(int id, ushort version)
+        internal Entity(int id, uint version)
         {
             Id = id;
             Version = version;

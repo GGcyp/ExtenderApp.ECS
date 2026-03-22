@@ -24,17 +24,22 @@ public static class Program
             Console.WriteLine("========================================");
             Console.WriteLine();
             Console.WriteLine("请选择要运行的测试或基准:");
-            Console.WriteLine("  1. Create/Set/Get 基准 (BenchmarkDotNet)");
+            Console.WriteLine("  1. Create/Add/Get 基准 (BenchmarkDotNet)");
             Console.WriteLine("  2. Transfer 基准 (BenchmarkDotNet)");
-            Console.WriteLine("  3. 自定义快速运行：Create/Set/Get (CustomRunner)");
+            Console.WriteLine("  3. 自定义快速运行：Create/Add/Get (CustomRunner)");
             Console.WriteLine("  4. 自定义快速运行：Transfer (CustomRunner)");
             Console.WriteLine("  5. 自定义快速运行：Multi CRUD (CustomRunner)");
-            Console.WriteLine("  6. 自定义快速运行：Bulk Add/Remove (CustomRunner)");
+            Console.WriteLine("  6. 自定义快速运行：Bulk AddEntity/Remove (CustomRunner)");
             Console.WriteLine("  7. 自定义快速运行：异常行为 (CustomRunner)");
+            Console.WriteLine("  8. 自定义快速运行：批量创建实体 (CustomRunner)");
+            Console.WriteLine("  9. 自定义对照：超大组件影响对比 (CustomRunner)");
+            Console.WriteLine("  10. 自定义快速运行：EntityComponentLookup/Operation (CustomRunner)");
+            Console.WriteLine("  11. 自定义示例：RelationPair (CustomRunner)");
+            Console.WriteLine("  12. 自定义快速运行：EntityQuery Build 测试 (CustomRunner)");
             Console.WriteLine("  a. 运行全部 Benchmarks");
             Console.WriteLine("  q. 退出");
             Console.WriteLine();
-            Console.Write("请输入选项 (1-7, a 或 q): ");
+            Console.Write("请输入选项 (1-12, a 或 q): ");
 
             var choice = Console.ReadLine()?.Trim();
             if (string.IsNullOrEmpty(choice)) continue;
@@ -63,6 +68,21 @@ public static class Program
                     break;
                 case "7":
                     CustomRunner.RunExceptionBehavior();
+                    break;
+                case "8":
+                    RunCustomWithPrompt(CustomRunner.RunBatchCreate, 10000);
+                    break;
+                case "9":
+                    RunCustomWithPrompt(CustomRunner.RunHugeComponentComparison, 200000);
+                    break;
+                case "10":
+                    RunCustomWithPrompt(CustomRunner.RunEntityComponentApiTest, 50000);
+                    break;
+                case "11":
+                    CustomRunner.RunRelationPairCase(0);
+                    break;
+                case "12":
+                    CustomRunner.RunEntityQueryBuildTest();
                     break;
                 case "a":
                     BenchmarksRunner.Run(new string[0]);

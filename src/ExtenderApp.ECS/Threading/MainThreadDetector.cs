@@ -4,7 +4,7 @@ namespace ExtenderApp.ECS.Threading
     /// 用于记录并检测应用的“主线程”。
     ///
     /// 说明：
-    /// - 在应用启动的早期（例如程序入口或框架初始化时）调用 <see cref="Initialize"/> 来记录主线程的 id。
+    /// - 在应用启动的早期（例如程序入口或框架初始化时）调用 <see cref="Initialize"/> 来记录主线程的 Id。
     /// - 随后可以通过 <see cref="IsMainThread"/> 快速判断当前调用是否来自主线程。
     /// - 为保证线程安全，初始化使用原子操作，避免竞态条件。
     /// </summary>
@@ -14,7 +14,7 @@ namespace ExtenderApp.ECS.Threading
         private static int _mainThreadId;
 
         /// <summary>
-        /// 指示是否已经记录了主线程 id。
+        /// 指示是否已经记录了主线程 Id。
         /// </summary>
         public static bool IsInitialized => _mainThreadId != 0;
 
@@ -32,7 +32,7 @@ namespace ExtenderApp.ECS.Threading
         /// <summary>
         /// 判断当前线程是否为已记录的主线程。
         /// </summary>
-        /// <returns>如果已初始化且当前线程 id 与记录的主线程 id 相同则返回 true；否则返回 false。</returns>
+        /// <returns>如果已初始化且当前线程 Id 与记录的主线程 Id 相同则返回 true；否则返回 false。</returns>
         public static bool IsMainThread()
         {
             var id = _mainThreadId;
@@ -61,7 +61,7 @@ namespace ExtenderApp.ECS.Threading
         }
 
         /// <summary>
-        /// 重置记录的主线程 id（内部/测试用）。
+        /// 重置记录的主线程 Id（内部/测试用）。
         /// </summary>
         internal static void Reset()
         {

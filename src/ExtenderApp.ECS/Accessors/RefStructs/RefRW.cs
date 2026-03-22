@@ -7,7 +7,7 @@ namespace ExtenderApp.ECS.Accessors
     /// 用于在不产生额外拷贝的情况下直接修改组件数据。
     /// </summary>
     /// <typeparam name="T">组件类型（值类型且实现 <see cref="IComponent"/>）。</typeparam>
-    public readonly struct RefRW<T> where T : struct, IComponent
+    public readonly struct RefRW<T> where T : struct
     {
         /// <summary>
         /// 目标组件列对应的 ArchetypeChunk（引用类型）。

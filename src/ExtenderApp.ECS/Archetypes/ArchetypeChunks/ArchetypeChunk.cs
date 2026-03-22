@@ -1,15 +1,11 @@
-﻿using System.Buffers;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Text;
 using ExtenderApp.Contracts;
 
 namespace ExtenderApp.ECS.Archetypes
 {
     /// <summary>
-    /// 抽象的原型块基类，负责管理一个底层非托管 `Chunk` 的生命周期与基本槽位操作。
-    /// 该类型为具体的泛型实现（`ArchetypeChunk{T}`）提供底层 Chunk 的租用/归还、初始化检查与简单的追加/移除操作。
-    /// 注意：该类不处理实体全局 Id 的映射，仅负责底层存储槽的管理。
+    /// Archetype 块基类，负责底层 <see cref="Chunk" /> 的生命周期与槽位管理。 提供块初始化、追加、移除、交换以及链式扩展能力。
     /// </summary>
     internal abstract class ArchetypeChunk : DisposableObject
     {
@@ -24,11 +20,6 @@ namespace ExtenderApp.ECS.Archetypes
         private readonly ArchetypeChunkProvider _provider;
 
         /// <summary>
-        /// 当前块内的实体 Id 列表（仅用于示例，实际实现中可能不直接存储实体 Id，而是通过其他方式映射全局索引与块内索引）。
-        /// </summary>
-        private Entity[] entities;
-
-        /// <summary>
         /// 底层非托管内存块（Chunk）实例，派生类在 InitializeProtected 中应对其调用 Initialize&lt;T&gt;。
         /// </summary>
         protected Chunk Chunk;
@@ -39,8 +30,7 @@ namespace ExtenderApp.ECS.Archetypes
         public ArchetypeChunk? Next { get; set; }
 
         /// <summary>
-        /// 块对应的全局起始索引（用于将全局实体索引映射到块内局部索引）。
-        /// 在创建时可指定，此值用于 TryAdd 返回带偏移的全局索引，以及将外部传入的全局索引映射为局部索引进行操作。
+        /// 块对应的全局起始索引（用于将全局实体索引映射到块内局部索引）。 在创建时可指定，此值用于 AddEntity 返回带偏移的全局索引，以及将外部传入的全局索引映射为局部索引进行操作。
         /// </summary>
         public int StartIndex { get; set; }
 
@@ -50,8 +40,7 @@ namespace ExtenderApp.ECS.Archetypes
         public ulong Version { get; set; }
 
         /// <summary>
-        /// 当前块的容量（Chunk 能容纳的元素数量）。
-        /// 若底层 Chunk 未初始化则返回 0。
+        /// 当前块的容量（Chunk 能容纳的元素数量）。 若底层 Chunk 未初始化则返回 0。
         /// </summary>
         public int Capacity => Chunk?.Capacity ?? 0;
 
@@ -61,7 +50,7 @@ namespace ExtenderApp.ECS.Archetypes
         public int Count { get; set; }
 
         /// <summary>
-        /// 判断当前块是否已满（Count >= Capacity）。
+        /// 判断当前块是否已满（Count &gt;= Capacity）。
         /// </summary>
         public bool IsFull => Count >= Capacity;
 
@@ -76,22 +65,19 @@ namespace ExtenderApp.ECS.Archetypes
             Chunk = default!;
             Count = 0;
             StartIndex = 0;
-            entities = Array.Empty<Entity>();
         }
 
         /// <summary>
-        /// 初始化当前 ArchetypeChunk：从池中租用一个 Chunk 并调用派生类的受保护初始化逻辑。
-        /// 可重复调用但仅在未初始化时生效。
+        /// 初始化当前 ArchetypeChunk：从池中租用一个 Chunk 并调用派生类的受保护初始化逻辑。 可重复调用但仅在未初始化时生效。
         /// </summary>
-        public void Initialize()
+        public void Initialize(int capacity)
         {
             if (Chunk != null)
                 return;
 
-            Chunk = _chunkPool.Rent();
+            Chunk = _chunkPool.Rent(capacity);
             Count = 0;
             InitializeProtected();
-            entities = ArrayPool<Entity>.Shared.Rent(Chunk.Capacity);
         }
 
         /// <summary>
@@ -100,48 +86,52 @@ namespace ExtenderApp.ECS.Archetypes
         protected abstract void InitializeProtected();
 
         /// <summary>
-        /// 尝试向当前块追加一个实体槽，返回全局索引（StartIndex + localIndex）。
-        /// 若块已满或未初始化返回 false。
+        /// 尝试向当前块追加一个实体槽，返回全局索引（StartIndex + localIndex）。 若块已满或未初始化返回 false。
         /// </summary>
-        /// <param name="entity">要添加的实体 Id。</param>
         /// <param name="index">输出分配到的全局索引（若成功）。</param>
         /// <returns>分配成功返回 true，否则 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryAdd(Entity entity, out int index)
+        public bool TryAdd()
         {
-            index = -1;
             ThrowNotInitialize();
             if (IsFull)
                 return false;
 
-            index = StartIndex + Count;
-            entities[Count] = entity;
             Count++;
             return true;
         }
 
         /// <summary>
-        /// 尝试从本块移除指定全局索引对应的元素，并在必要时将最后一个槽的内容移动到该位置以保持紧凑。
+        /// 尝试批量追加槽位。
         /// </summary>
-        /// <param name="localIndex">要移除的全局索引（应在 StartIndex .. StartIndex+Count-1 范围内）。</param>
-        /// <returns>成功移除并更新槽位返回 true；若索引不在当前块范围或未初始化则返回 false。</returns>
+        /// <param name="count">请求追加的数量。</param>
+        /// <param name="addCount">实际追加数量。</param>
+        /// <returns>当前块可追加时返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Remove(int localIndex, out Entity lastEntity)
+        public bool TryAdds(int count, out int addCount)
+        {
+            addCount = 0;
+            ThrowNotInitialize();
+            if (IsFull)
+                return false;
+
+            int free = Capacity - Count;
+            addCount = Math.Min(count, free);
+            Count += addCount;
+            return addCount > 0;
+        }
+
+        /// <summary>
+        /// 移除指定局部索引的元素，并通过尾部交换保持数据紧凑。
+        /// </summary>
+        /// <param name="localIndex">块内局部索引。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Remove(int localIndex)
         {
             int last = Count - 1;
-            lastEntity = Entity.Empty;
             if (localIndex != last)
-            {
                 Chunk.Swap(localIndex, last);
-                lastEntity = entities[last];
-                entities[localIndex] = lastEntity;
-            }
-            else
-            {
-                Debug.Print("ss");
-            }
 
-            // 在同一个块内交换数据后减少计数
             Count--;
         }
 
@@ -170,12 +160,20 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 将当前块内指定全局索引对应的元素数据复制到另一个 ArchetypeChunk 的指定全局索引位置。
+        /// 尝试将当前块内指定全局索引的数据复制到目标 ArchetypeChunk 的指定全局索引位置。 该方法首先检查两个全局索引是否都在各自块的有效范围内，并且目标块类型是否兼容。 若检查通过则执行数据复制并返回 true；否则返回 false。
         /// </summary>
         /// <param name="globalIndex">当前块内的全局索引。</param>
         /// <param name="newArchetypeChunk">目标 ArchetypeChunk 实例。</param>
         /// <param name="newGlobalIndex">目标块内的全局索引。</param>
-        public abstract void CopyTo(int globalIndex, ArchetypeChunk newArchetypeChunk, int newGlobalIndex);
+        public abstract bool TryCopyTo(int globalIndex, ArchetypeChunk newArchetypeChunk, int newGlobalIndex);
+
+        /// <summary>
+        /// 交换当前块内两个局部索引位置的数据。 注意：调用前应确保 localIndexA 与 localIndexB 都在 [0, Count) 范围内且块已初始化。 该方法直接调用底层 Chunk 的 Swap 实现，适用于在移除元素时将最后一个元素移动到被移除位置以保持数据紧凑。
+        /// </summary>
+        /// <param name="localIndexA">要交换的第一个局部索引。</param>
+        /// <param name="localIndexB">要交换的第二个局部索引。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Swap(int localIndexA, int localIndexB) => Chunk.Swap(localIndexA, localIndexB);
 
         /// <summary>
         /// 将底层 Chunk 归还到池中并清理状态（Count 重置）。
@@ -189,25 +187,17 @@ namespace ExtenderApp.ECS.Archetypes
                 Chunk = null!;
                 Count = 0;
             }
-
-            if (entities != null)
-            {
-                ArrayPool<Entity>.Shared.Return(entities);
-                entities = null!;
-            }
         }
 
         /// <summary>
-        /// 从当前提供器租用下一个 ArchetypeChunk（用于链式扩展）。
-        /// 实现应返回类型为 <see cref="ArchetypeChunk"/> 的实例，通常基于 StartIndex 与 Capacity 来计算下一块的起始索引。
-        /// 并且设置当前 <see cref="ArchetypeChunk"/> 实例的<see cref="Next"/>为当前实例
+        /// 从当前提供器租用并链接下一块。
         /// </summary>
-        /// <returns>下一个可用的 ArchetypeChunk 实例（未必已 Initialize）。</returns>
-        public ArchetypeChunk RentAndSetNext()
+        /// <returns>已初始化的下一块实例。</returns>
+        public ArchetypeChunk RentAndSetNext(int capacity)
         {
             ArchetypeChunk chunk = _provider.Rent(StartIndex + Capacity);
             Next = chunk;
-            Next.Initialize();
+            Next.Initialize(capacity);
             return chunk;
         }
 
@@ -232,8 +222,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 释放非托管资源：归还底层 Chunk 并调用基类释放逻辑。
-        /// 同时递归释放 Next 链（如果存在）。
+        /// 释放非托管资源：归还底层 Chunk 并调用基类释放逻辑。 同时递归释放 Next 链（如果存在）。
         /// </summary>
         protected override void DisposeUnmanagedResources()
         {
@@ -245,11 +234,10 @@ namespace ExtenderApp.ECS.Archetypes
     }
 
     /// <summary>
-    /// 泛型原型块，用于在底层 Chunk 上以类型安全的方式存储 T 类型组件列。
-    /// 提供获取 Span/Memory 的能力以便零拷贝访问底层非托管内存。
+    /// 泛型 Archetype 块，用于以类型安全方式存储组件列数据。
     /// </summary>
-    /// <typeparam name="T">组件类型（值类型，建议为 unmanaged）。</typeparam>
-    internal sealed class ArchetypeChunk<T> : ArchetypeChunk where T : struct, IComponent
+    /// <typeparam name="T">组件类型。</typeparam>
+    internal sealed class ArchetypeChunk<T> : ArchetypeChunk where T : struct
     {
         /// <summary>
         /// 链表中的下一块引用（用于 Archetype 内维护块链）。
@@ -263,8 +251,8 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 构造函数：接收所属的提供器与用于分配底层 Chunk 的池引用。
         /// </summary>
-        /// <param name="provider">该块所属的 <see cref="ArchetypeChunkProvider{T}"/>。</param>
-        /// <param name="chunkPool">底层 <see cref="ChunkPool"/> 实例。</param>
+        /// <param name="provider">该块所属的 <see cref="ArchetypeChunkProvider{T}" />。</param>
+        /// <param name="chunkPool">底层 <see cref="ChunkPool" /> 实例。</param>
         public ArchetypeChunk(ArchetypeChunkProvider<T> provider, ChunkPool chunkPool) : base(provider, chunkPool)
         {
         }
@@ -277,6 +265,10 @@ namespace ExtenderApp.ECS.Archetypes
             Chunk.Initialize<T>();
         }
 
+        /// <summary>
+        /// 返回当前块链的文本表示。
+        /// </summary>
+        /// <returns>块链内容字符串。</returns>
         public override string ToString()
         {
             StringBuilder sb = new();
@@ -312,29 +304,29 @@ namespace ExtenderApp.ECS.Archetypes
         public T GetComponent(int index) => Chunk.ReadUnsafe<T>(index);
 
         /// <summary>
-        /// 获取指定索引处组件的引用（不做托管拷贝）。
-        /// 该方法通过底层 <see cref="Chunk"/> 的未检查引用返回对元素的直接 `ref T`，适合在热路径中避免额外拷贝。
+        /// 获取指定索引处组件的引用（不产生值拷贝）。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="index">组件在 Chunk 内的局部索引（0-based）。</param>
-        /// <returns>指向该元素的引用（ref T）。</returns>
+        /// <param name="index">组件在块内的局部索引（0-based）。</param>
+        /// <returns>组件引用。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetComponentRef(int index) => ref Chunk.ReadUnsafeRef<T>(index);
 
+        /// <summary>
+        /// 当前块的组件数据跨度。
+        /// </summary>
+        public Span<T> Span => Chunk.GetSpan<T>();
+
         ///<inheritdoc/>
-        public override void CopyTo(int globalIndex, ArchetypeChunk newArchetypeChunk, int newGlobalIndex)
+        public override bool TryCopyTo(int globalIndex, ArchetypeChunk newArchetypeChunk, int newGlobalIndex)
         {
-            if (newArchetypeChunk is not ArchetypeChunk<T> chunk)
-                throw new InvalidOperationException("目标 ArchetypeChunk 类型不匹配。");
+            if (newArchetypeChunk is not ArchetypeChunk<T> chunk ||
+                !TryWithinChunk(globalIndex, out var localIndex) ||
+                !chunk.TryWithinChunk(newGlobalIndex, out var newLocalIndex))
+                return false;
 
-            if (!TryWithinChunk(globalIndex, out var localIndex))
-                throw new ArgumentOutOfRangeException(nameof(globalIndex), "要拷贝的 globalIndex 不在当前块范围内。");
-
-            if (!chunk.TryWithinChunk(newGlobalIndex, out var newLocalIndex))
-                throw new ArgumentOutOfRangeException(nameof(newGlobalIndex), "newGlobalIndex 不在目标块范围内。");
-
-            T value = GetComponent(localIndex);
+            ref T value = ref GetComponentRef(localIndex);
             chunk.SetComponent(newLocalIndex, value);
+            return true;
         }
 
         #region Enumerator
@@ -345,8 +337,7 @@ namespace ExtenderApp.ECS.Archetypes
         public ArchetypeChunkEnumerator GetEnumerator() => new ArchetypeChunkEnumerator(this);
 
         /// <summary>
-        /// 枚举器：按块链顺序遍历全部已占用槽位，并返回对每个元素的引用。
-        /// 设计为 struct 以避免 foreach 时堆分配。
+        /// 枚举器：按块链顺序遍历全部已占用槽位，并返回对每个元素的引用。 设计为 struct 以避免 foreach 时堆分配。
         /// </summary>
         public unsafe struct ArchetypeChunkEnumerator
         {
@@ -371,8 +362,7 @@ namespace ExtenderApp.ECS.Archetypes
             private nint currentPtr;
 
             /// <summary>
-            /// 返回当前元素的全局索引（StartIndex + localIndex）。
-            /// 注意：在 MoveNext 返回 true 之后有效。
+            /// 返回当前元素的全局索引（StartIndex + localIndex）。 注意：在 MoveNext 返回 true 之后有效。
             /// </summary>
             public int GlobalIndex => current.StartIndex + (count - 1);
 
@@ -389,8 +379,7 @@ namespace ExtenderApp.ECS.Archetypes
             }
 
             /// <summary>
-            /// 移动到下一个元素。如果当前块耗尽则尝试切换到下一块直到找到可读取的元素或链尾。
-            /// 返回 true 表示成功定位到下一个元素，调用者可通过 Current 获取其引用。
+            /// 移动到下一个元素。如果当前块耗尽则尝试切换到下一块直到找到可读取的元素或链尾。 返回 true 表示成功定位到下一个元素，调用者可通过 Current 获取其引用。
             /// </summary>
             public bool MoveNext()
             {
@@ -422,10 +411,9 @@ namespace ExtenderApp.ECS.Archetypes
             }
 
             /// <summary>
-            /// 返回当前元素的引用。
-            /// 注意：返回引用在枚举器未移动到下一个元素前有效。
+            /// 返回当前元素的引用。 注意：返回引用在枚举器未移动到下一个元素前有效。
             /// </summary>
-            public ref T Current => ref Unsafe.AsRef<T>(IntPtr.Add(currentPtr, count * elementSize).ToPointer());
+            public ref T Current => ref Unsafe.AsRef<T>(IntPtr.Add(currentPtr, (count - 1) * elementSize).ToPointer());
         }
 
         #endregion Enumerator

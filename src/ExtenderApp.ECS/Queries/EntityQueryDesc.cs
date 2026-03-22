@@ -1,4 +1,6 @@
-﻿namespace ExtenderApp.ECS.Queries
+﻿using ExtenderApp.ECS.Entities;
+
+namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
     /// 描述一个实体查询的过滤条件（查询描述符）。
@@ -33,6 +35,11 @@
         public readonly ComponentMask None;
 
         /// <summary>
+        /// 获取表示查询条件的关系掩码（All/Any/None 的组合），用于快速判断查询类型。
+        /// </summary>
+        public readonly RelationMask Relation;
+
+        /// <summary>
         /// 获取查询描述中是否包含 All 掩码。
         /// </summary>
         public bool HasAll { get; }
@@ -48,6 +55,11 @@
         public bool HasNone { get; }
 
         /// <summary>
+        /// 获取当前查询描述中是否包含任何关系掩码。
+        /// </summary>
+        public bool HasRelation { get; }
+
+        /// <summary>
         /// 获取查询条件的总数。
         /// </summary>
         public int ComponentCount { get; }
@@ -55,19 +67,26 @@
         /// <summary>
         /// 使用指定的 All/Any/None 掩码创建一个新的查询描述符实例。
         /// </summary>
+        /// <param name="query">表示查询条件的组件掩码（不可为空掩码）。</param>
         /// <param name="all">表示必须全部包含的组件掩码（可为空掩码）。</param>
         /// <param name="any">表示至少包含其一的组件掩码（可为空掩码）。</param>
         /// <param name="none">表示必须不包含的组件掩码（可为空掩码）。</param>
-        public EntityQueryDesc(ComponentMask query, ComponentMask all, ComponentMask any, ComponentMask none)
+        /// <param name="relations">表示查询条件的关系掩码（可为空掩码）。</param>
+        public EntityQueryDesc(ComponentMask query, ComponentMask all, ComponentMask any, ComponentMask none, RelationMask relations)
         {
+            if (query.IsEmpty)
+                throw new ArgumentException("查询掩码不能为空。", nameof(query));
+
             Query = query;
             All = all;
             Any = any;
             None = none;
+            Relation = relations;
 
             HasAll = !all.IsEmpty;
             HasAny = !any.IsEmpty;
             HasNone = !none.IsEmpty;
+            HasRelation = !relations.IsEmpty;
 
             ComponentCount = query.ComponentCount;
         }
@@ -79,24 +98,26 @@
             => obj is EntityQueryDesc other && Equals(other);
 
         /// <summary>
-        /// 比较两个 <see cref="EntityQueryDesc"/> 是否等价（三个掩码逐一相等）。
+        /// 比较两个 <see cref="EntityQueryDesc" /> 是否等价。
         /// </summary>
         public bool Equals(EntityQueryDesc other)
-            => All.Equals(other.All) &&
+            => Query.Equals(other.Query) &&
+               All.Equals(other.All) &&
                Any.Equals(other.Any) &&
-               None.Equals(other.None);
+               None.Equals(other.None) &&
+               Relation.Equals(other.Relation);
 
         /// <summary>
-        /// 根据三个掩码计算哈希码，便于作为字典或集合的键。
+        /// 根据查询描述计算哈希码，便于作为字典或集合的键。
         /// </summary>
         public override int GetHashCode()
-            => HashCode.Combine(Query, All, Any, None);
+            => HashCode.Combine(Query, All, Any, None, Relation);
 
         /// <summary>
         /// 返回便于调试的字符串表示，包含 All/Any/None 的描述。
         /// </summary>
         public override string ToString()
-            => $"EntityQueryDesc(Query: {Query}, All: {All}, Any: {Any}, None: {None})";
+            => $"EntityQueryDesc(Query: {Query}, All: {All}, Any: {Any}, None: {None}, Relation: {Relation})";
 
         /// <summary>
         /// 相等运算符重载，按查询描述相等性判断。

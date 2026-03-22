@@ -1,115 +1,275 @@
-﻿using System.Diagnostics;
+﻿using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using ExtenderApp.Contracts;
 using ExtenderApp.ECS.Archetypes;
+using ExtenderApp.ECS.Components;
+using ExtenderApp.ECS.Entities;
 using ExtenderApp.ECS.Worlds;
 
 namespace ExtenderApp.ECS
 {
     /// <summary>
-    /// 表示具有相同组件签名的一组实体集合（原型/类型槽）。
-    /// 一个 Archetype 包含若干个按组件列打包的 `ArchetypeChunk`，以及描述该原型组件集合的 `ComponentMask`。
+    /// 表示具有相同组件签名的一组实体集合（原型）。 一个 <see cref="Archetype" /> 通过 <see cref="ArchetypeChunkManager" /> 管理各组件列对应的块数据。
     /// </summary>
     [DebuggerDisplay("Archetype( _componentTypes = {_componentTypes} )")]
     public sealed class Archetype : DisposableObject, IEquatable<Archetype>
     {
         /// <summary>
-        /// 当前 Archetype 所属的世界版本管理器引用。
+        /// 当前 Archetype 所属世界的版本管理器。
         /// </summary>
         private readonly WorldVersionManager _wvManager;
 
         /// <summary>
-        /// 管理每个组件列的块头与缓存。
-        /// </summary>
-        private readonly ArchetypeChunkManager _chunkManager;
-
-        /// <summary>
-        /// 表示该 Archetype 包含的组件类型掩码。
+        /// 当前 Archetype 的组件掩码。
         /// </summary>
         private readonly ComponentMask _componentTypes;
 
         /// <summary>
-        /// 获取当前 Archetype 的组件类型掩码引用。调用方可通过该引用查询包含的组件类型信息。
+        /// 组件列块管理器。
+        /// </summary>
+        private readonly ArchetypeChunkManager _chunkManager;
+
+        /// <summary>
+        /// 获取当前 Archetype 中的实体分段信息列表。每个分段信息包含一个实体数组和对应的全局索引范围，用于快速定位和访问 Archetype 中的实体数据。
+        /// </summary>
+        internal ArchetypeEntitySegmentInfoList Entities => _chunkManager.Entities;
+
+        /// <summary>
+        /// 当前 Archetype 中的关系对列表（仅在存在关系时初始化）。每个关系对包含一个关系类型和一个目标 Archetype 的引用，用于快速查询和更新实体之间的关系。
+        /// </summary>
+        private readonly List<RelationPair>? _relations;
+
+        /// <summary>
+        /// 当前 Archetype 的关系掩码。
+        /// </summary>
+        private RelationMask relationMask;
+
+        /// <summary>
+        /// 获取当前 Archetype 的组件掩码只读引用。
         /// </summary>
         public ref readonly ComponentMask ComponentTypes => ref _componentTypes;
 
         /// <summary>
-        /// 当前 Archetype 中的实体数量（即所有组件列中槽位总数）。
+        /// 当前 Archetype 的关系掩码只读引用。
+        /// </summary>
+        public ref readonly RelationMask RelationTypes => ref relationMask;
+
+        /// <summary>
+        /// 当前 Archetype 的实体数量。
         /// </summary>
         public int EntityCount { get; private set; }
 
         /// <summary>
-        /// 获取当前 Archetype 中的组件数量。
+        /// 当前 Archetype 的组件列数量。
         /// </summary>
         public int ComponentCount => _chunkManager.ChunkHeadCount;
 
         /// <summary>
-        /// 内部构造函数：创建一个包含指定块列表和组件掩码的新 Archetype。
+        /// 当前 Archetype 的关系对只读视图。
         /// </summary>
-        /// <param name="providers">按组件编码位置排列的 ArchetypeChunkProvider 列表。</param>
-        /// <param name="componentTypes">描述组件集合的 ComponentMask。</param>
-        internal Archetype(ArchetypeChunkProvider[] providers, ComponentMask componentTypes, WorldVersionManager worldVersionManager)
+        public IReadOnlyList<RelationPair>? Relations => _relations;
+
+        /// <summary>
+        /// 初始化 <see cref="Archetype" /> 的新实例。
+        /// </summary>
+        /// <param name="providers">按组件编码位置排列的块提供器数组。</param>
+        /// <param name="componentTypes">当前 Archetype 对应的组件掩码。</param>
+        /// <param name="relationTypes">当前 Archetype 对应的关系掩码。</param>
+        /// <param name="worldVersionManager">世界版本管理器。</param>
+        internal Archetype(ArchetypeChunkProvider[] providers, ComponentMask componentTypes, RelationMask relationTypes, WorldVersionManager worldVersionManager)
         {
             _wvManager = worldVersionManager;
             _chunkManager = new(providers);
             _componentTypes = componentTypes;
+            relationMask = relationTypes;
+
+            if (!relationTypes.IsEmpty)
+                _relations = new();
         }
 
-        #region Operations
+        #region Relation
 
         /// <summary>
-        /// 向 Archetype 添加一个新的实体槽。方法会遍历所有组件列对应的块并尝试在某个块中追加槽位。
-        /// 返回值为分配到的实体全局索引（由块的 StartIndex + 局部索引确定），失败时返回 -1。
-        /// 注意：调用方需在调用后对每个组件列的内存进行初始化写入。
+        /// 添加关系对。 添加前会校验关系类型是否在当前 <see cref="RelationTypes" /> 掩码中。
         /// </summary>
-        /// <param name="entity">要添加的实体实例（仅用于获取 EntityId 以便分配槽位）。</param>
-        /// <returns>分配到的实体全局索引，若未能分配则返回 -1。</returns>
-        internal int AddEntity(Entity entity)
+        /// <param name="relationPair">关系对。</param>
+        /// <returns>添加（或覆盖）成功返回 true；关系类型不在掩码中返回 false。</returns>
+        public bool TryAddRelation(RelationPair relationPair)
         {
-            int globalIndex = -1;
-            for (int i = 0; i < _chunkManager.ChunkHeadCount; i++)
-            {
-                if (_chunkManager.TryAddToColumn(entity, i, _wvManager.WorldVersion, out var idx))
-                {
-                    globalIndex = idx; // last assigned index will be returned
-                }
-            }
-            EntityCount++; // 更新实体数量
-            return globalIndex;
-        }
+            if (!relationMask.On(relationPair.RelationType) || _relations == null)
+                return false;
 
-        /// <summary>
-        /// 从 Archetype 中移除指定实体索引对应的槽位。
-        /// 方法会在每个组件列的块链中查找并移除对应的槽（若存在）。
-        /// </summary>
-        /// <param name="globalIndex">要移除的实体全局索引。</param>
-        /// <param name="changedEntity">输出参数：如果移除操作导致当前 Archetype 中的某个实体索引被移动（即最后一个实体索引被移除后填补了被移除的槽位），则返回该被移动的实体；否则返回 -1。</param>
-        /// <param name="newIndex">输出参数：如果移除成功且导致某个实体索引被移动，则返回被移动实体的新全局索引；否则返回 -1。</param>
-        internal bool TryRemoveEntity(int globalIndex, out Entity changedEntity, out int newIndex)
-        {
-            changedEntity = Entity.Empty;
-            newIndex = globalIndex;
-            for (int i = 0; i < _chunkManager.ChunkHeadCount; i++)
-            {
-                if (!_chunkManager.TryRemoveFromColumn(i, globalIndex, _wvManager.WorldVersion, out changedEntity, out newIndex))
-                {
-                    return false; // 只要有一个组件列未找到对应槽位就认为移除失败
-                }
-            }
-            EntityCount--; // 更新实体数量
+            if (_relations.Contains(relationPair))
+                return true;
+
+            _relations.Add(relationPair);
             return true;
         }
 
         /// <summary>
-        /// 尝试获取指定位置的组件列块列表（即该组件类型在 Archetype 中的所有块）。如果该位置没有对应的块链则返回 false。
+        /// 添加关系对（失败抛异常）。
         /// </summary>
-        /// <typeparam name="T">指定的组件类型。</typeparam>
-        /// <param name="index">要查询的索引位置。</param>
-        /// <param name="chunks">若返回 true，则输出对应的 ArchetypeChunkList 引用（非 null）。</param>
-        /// <returns>若成功找到并类型匹配则返回 true，否则返回 false。</returns>
+        /// <param name="relationPair">关系对。</param>
+        public void AddRelation(RelationPair relationPair)
+        {
+            if (!TryAddRelation(relationPair))
+                throw new InvalidOperationException($"关系类型 {relationPair.RelationType} 不在当前 Archetype 的 RelationMask 中。");
+        }
+
+        /// <summary>
+        /// 按关系类型与目标实体添加关系。
+        /// </summary>
+        /// <param name="relationType">关系类型。</param>
+        /// <param name="target">目标实体。</param>
+        public void AddRelation(RelationType relationType, Entity target)
+            => AddRelation(RelationPair.Create(relationType, target));
+
+        /// <summary>
+        /// 查询指定关系类型的关系对。
+        /// </summary>
+        /// <param name="relationType">关系类型。</param>
+        /// <param name="relationPair">输出关系对。</param>
+        /// <returns>找到返回 true；否则返回 false。</returns>
+        public bool TryGetRelation(RelationType relationType, out RelationPair relationPair)
+        {
+            relationPair = default;
+            if (!relationMask.On(relationType) || _relations == null)
+                return false;
+
+            for (int i = 0; i < _relations.Count; i++)
+            {
+                if (_relations[i].RelationType == relationType)
+                {
+                    relationPair = _relations[i];
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 删除指定关系类型的关系对。
+        /// </summary>
+        /// <param name="relationType">关系类型。</param>
+        /// <returns>删除成功返回 true；不存在返回 false。</returns>
+        public bool RemoveRelation(RelationType relationType)
+        {
+            if (!relationMask.On(relationType) || _relations == null)
+                return false;
+
+            for (int i = 0; i < _relations.Count; i++)
+            {
+                if (_relations[i].RelationType == relationType)
+                {
+                    _relations.RemoveAt(i);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        #endregion Relation
+
+        #region AddEntity
+
+        /// <summary>
+        /// 向当前 Archetype 添加实体，并返回分配到的全局索引。
+        /// </summary>
+        /// <param name="entity">要添加的实体。</param>
+        /// <returns>返回添加后的在当前原型内的全局索引。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetChunkList<T>(int index, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks) where T : struct, IComponent
+        internal int AddEntity(Entity entity)
+        {
+            _chunkManager.AddEntity(entity, _wvManager.WorldVersion, out var globalIndex);
+            EntityCount++;
+            return globalIndex;
+        }
+
+        /// <summary>
+        /// 批量向当前 Archetype 添加实体。
+        /// </summary>
+        /// <param name="entities">要添加的实体集合。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan)
+        {
+            _chunkManager.AddEntityRange(entities, globalIndexSpan, _wvManager.WorldVersion);
+            EntityCount += entities.Length;
+        }
+
+        #endregion AddEntity
+
+        #region RemoveEntity
+
+        /// <summary>
+        /// 尝试移除指定全局索引处的实体。
+        /// </summary>
+        /// <param name="globalIndex">要移除的实体全局索引。</param>
+        /// <param name="changedEntity">若触发尾部交换，返回被移动的实体；否则为 <see cref="Entity.Empty" />。</param>
+        /// <returns>移除成功返回 true；否则返回 false。</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryRemoveEntity(int globalIndex, out ComponentHandle? removedHandle, out Entity changedEntity, out ComponentHandle? changedHandle)
+        {
+            if (!_chunkManager.TryRemove(globalIndex, _wvManager.WorldVersion, out removedHandle, out changedEntity, out changedHandle))
+                return false;
+
+            EntityCount--;
+            return true;
+        }
+
+        /// <summary>
+        /// 批量尝试移除指定全局索引集合中的实体。
+        /// </summary>
+        /// <param name="globalIndices">要移除的实体全局索引集合。</param>
+        /// <param name="removedHandles">输出被移除实体的组件句柄集合。</param>
+        /// <param name="changedEntities">若发生尾部交换，输出被移动实体集合。</param>
+        /// <param name="changedHandles">若发生尾部交换，输出被移动实体的组件句柄集合。</param>
+        /// <returns>全部移除成功返回 true；否则返回 false。</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryRemoveEntityRange(Span<int> globalIndices, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
+        {
+            if (_chunkManager.TryRemoveRange(globalIndices, removedHandles, changedEntities, changedHandles, _wvManager.WorldVersion))
+            {
+                EntityCount -= globalIndices.Length;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 批量尝试移除指定全局索引集合中的实体。
+        /// </summary>
+        /// <param name="globalIndices">要移除的实体全局索引集合。</param>
+        /// <param name="changedEntities">若发生尾部交换，输出被移动实体集合。</param>
+        /// <param name="changedHandles">若发生尾部交换，输出被移动实体的组件句柄集合。</param>
+        /// <returns>全部移除成功返回 true；否则返回 false。</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryRemoveEntityRange(Span<int> globalIndices, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
+        {
+            if (_chunkManager.TryRemoveRange(globalIndices, changedEntities, changedHandles, _wvManager.WorldVersion))
+            {
+                EntityCount -= globalIndices.Length;
+                return true;
+            }
+            return false;
+        }
+
+        #endregion RemoveEntity
+
+        #region Chunk
+
+        /// <summary>
+        /// 尝试按列索引获取指定组件列的块列表。
+        /// </summary>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <param name="index">组件列索引。</param>
+        /// <param name="chunks">输出对应类型的块列表。</param>
+        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetChunkList<T>(int index, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks) where T : struct
         {
             chunks = default!;
             if (_chunkManager.TryGetChunkListForColumn(index, out var chunkList) && chunkList is ArchetypeChunkList<T> archetypeChunks)
@@ -120,13 +280,14 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 尝试获取指定位置的 ArchetypeChunk。
+        /// 尝试按列索引获取头块（强类型版本）。
         /// </summary>
-        /// <param name="index">要查询的索引位置。</param>
-        /// <param name="component">若返回 true，则输出对应的 ArchetypeChunk 引用（非 null）。</param>
-        /// <returns>若成功找到则返回 true，否则返回 false。</returns>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <param name="index">组件列索引。</param>
+        /// <param name="component">输出头块。</param>
+        /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct, IComponent
+        internal bool TryGetHeadChunk<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct
         {
             component = default!;
             if (TryGetHeadChunk(index, out ArchetypeChunk chunk) && chunk is ArchetypeChunk<T> typedChunk)
@@ -138,11 +299,11 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 尝试获取指定位置的 ArchetypeChunk。
+        /// 尝试按列索引获取头块。
         /// </summary>
-        /// <param name="index">要查询的索引位置。</param>
-        /// <param name="component">若返回 true，则输出对应的 ArchetypeChunk 引用（非 null）。</param>
-        /// <returns>若成功找到则返回 true，否则返回 false。</returns>
+        /// <param name="index">组件列索引。</param>
+        /// <param name="component">输出头块。</param>
+        /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetHeadChunk(int index, [NotNullWhen(true)] out ArchetypeChunk component)
         {
@@ -155,12 +316,11 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 尝试获取指定组件类型在本 Archetype 中对应的 `ArchetypeChunk{T}`。
-        /// 如果该组件类型不在 _componentTypes 中或对应位置不是 T 类型，则返回 false。
+        /// 尝试按组件类型获取头块。
         /// </summary>
-        /// <param name="componentType">要查询的组件类型描述。</param>
-        /// <param name="component">若返回 true，则输出对应的 ArchetypeChunk; 引用（非 null）。</param>
-        /// <returns>若成功找到并类型匹配则返回 true，否则 false。</returns>
+        /// <param name="componentType">组件类型描述。</param>
+        /// <param name="component">输出头块。</param>
+        /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetHeadChunk(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk component)
         {
@@ -168,7 +328,6 @@ namespace ExtenderApp.ECS
             if (!_componentTypes.TryGetEncodedPosition(componentType, out int index))
                 return false;
 
-            // 边界防护：确保编码位置在 providers 列表长度范围内
             if (index < 0 || index >= _chunkManager.ChunkHeadCount)
                 return false;
 
@@ -177,52 +336,78 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 尝试获取指定组件类型在本 Archetype 中对应的 `ArchetypeChunk{T}`。
-        /// 如果该组件类型不在 _componentTypes 中或对应位置不是 T 类型，则返回 false。
+        /// 尝试按组件类型获取头块（强类型版本）。
         /// </summary>
-        /// <typeparam name="T">期望的组件类型。</typeparam>
-        /// <param name="componentType">要查询的组件类型描述。</param>
-        /// <param name="component">若返回 true，则输出对应的 ArchetypeChunk&lt;T&gt; 引用（非 null）。</param>
-        /// <returns>若成功找到并类型匹配则返回 true，否则 false。</returns>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <param name="componentType">组件类型描述。</param>
+        /// <param name="component">输出头块。</param>
+        /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct, IComponent
+        internal bool TryGetHeadChunk<T>(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct
         {
             return TryGetHeadChunk(componentType, out ArchetypeChunk chunk) && chunk is ArchetypeChunk<T> typedChunk ? (component = typedChunk) != null : (component = default!) != null;
         }
 
         /// <summary>
-        /// 尝试根据泛型类型在本 Archetype 中获取对应的 `ArchetypeChunk{T}`。
+        /// 尝试按泛型组件类型获取头块。
         /// </summary>
-        /// <typeparam name="T">期望的组件类型。</typeparam>
-        /// <param name="component">若返回 true，则输出对应的 ArchetypeChunk&lt;T&gt; 引用。</param>
-        /// <returns>若成功找到并类型匹配则返回 true，否则返回 false。</returns>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <param name="component">输出头块。</param>
+        /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>([NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct, IComponent
+        internal bool TryGetHeadChunk<T>([NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct
         {
             return TryGetHeadChunk(ComponentType.Create<T>(), out component);
         }
 
+        #endregion Chunk
+
+        #region SetComponent
+
         /// <summary>
-        /// 将指定实体的某一组件字段设置为指定值；若未找到对应组件列或槽位则抛出异常。
+        /// 设置指定实体索引处的组件值；若失败则抛出异常。
         /// </summary>
         /// <typeparam name="T">组件类型。</typeparam>
         /// <param name="globalIndex">实体全局索引。</param>
-        /// <param name="component">要写入的组件值。</param>
+        /// <param name="component">组件值。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SetComponent<T>(int globalIndex, T component) where T : struct, IComponent
+        internal void SetComponent<T>(int globalIndex, T component) where T : struct
         {
             if (!TrySetComponent(globalIndex, component))
                 throw new InvalidOperationException($"未找到指定类型的块更新 {globalIndex} : {typeof(T)}");
         }
 
         /// <summary>
-        /// 获取指定实体的组件值，若未找到则抛出异常。
+        /// 尝试设置指定实体索引处的组件值。
         /// </summary>
         /// <typeparam name="T">组件类型。</typeparam>
         /// <param name="globalIndex">实体全局索引。</param>
-        /// <returns>指定组件的值。</returns>
+        /// <param name="component">组件值。</param>
+        /// <returns>设置成功返回 true；否则返回 false。</returns>
+        internal bool TrySetComponent<T>(int globalIndex, T component) where T : struct
+        {
+            if (!_componentTypes.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
+                !_chunkManager.TryFindChunkForGlobalIndex(columnIndex, globalIndex, out var chuck, out int localIndex) ||
+                chuck is not ArchetypeChunk<T> c)
+                return false;
+
+            c.Version = _wvManager.WorldVersion;
+            c.SetComponent(localIndex, component);
+            return true;
+        }
+
+        #endregion SetComponent
+
+        #region GetComponent
+
+        /// <summary>
+        /// 获取指定实体索引处的组件值；若失败则抛出异常。
+        /// </summary>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <param name="globalIndex">实体全局索引。</param>
+        /// <returns>组件值。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal T GetComponent<T>(int globalIndex) where T : struct, IComponent
+        internal T GetComponent<T>(int globalIndex) where T : struct
         {
             if (TryGetComponent(globalIndex, out T component))
                 return component;
@@ -231,32 +416,13 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 尝试设置指定实体的组件值（若实体存在且组件列存在则返回 true）。
+        /// 尝试读取指定实体索引处的组件值。
         /// </summary>
         /// <typeparam name="T">组件类型。</typeparam>
         /// <param name="globalIndex">实体全局索引。</param>
-        /// <param name="component">要写入的组件值。</param>
-        /// <returns>设置成功返回 true，否则返回 false。</returns>
-        internal bool TrySetComponent<T>(int globalIndex, T component) where T : struct, IComponent
-        {
-            if (!_componentTypes.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
-                !_chunkManager.TryFindChunkForGlobalIndex(columnIndex, globalIndex, out var chuck, out int localIndex) ||
-                chuck is not ArchetypeChunk<T> c)
-                return false;
-
-            c.Version = _wvManager.WorldVersion; // 更新块版本以触发系统更新
-            c.SetComponent(localIndex, component);
-            return true;
-        }
-
-        /// <summary>
-        /// 尝试读取指定实体的组件值（若实体存在且组件列存在则返回 true 并通过 out 返回该组件）。
-        /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="globalIndex">实体全局索引。</param>
-        /// <param name="component">输出组件值（若返回 true）。</param>
-        /// <returns>读取成功返回 true，否则返回 false。</returns>
-        internal bool TryGetComponent<T>(int globalIndex, out T component) where T : struct, IComponent
+        /// <param name="component">输出组件值。</param>
+        /// <returns>读取成功返回 true；否则返回 false。</returns>
+        internal bool TryGetComponent<T>(int globalIndex, out T component) where T : struct
         {
             component = default;
             if (!_componentTypes.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
@@ -268,36 +434,107 @@ namespace ExtenderApp.ECS
             return true;
         }
 
+        #endregion GetComponent
+
+        #region Copy
+
         /// <summary>
-        /// 将指定实体（由 globalIndex 指定）在当前 Archetype 中的组件数据复制到目标 Archetype 中（仅复制两者共有的组件列），
-        /// 然后从当前 Archetype 中移除该实体的数据。
-        /// 复制使用反射调用 Archetype 上的泛型读/写方法（GetComponent/SetComponent）。
+        /// 将指定实体从当前 Archetype 复制到目标 Archetype 后，再从当前 Archetype 移除。
         /// </summary>
+        /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
         /// <param name="newArchetype">目标 Archetype。</param>
-        /// <param name="globalIndex">要复制并移除的实体全局索引。</param>
-        /// <param name="newGlobalIndex">在目标 Archetype 中分配到的实体全局索引。</param>
-        /// <param name="changedEntity">输出参数：如果移除操作导致当前 Archetype 中的某个实体索引被移动（即最后一个实体索引被移除后填补了被移除的槽位），则返回该被移动的实体；否则返回 -1。</param>
-        /// <param name="newIndex">输出参数：如果移除成功且导致某个实体索引被移动，则返回被移动实体的新全局索引；否则返回 -1。</param>
-        internal void CopyToAndRemoveEntity(int globalIndex, Archetype newArchetype, int newGlobalIndex, out Entity changedEntity, out int newIndex)
+        /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
+        internal bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex)
         {
-            ArgumentNullException.ThrowIfNull(newArchetype, nameof(newGlobalIndex));
-            changedEntity = Entity.Empty;
-            newIndex = globalIndex;
-            foreach (var type in newArchetype.ComponentTypes)
+            const int CopyThreshold = 512;
+
+            if (newArchetype == null)
+                return false;
+
+            var sameTypeCount = ComponentTypes.GetSameTypeCount(newArchetype.ComponentTypes);
+            if (sameTypeCount == 0)
+                return false;
+
+            if (sameTypeCount <= CopyThreshold)
             {
-                if (_componentTypes.TryGetEncodedPosition(type, out int oldColumnIndex) &&
-                    newArchetype.ComponentTypes.TryGetEncodedPosition(type, out int newColumnIndex) &&
-                    _chunkManager.TryFindChunkForGlobalIndex(oldColumnIndex, globalIndex, out var chuck, out int localIndex) &&
-                    newArchetype._chunkManager.TryFindChunkForGlobalIndex(newColumnIndex, newGlobalIndex, out var newChuck, out int newLocalIndex) &&
-                    chuck != null && newChuck != null)
-                {
-                    chuck.CopyTo(globalIndex, newChuck, newGlobalIndex);
-                    chuck.Remove(localIndex, out changedEntity);
-                }
+                Span<int> oldIndexSpant = stackalloc int[sameTypeCount];
+                Span<int> newIndexSpant = stackalloc int[sameTypeCount];
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpant, newIndexSpant);
+            }
+
+            var oldIndexArray = ArrayPool<int>.Shared.Rent(sameTypeCount);
+            var newIndexArray = ArrayPool<int>.Shared.Rent(sameTypeCount);
+
+            Span<int> oldIndexSpan = oldIndexArray.AsSpan(0, sameTypeCount);
+            Span<int> newIndexSpan = newIndexArray.AsSpan(0, sameTypeCount);
+
+            try
+            {
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpan, newIndexSpan);
+            }
+            finally
+            {
+                ArrayPool<int>.Shared.Return(oldIndexArray);
+                ArrayPool<int>.Shared.Return(newIndexArray);
             }
         }
 
-        #endregion Operations
+        /// <summary>
+        /// 执行复制核心逻辑：先计算列索引映射，再逐列复制组件数据。
+        /// </summary>
+        /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
+        /// <param name="newArchetype">目标 Archetype。</param>
+        /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
+        /// <param name="oldIndexSpan">当前 Archetype 的列索引缓存。</param>
+        /// <param name="newIndexSpan">目标 Archetype 的列索引缓存。</param>
+        /// <returns>复制成功返回 true；否则返回 false。</returns>
+        private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan)
+        {
+            int copiedCount = 0;
+            int oldColumnIndex = 0;
+
+            foreach (var componentType in ComponentTypes)
+            {
+                if (!newArchetype.ComponentTypes.TryGetEncodedPosition(componentType, out var newColumnIndex))
+                {
+                    oldColumnIndex++;
+                    continue;
+                }
+
+                oldIndexSpan[copiedCount] = oldColumnIndex;
+                newIndexSpan[copiedCount] = newColumnIndex;
+                copiedCount++;
+                oldColumnIndex++;
+            }
+
+            if (copiedCount == 0)
+                return false;
+
+            return _chunkManager.TryCopyToAndRemove(
+                globalIndex,
+                newArchetype._chunkManager,
+                newGlobalIndex,
+                oldIndexSpan[..copiedCount],
+                newIndexSpan[..copiedCount],
+                newArchetype.ComponentTypes);
+        }
+
+        #endregion Copy
+
+        #region Handle
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetComponentHandle(int globalIndex, out ComponentHandle handle)
+        {
+            if (_chunkManager.TryGetComponentHandle(globalIndex, out handle))
+            {
+                handle.ComponentTypes = ComponentTypes;
+                return true;
+            }
+            return false;
+        }
+
+        #endregion Handle
 
         protected override void DisposeManagedResources()
         {
@@ -312,10 +549,10 @@ namespace ExtenderApp.ECS
         #region Object Overrides & Equality
 
         /// <summary>
-        /// 判断当前 Archetype 是否与另一个 Archetype 等价（组件掩码相等）。
+        /// 判断当前 Archetype 与另一个 Archetype 是否等价（按组件掩码比较）。
         /// </summary>
-        /// <param name="other">要比较的另一个 Archetype。</param>
-        /// <returns>等价返回 true，否则返回 false。</returns>
+        /// <param name="other">要比较的 Archetype。</param>
+        /// <returns>等价返回 true；否则返回 false。</returns>
         public bool Equals(Archetype? other)
         {
             if (ReferenceEquals(this, other)) return true;
@@ -324,35 +561,38 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 重写 Object.Equals，尝试按 Archetype 相等性进行比较。
+        /// 判断当前对象是否与指定对象相等。
         /// </summary>
         /// <param name="obj">要比较的对象。</param>
+        /// <returns>相等返回 true；否则返回 false。</returns>
         public override bool Equals(object? obj) => Equals(obj as Archetype);
 
         /// <summary>
-        /// 获取当前 Archetype 的哈希码（基于组件掩码）。
+        /// 获取当前 Archetype 的哈希码。
         /// </summary>
+        /// <returns>哈希码值。</returns>
         public override int GetHashCode() => _componentTypes.GetHashCode();
 
         /// <summary>
-        /// 返回当前 Archetype 的可读字符串表示，用于调试与日志。
+        /// 返回当前 Archetype 的可读字符串。
         /// </summary>
+        /// <returns>字符串表示。</returns>
         public override string ToString() => $"Archetype( _componentTypes = {_componentTypes} )";
 
         /// <summary>
-        /// 等号运算符重载，按 Archetype 等价性比较。
+        /// 比较两个 Archetype 是否相等。
         /// </summary>
         public static bool operator ==(Archetype? lhs, Archetype? rhs) => Equals(lhs, rhs);
 
         /// <summary>
-        /// 不等号运算符重载，按 Archetype 等价性比较。
+        /// 比较两个 Archetype 是否不相等。
         /// </summary>
         public static bool operator !=(Archetype? lhs, Archetype? rhs) => !Equals(lhs, rhs);
 
         /// <summary>
-        /// 隐式转换：将 Archetype 转换为其 ComponentMask 表示。
+        /// 将 Archetype 隐式转换为其组件掩码。
         /// </summary>
-        /// <param name="archetype">源 Archetype 实例。</param>
+        /// <param name="archetype">源 Archetype。</param>
         public static implicit operator ComponentMask(Archetype archetype) => archetype._componentTypes;
 
         #endregion Object Overrides & Equality

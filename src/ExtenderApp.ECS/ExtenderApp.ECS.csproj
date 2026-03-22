@@ -7,8 +7,4 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Components\ComponentType.cs~RF8db21b.TMP" />
-  </ItemGroup>
-
 </Project>

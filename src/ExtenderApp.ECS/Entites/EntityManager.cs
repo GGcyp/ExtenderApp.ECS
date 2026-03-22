@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -21,8 +22,12 @@ namespace ExtenderApp.ECS.Entities
         private const int DefaultSegmentListSize = 128;
 
         /// <summary>
-        /// 使用有序字典（基于红黑树）的段索引，键为 StartIndex。
-        /// 这样可以通过二分查找（或 SortedList 的键集合二分）更快地定位包含某全局 Id 的段。
+        /// 单词最大批量创建/销毁数量，过大可能导致性能问题（如长时间占用锁或内存压力），过小则可能增加调用次数。根据实际测试结果调整以获得最佳性能。
+        /// </summary>
+        private const int MaxBatchSize = 20000;
+
+        /// <summary>
+        /// 使用有序字典（基于红黑树）的段索引，键为 StartIndex。 这样可以通过二分查找（或 SortedList 的键集合二分）更快地定位包含某全局 Id 的段。
         /// </summary>
         private readonly SortedList<int, EntitySegment> _segments;
 
@@ -42,27 +47,36 @@ namespace ExtenderApp.ECS.Entities
             _segments.Add(first.StartIndex, first);
         }
 
-        /// <summary>
-        /// 创建新实体的快捷方法，等同于调用 <see cref="CreateEntity(Archetype?)"/> 并传入 null。
-        /// </summary>
-        /// <returns>新创建的实体句柄。</returns>
-        public Entity CreateEntity() => CreateEntity(null);
+        #region Create
 
         /// <summary>
-        /// 创建新实体信息并返回。
-        /// 若当前段已满会沿有序段集合查找或在必要时创建新段。
+        /// 创建新实体的快捷方法，等同于调用 <see cref="CreateEntity(Archetype?)" /> 并传入 null。
+        /// </summary>
+        /// <returns>新创建的实体句柄。</returns>
+        public Entity CreateEntity() => CreateEntity(null, out _);
+
+        /// <summary>
+        /// 创建实体信息的快捷方法，等同于调用 <see cref="CreateEntity(Archetype?, out int)" /> 并忽略输出参数。
         /// </summary>
         /// <param name="archetype">实体所属的 Archetype（原型），可为空表示暂不关联。</param>
+        /// <returns>新创建的实体句柄。</returns>
+        public Entity CreateEntity(Archetype? archetype) => CreateEntity(archetype, out _);
+
+        /// <summary>
+        /// 创建新实体信息并返回。 若当前段已满会沿有序段集合查找或在必要时创建新段。
+        /// </summary>
+        /// <param name="archetype">实体所属的 Archetype（原型），可为空表示暂不关联。</param>
+        /// <param name="archetypeIndex">输出实体在 Archetype 中的索引。</param>
         /// <returns>新分配的实体句柄（包含 Id 与 Version）。</returns>
-        public Entity CreateEntity(Archetype? archetype)
+        public Entity CreateEntity(Archetype? archetype, out int archetypeIndex)
         {
             // 遍历所有段，从头开始寻找可用槽位（因为 Id 可回收，首段可能有空位）
             foreach (var seg in _segments.Values)
             {
-                if (seg.TryRentEntityInfo(out var localIndex))
+                if (seg.TryRentEntityInfoIndex(out var localIndex))
                 {
                     ref var info = ref seg.GetEntityInfo(localIndex);
-                    InitializeEntityInfo(ref info, seg.StartIndex + localIndex, archetype);
+                    InitializeEntityInfo(ref info, seg.StartIndex + localIndex, archetype, out archetypeIndex);
                     return info;
                 }
             }
@@ -70,34 +84,139 @@ namespace ExtenderApp.ECS.Entities
             // 若所有段都满，则在末尾追加新段并分配
             EntitySegment last = _segments.Values[_segments.Count - 1];
             EntitySegment newSeg = _cachedSegment ?? new(0, DefaultSegmentSize);
+            _cachedSegment = null;
             newSeg.StartIndex = last.StartIndex + DefaultSegmentSize;
             _segments.Add(newSeg.StartIndex, newSeg);
 
-            if (!newSeg.TryRentEntityInfo(out var newLocalIndex))
-                throw new InvalidOperationException("新段分配失败");
-
+            newSeg.TryRentEntityInfoIndex(out var newLocalIndex);
             ref var info2 = ref newSeg.GetEntityInfo(newLocalIndex);
-            InitializeEntityInfo(ref info2, newSeg.StartIndex + newLocalIndex, archetype);
+            InitializeEntityInfo(ref info2, newSeg.StartIndex + newLocalIndex, archetype, out archetypeIndex);
             return info2;
 
-            void InitializeEntityInfo(ref EntityInfo info, int globalId, Archetype? archetype)
+            void InitializeEntityInfo(ref EntityInfo info, int globalId, Archetype? archetype, out int archetypeIndex)
             {
+                archetypeIndex = 0;
                 if (info.Id == 0) info.Id = globalId;
-                info.Version = info.Version == 0 ? (ushort)1 : info.Version++; // 初始版本为 1，0 代表无效
+                info.Version = info.Version == 0 ? (ushort)1 : (ushort)(info.Version + 1); // 初始版本为 1，0 代表无效
 
                 if (archetype != null)
                 {
+                    archetypeIndex = archetype.AddEntity(info);
                     info.Archetype = archetype;
-                    info.ArchetypeIndex = archetype.AddEntity(info);
+                    info.ArchetypeIndex = archetypeIndex;
                 }
             }
         }
 
         /// <summary>
-        /// 销毁指定实体信息。
-        /// 如果实体位于某个段中该段会回收该实体并在必要时回收空段（非首段）。
+        /// 将新创建的实体批量写入到指定 <see cref="Span{Entity}" />。
+        /// </summary>
+        /// <param name="span">用于接收实体结果的目标 Span。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CreateEntity(Span<Entity> span) => CreateEntity(span, null);
+
+        /// <summary>
+        /// 将新创建的实体批量写入到指定 <see cref="Span{Entity}" />。
+        /// </summary>
+        /// <param name="span">用于接收实体结果的目标 Span。</param>
+        /// <param name="archetype">实体所属的 Archetype（可为空）。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CreateEntity(Span<Entity> span, Archetype? archetype)
+        {
+            int offset = 0;
+            while (offset < span.Length)
+            {
+                int batchSize = Math.Min(MaxBatchSize, span.Length - offset);
+                CreateEntityPrivate(span.Slice(offset, batchSize), archetype);
+                offset += batchSize;
+            }
+        }
+
+        /// <summary>
+        /// 将新创建的实体批量写入到指定 <see cref="Span{Entity}" /> 的私有实现方法。 该方法会尝试从现有段分配实体槽位，并在必要时创建新段以满足批量分配需求。 注意：该方法假设输入的实体集合已经被分批处理以避免过大批次带来的性能问题。
+        /// </summary>
+        /// <param name="span">用于接收实体结果的目标 Span。</param>
+        /// <param name="archetype">实体所属的 Archetype（可为空）。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CreateEntityPrivate(Span<Entity> span, Archetype? archetype)
+        {
+            if (span.IsEmpty)
+                return;
+
+            int[] indexArray = ArrayPool<int>.Shared.Rent(span.Length);
+            try
+            {
+                Span<int> localIndexBuffer = indexArray.AsSpan(0, span.Length);
+                int written = 0;
+
+                foreach (var seg in _segments.Values)
+                {
+                    if (written >= span.Length)
+                        break;
+
+                    Span<int> requestSpan = localIndexBuffer.Slice(0, span.Length - written);
+                    seg.TryRentEntityInfoIndexs(requestSpan, out int count);
+                    if (count <= 0)
+                        continue;
+
+                    WriteEntities(seg, requestSpan.Slice(0, count), span.Slice(written, count), archetype);
+                    written += count;
+                }
+
+                while (written < span.Length)
+                {
+                    EntitySegment last = _segments.Values[_segments.Count - 1];
+                    EntitySegment newSeg = _cachedSegment ?? new(0, DefaultSegmentSize);
+                    _cachedSegment = null;
+                    newSeg.StartIndex = last.StartIndex + DefaultSegmentSize;
+                    _segments.Add(newSeg.StartIndex, newSeg);
+
+                    Span<int> requestSpan = localIndexBuffer.Slice(0, span.Length - written);
+                    newSeg.TryRentEntityInfoIndexs(requestSpan, out int count);
+                    if (count <= 0)
+                        throw new InvalidOperationException("无法从新建实体段分配实体索引。");
+
+                    WriteEntities(newSeg, requestSpan.Slice(0, count), span.Slice(written, count), archetype);
+                    written += count;
+                }
+            }
+            finally
+            {
+                ArrayPool<int>.Shared.Return(indexArray);
+            }
+
+            void WriteEntities(EntitySegment segment, Span<int> localIndices, Span<Entity> target, Archetype? targetArchetype)
+            {
+                for (int i = 0; i < localIndices.Length; i++)
+                {
+                    int localIndex = localIndices[i];
+                    ref var info = ref segment.GetEntityInfo(localIndex);
+
+                    if (info.Id == 0)
+                        info.Id = segment.StartIndex + localIndex;
+                    info.Version = info.Version == 0 ? (ushort)1 : (ushort)(info.Version + 1);
+
+                    if (targetArchetype != null)
+                    {
+                        int archetypeIndex = targetArchetype.AddEntity(info);
+                        info.Archetype = targetArchetype;
+                        info.ArchetypeIndex = archetypeIndex;
+                    }
+
+                    target[i] = info;
+                }
+            }
+        }
+
+        #endregion Create
+
+        #region Destroy
+
+        /// <summary>
+        /// 销毁指定实体信息。 如果实体位于某个段中该段会回收该实体并在必要时回收空段（非首段）。
         /// </summary>
         /// <param name="entity">要销毁的实体信息。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DestroyEntity(Entity entity)
         {
             if (entity.IsEmpty)
@@ -106,71 +225,70 @@ namespace ExtenderApp.ECS.Entities
             if (!TryFindSegmentForEntity(entity, out var segment, out var localIndex))
                 return;
 
-            segment.ReturnEntity(localIndex, entity);
+            segment.ReturnEntity(localIndex, entity.Version);
 
-            // 如果当前段为空且不是首段，则移除并缓存
-            if (segment.AliveCount > 0 && segment != _segments.Values[0])
+            RemoveEmptySegment();
+        }
+
+        /// <summary>
+        /// 批量销毁实体。
+        /// </summary>
+        /// <param name="entities">待销毁实体集合。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void DestroyEntity(ReadOnlySpan<Entity> entities)
+        {
+            int offset = 0;
+            while (offset < entities.Length)
             {
+                int batchSize = Math.Min(MaxBatchSize, entities.Length - offset);
+                DestroyEntityPrivate(entities.Slice(offset, batchSize));
+                offset += batchSize;
+            }
+        }
+
+        /// <summary>
+        /// 批量销毁实体的私有实现方法，处理指定范围内的实体销毁逻辑。 该方法会遍历输入的实体集合，对于每个实体尝试找到对应的段并回收实体槽位。 最后调用 <see cref="RemoveEmptySegment" /> 来清理可能完全空闲的段。 注意：该方法假设输入的实体集合已经被分批处理以避免过大批次带来的性能问题。
+        /// </summary>
+        /// <param name="entities">待销毁实体集合。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void DestroyEntityPrivate(ReadOnlySpan<Entity> entities)
+        {
+            foreach (var entity in entities)
+            {
+                if (entity.IsEmpty)
+                    continue;
+                if (!TryFindSegmentForEntity(entity, out var segment, out var localIndex))
+                    continue;
+                segment.ReturnEntity(localIndex, entity.Version);
+            }
+            RemoveEmptySegment();
+        }
+
+        /// <summary>
+        /// 删除当前块中所有实体都已销毁的块（非首块），并将其缓存以供未来重用。 这样可以避免频繁分配和释放段对象带来的性能开销，同时保持段列表的紧凑性。 注意：只有当段完全空闲时才会被移除并缓存，部分空闲的段会保留以供后续分配使用。
+        /// </summary>
+        private void RemoveEmptySegment()
+        {
+            for (var i = _segments.Count - 1; i >= 1; i--)
+            {
+                if (_segments.Values[i].AliveCount != 0)
+                    continue;
+
+                var segment = _segments.Values[i];
                 _segments.Remove(segment.StartIndex);
                 _cachedSegment = segment;
             }
         }
 
+        #endregion Destroy
+
         /// <summary>
-        /// 将指定实体从其当前 Archetype 切换到新的 Archetype。
-        /// 仅当实体仍然存活且版本匹配时才执行切换。
+        /// 将指定实体从其当前 Archetype 切换到新的 Archetype。 仅当实体仍然存活且版本匹配时才执行切换。
         /// </summary>
         /// <param name="entity">要变更的实体句柄。</param>
         /// <param name="archetype">目标 Archetype。</param>
         /// <param name="archetypeIndex">当返回 true 时，输出实体在 Archetype 中的索引。</param>
-        public bool TryChangedArchetype(Entity entity, Archetype? archetype, out int archetypeIndex)
-        {
-            archetypeIndex = -1;
-            if (entity.IsEmpty)
-                return false;
-
-            if (TryFindSegmentForEntity(entity, out var entitySegment, out var localIndex))
-            {
-                ref var info = ref entitySegment.GetEntityInfo(localIndex);
-                Entity changedEntity = Entity.Empty;
-                int newIndex = -1;
-                if (info.IsAlive(entity))
-                {
-                    // 从旧 Archetype 中移除实体数据
-                    var oldArchetype = info.Archetype;
-                    var oldArchetypeIndex = info.ArchetypeIndex;
-
-                    if (archetype != null)
-                    {
-                        // 更新为新 Archetype 并添加实体数据
-                        info.ArchetypeIndex = archetypeIndex = archetype.AddEntity(entity);
-
-                        if (oldArchetype != null)
-                            oldArchetype.CopyToAndRemoveEntity(oldArchetypeIndex, archetype, archetypeIndex, out changedEntity, out newIndex);
-                    }
-                    else
-                    {
-                        if (oldArchetype != null &&
-                            !oldArchetype.TryRemoveEntity(oldArchetypeIndex, out changedEntity, out newIndex))
-                            return false;
-                    }
-
-                    TryChangedEntityIndexForArchetype(changedEntity, newIndex);
-                    info.Archetype = archetype;
-
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// 尝试直接更新指定实体的 Archetype 索引（不修改 Archetype 引用），仅当实体仍然存活且版本匹配时才执行更新。
-        /// </summary>
-        /// <param name="entity">要更新的实体句柄。</param>
-        /// <param name="newArchetypeIndex">新的 Archetype 索引值。</param>
-        /// <returns>如果更新成功则返回 true，否则返回 false。</returns>
-        public bool TryChangedEntityIndexForArchetype(Entity entity, int newArchetypeIndex)
+        public bool TryChangedArchetype(Entity entity, Archetype? archetype, int archetypeIndex)
         {
             if (entity.IsEmpty)
                 return false;
@@ -178,11 +296,12 @@ namespace ExtenderApp.ECS.Entities
             if (TryFindSegmentForEntity(entity, out var entitySegment, out var localIndex))
             {
                 ref var info = ref entitySegment.GetEntityInfo(localIndex);
-                if (info.IsAlive(entity))
-                {
-                    info.ArchetypeIndex = newArchetypeIndex;
-                    return true;
-                }
+                if (!info.IsAlive(entity))
+                    return false;
+
+                info.Archetype = archetype;
+                info.ArchetypeIndex = archetypeIndex;
+                return true;
             }
             return false;
         }
@@ -227,13 +346,11 @@ namespace ExtenderApp.ECS.Entities
                     return true;
                 }
             }
-
             return false;
         }
 
         /// <summary>
-        /// 在有序段集合中查找包含指定实体的段，并返回对应段与段内局部索引。
-        /// 使用二分查找快速定位可能包含指定全局 Id 的段。
+        /// 在有序段集合中查找包含指定实体的段，并返回对应段与段内局部索引。 使用二分查找快速定位可能包含指定全局 Id 的段。
         /// </summary>
         private bool TryFindSegmentForEntity(Entity entity, [NotNullWhen(true)] out EntitySegment entitySegment, out int localIndex)
         {
@@ -410,7 +527,7 @@ namespace ExtenderApp.ECS.Entities
             /// <summary>
             /// 获取当前段内存活实体数量。
             /// </summary>
-            public int AliveCount => _freeStack.Count - DefaultSegmentSize;
+            public int AliveCount => DefaultSegmentSize - _freeStack.Count;
 
             /// <summary>
             /// 使用指定起始索引初始化实体段。
@@ -439,31 +556,53 @@ namespace ExtenderApp.ECS.Entities
             private void CreateArray<T>(int length, out T[] array) => array = new T[length];
 
             /// <summary>
-            /// 尝试从当前段分配一个实体信息。
+            /// 尝试从当前段分配一个实体槽位索引。
             /// </summary>
-            /// <param name="archetype">要分配的实体对应的 Archetype。</param>
-            /// <param name="entityInfo">分配成功时返回的实体信息。</param>
-            /// <returns>分配成功返回 true，否则返回 false。</returns>
+            /// <param name="localIndex">分配成功时返回段内局部索引。</param>
+            /// <returns>分配成功返回 true；否则返回 false。</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool TryRentEntityInfo(out int localIndex)
+            public bool TryRentEntityInfoIndex(out int localIndex)
             {
                 return _freeStack.TryPop(out localIndex);
             }
 
             /// <summary>
-            /// 回收指定局部索引的实体，更新版本并将槽返回到空闲栈中。
-            /// 同时会从所属 Archetype 中移除对应实体数据。
+            /// 尝试从当前段批量分配实体槽位索引。
+            /// </summary>
+            /// <param name="localIndex">用于接收局部索引的 Span。</param>
+            /// <param name="count">实际分配成功的数量。</param>
+            /// <returns>全部分配成功返回 true；否则返回 false。</returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public bool TryRentEntityInfoIndexs(Span<int> localIndex, out int count)
+            {
+                count = 0;
+                for (int i = 0; i < localIndex.Length; i++)
+                {
+                    if (_freeStack.TryPop(out int index))
+                    {
+                        localIndex[i] = index;
+                        count++;
+                    }
+                    else
+                        return false; // 返回实际分配的数量
+                }
+                return true; // 返回实际分配的数量
+            }
+
+            /// <summary>
+            /// 回收指定局部索引的实体，更新版本并将槽位返回空闲栈。
             /// </summary>
             /// <param name="localIndex">要回收的段内局部索引。</param>
-            /// <param name="version">要回收的实体版本，用于验证实体仍然存活。</param>
+            /// <param name="version">待校验的实体版本。</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void ReturnEntity(int localIndex, Entity entity)
+            public void ReturnEntity(int localIndex, uint version)
             {
                 ref var info = ref _entityInfos[localIndex];
                 // 实体已被销毁或版本不匹配，忽略回收请求
-                if (info.Id == 0 || info.Version != entity.Version)
+                if (info.Id == 0 || info.Version != version)
                     return;
 
+                info.Archetype?.TryRemoveEntity(info.ArchetypeIndex, out _, out _, out _);
                 info.Archetype = default!;
                 info.Version++;
                 _freeStack.Push(localIndex);
@@ -473,7 +612,7 @@ namespace ExtenderApp.ECS.Entities
             /// 以引用形式获取指定段内局部索引对应的 EntityInfo，以便直接读取或写入。
             /// </summary>
             /// <param name="localIndex">段内局部索引。</param>
-            /// <returns>对应的 <see cref="EntityInfo"/> 的引用。</returns>
+            /// <returns>对应的 <see cref="EntityInfo" /> 的引用。</returns>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref EntityInfo GetEntityInfo(int localIndex) => ref _entityInfos[localIndex];
 
@@ -502,8 +641,7 @@ namespace ExtenderApp.ECS.Entities
             }
 
             /// <summary>
-            /// 尝试将全局索引转换为段内局部索引。
-            /// 局部索引为 0-based（对应数组下标）。
+            /// 尝试将全局索引转换为段内局部索引。 局部索引为 0-based（对应数组下标）。
             /// </summary>
             /// <param name="entity">要获取原型的实体句柄。</param>
             /// <param name="localIndex">转换成功时返回局部索引。</param>

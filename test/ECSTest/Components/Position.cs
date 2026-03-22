@@ -2,7 +2,7 @@
 
 namespace ECSTest.Components
 {
-    public struct Position : IComponent
+    public struct Position 
     {
         public float X;
         public float Y;

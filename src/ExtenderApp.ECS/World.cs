@@ -1,7 +1,7 @@
 ﻿using ExtenderApp.Contracts;
 using ExtenderApp.ECS.Archetypes;
-using ExtenderApp.ECS.Components;
 using ExtenderApp.ECS.Entities;
+using ExtenderApp.ECS.Queries;
 using ExtenderApp.ECS.Threading;
 using ExtenderApp.ECS.Worlds;
 
@@ -11,11 +11,10 @@ namespace ExtenderApp.ECS
     {
         private const string DefaultWorldName = "DefaultWorld";
 
-        private readonly ArchetypeDictionary _archetypeDict;
-
         internal EntityManager EntityManager { get; }
         internal ArchetypeManager ArchetypeManager { get; }
         internal WorldVersionManager VersionManager { get; }
+        internal EntityQueryManager EntityQueryManager { get; }
 
         public string Name { get; }
 
@@ -31,11 +30,12 @@ namespace ExtenderApp.ECS
         public World(string name)
         {
             Name = name;
-            _archetypeDict = new();
-
             EntityManager = new();
             VersionManager = new();
-            ArchetypeManager = new(VersionManager, _archetypeDict);
+
+            ArchetypeRepository archetypeRepository = new();
+            ArchetypeManager = new(archetypeRepository, VersionManager);
+            EntityQueryManager = new(archetypeRepository.Values, VersionManager);
         }
 
         /// <summary>

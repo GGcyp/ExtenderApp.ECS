@@ -72,6 +72,55 @@ namespace ExtenderApp.ECS.Accessors
             where TEnum4 : struct, IStructEnumerator<TItem4>
             where TEnum5 : struct, IStructEnumerator<TItem5>
             => new MulticastEnumerator<TEnum1, TItem1, TEnum2, TItem2, TEnum3, TItem3, TEnum4, TItem4, TEnum5, TItem5>(enum1, enum2, enum3, enum4, enum5);
+
+        /// <summary>
+        /// 推断友好重载：创建单个值枚举器的组合器。
+        /// </summary>
+        public static MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1> Create<T1>(in EntityQueryAccessor<T1>.Enumerator enum1)
+            where T1 : struct
+            => new MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1>(enum1);
+
+        /// <summary>
+        /// 推断友好重载：创建两个值枚举器的组合器。
+        /// </summary>
+        public static MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2> Create<T1, T2>(
+            in EntityQueryAccessor<T1>.Enumerator enum1,
+            in EntityQueryAccessor<T2>.Enumerator enum2)
+            where T1 : struct
+            where T2 : struct
+            => new MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2>(enum1, enum2);
+
+        /// <summary>
+        /// 推断友好重载：创建三个值枚举器的组合器。
+        /// </summary>
+        public static MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2, EntityQueryAccessor<T3>.Enumerator, T3> Create<T1, T2, T3>(
+            in EntityQueryAccessor<T1>.Enumerator enum1,
+            in EntityQueryAccessor<T2>.Enumerator enum2,
+            in EntityQueryAccessor<T3>.Enumerator enum3)
+            where T1 : struct
+            where T2 : struct
+            where T3 : struct
+            => new MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2, EntityQueryAccessor<T3>.Enumerator, T3>(enum1, enum2, enum3);
+
+        /// <summary>
+        /// 推断友好重载：值枚举器 + 只读引用枚举器。
+        /// </summary>
+        public static MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.RefROEnumerator, RefRO<T2>> Create<T1, T2>(
+            in EntityQueryAccessor<T1>.Enumerator enum1,
+            in EntityQueryAccessor<T2>.RefROEnumerator enum2)
+            where T1 : struct
+            where T2 : struct
+            => new MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.RefROEnumerator, RefRO<T2>>(enum1, enum2);
+
+        /// <summary>
+        /// 推断友好重载：值枚举器 + 可写引用枚举器。
+        /// </summary>
+        public static MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.RefRWEnumerator, RefRW<T2>> Create<T1, T2>(
+            in EntityQueryAccessor<T1>.Enumerator enum1,
+            in EntityQueryAccessor<T2>.RefRWEnumerator enum2)
+            where T1 : struct
+            where T2 : struct
+            => new MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.RefRWEnumerator, RefRW<T2>>(enum1, enum2);
     }
 
     /// <summary>
@@ -95,7 +144,7 @@ namespace ExtenderApp.ECS.Accessors
         /// </summary>
         public struct Enumerator : IStructEnumerator<TItem1>
         {
-            private readonly TEnum1 _enum1;
+            private TEnum1 _enum1;
 
             internal Enumerator(in TEnum1 enum1)
             { _enum1 = enum1; }
@@ -139,8 +188,8 @@ namespace ExtenderApp.ECS.Accessors
         /// </summary>
         public struct Enumerator : IStructEnumerator<(TItem1, TItem2)>
         {
-            private readonly TEnum1 _enum1;
-            private readonly TEnum2 _enum2;
+            private TEnum1 _enum1;
+            private TEnum2 _enum2;
 
             internal Enumerator(in TEnum1 enum1, in TEnum2 enum2)
             {
@@ -189,9 +238,9 @@ namespace ExtenderApp.ECS.Accessors
         /// </summary>
         public struct Enumerator : IStructEnumerator<(TItem1, TItem2, TItem3)>
         {
-            private readonly TEnum1 _enum1;
-            private readonly TEnum2 _enum2;
-            private readonly TEnum3 _enum3;
+            private TEnum1 _enum1;
+            private TEnum2 _enum2;
+            private TEnum3 _enum3;
 
             internal Enumerator(in TEnum1 enum1, in TEnum2 enum2, in TEnum3 enum3)
             {
@@ -244,10 +293,10 @@ namespace ExtenderApp.ECS.Accessors
         /// </summary>
         public struct Enumerator : IStructEnumerator<(TItem1, TItem2, TItem3, TItem4)>
         {
-            private readonly TEnum1 _enum1;
-            private readonly TEnum2 _enum2;
-            private readonly TEnum3 _enum3;
-            private readonly TEnum4 _enum4;
+            private TEnum1 _enum1;
+            private TEnum2 _enum2;
+            private TEnum3 _enum3;
+            private TEnum4 _enum4;
 
             internal Enumerator(in TEnum1 enum1, in TEnum2 enum2, in TEnum3 enum3, in TEnum4 enum4)
             {
@@ -304,11 +353,11 @@ namespace ExtenderApp.ECS.Accessors
         /// </summary>
         public struct Enumerator : IStructEnumerator<(TItem1, TItem2, TItem3, TItem4, TItem5)>
         {
-            private readonly TEnum1 _enum1;
-            private readonly TEnum2 _enum2;
-            private readonly TEnum3 _enum3;
-            private readonly TEnum4 _enum4;
-            private readonly TEnum5 _enum5;
+            private TEnum1 _enum1;
+            private TEnum2 _enum2;
+            private TEnum3 _enum3;
+            private TEnum4 _enum4;
+            private TEnum5 _enum5;
 
             internal Enumerator(in TEnum1 enum1, in TEnum2 enum2, in TEnum3 enum3, in TEnum4 enum4, in TEnum5 enum5)
             {

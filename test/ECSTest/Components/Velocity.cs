@@ -2,7 +2,7 @@
 
 namespace ECSTest.Components
 {
-    public struct Velocity : IComponent
+    public struct Velocity 
     {
         public float Vx;
         public float Vy;

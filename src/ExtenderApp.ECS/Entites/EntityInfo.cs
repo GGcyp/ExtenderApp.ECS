@@ -16,7 +16,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 实体的版本号，用于检测实体重用导致的失效句柄。
         /// </summary>
-        public ushort Version;
+        public uint Version;
 
         /// <summary>
         /// 实体的全局标识（非 0）。
@@ -43,7 +43,7 @@ namespace ExtenderApp.ECS
         /// </summary>
         /// <param name="id">实体全局 Id。</param>
         /// <param name="version">实体版本号。</param>
-        public EntityInfo(int id, ushort version)
+        public EntityInfo(int id, uint version)
         {
             Id = id;
             Version = version;
@@ -108,7 +108,7 @@ namespace ExtenderApp.ECS
         /// 隐式将 EntityInfo 转换为 ushort（返回 Version）。
         /// </summary>
         /// <param name="info">源 EntityInfo。</param>
-        public static implicit operator ushort(EntityInfo info) => info.Version;
+        public static implicit operator uint(EntityInfo info) => info.Version;
 
         /// <summary>
         /// 隐式将 EntityInfo 转换为 Entity（根据 Id 与 Version 构建）。

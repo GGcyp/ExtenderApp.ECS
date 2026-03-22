@@ -1,16 +1,14 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using ExtenderApp.ECS.Archetypes;
-using ExtenderApp.ECS.Components;
 
 namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
     /// 表示查询匹配到的某个 Archetype 及其为当前查询预计算的列索引映射。
     ///
-    /// 语义：ArchetypeMatch 将一个具体的 <see cref="Archetype"/> 与按查询顺序排列的
-    /// 列索引数组关联起来。列索引数组通常来自 <see cref="ArrayPool{T}.Shared.Rent"/>，
-    /// 在不再使用时需要通过 <see cref="Dispose"/> 将数组归还池中。
+    /// 语义：ArchetypeMatch 将一个具体的 <see cref="Archetype" /> 与按查询顺序排列的 列索引数组关联起来。列索引数组通常来自 <see cref="ArrayPool{T}.Shared.Rent" />， 在不再使用时需要通过 <see
+    /// cref="Dispose" /> 将数组归还池中。
     /// </summary>
     internal readonly struct ArchetypeMatch : IDisposable
     {
@@ -20,8 +18,7 @@ namespace ExtenderApp.ECS.Queries
         public readonly Archetype Archetype;
 
         /// <summary>
-        /// 与查询中组件顺序一一对应的列索引数组（由 <see cref="ArrayPool{T}.Shared.Rent"/> 分配）。
-        /// 每个元素表示该查询位置在对应 Archetype 中的组件列位置（如果为 -1 表示缺失）。
+        /// 与查询中组件顺序一一对应的列索引数组（由 <see cref="ArrayPool{T}.Shared.Rent" /> 分配）。 每个元素表示该查询位置在对应 Archetype 中的组件列位置（如果为 -1 表示缺失）。
         /// </summary>
         public readonly int[] ColumnIndices;
 
@@ -47,10 +44,10 @@ namespace ExtenderApp.ECS.Queries
         /// 尝试根据查询内部的顺序位置获取对应列的 ArchetypeChunk{T} 头（若存在）。
         /// </summary>
         /// <typeparam name="T">期望的组件类型。</typeparam>
-        /// <param name="index">查询组件的位置索引（0-based），对应于 <see cref="ColumnIndices"/> 的下标。</param>
-        /// <param name="component">若返回 true，则输出对应类型的 <see cref="ArchetypeChunk{T}"/> 引用（非 null）。</param>
+        /// <param name="index">查询组件的位置索引（0-based），对应于 <see cref="ColumnIndices" /> 的下标。</param>
+        /// <param name="component">若返回 true，则输出对应类型的 <see cref="ArchetypeChunk{T}" /> 引用（非 null）。</param>
         /// <returns>若成功找到并类型匹配则返回 true，否则返回 false。</returns>
-        public bool TryGetArchetypeChunkHead<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct, IComponent
+        public bool TryGetArchetypeChunkHead<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct
         {
             component = default!;
             if (index < 0 || index >= ComponentCount)
@@ -61,8 +58,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 将用于缓存列索引的数组归还给 <see cref="ArrayPool{T}.Shared"/>。
-        /// 调用方在不再使用此匹配项时必须调用此方法以避免内存泄漏或数组泄漏。
+        /// 将用于缓存列索引的数组归还给 <see cref="ArrayPool{T}.Shared" />。 调用方在不再使用此匹配项时必须调用此方法以避免内存泄漏或数组泄漏。
         /// </summary>
         public void Dispose() => ArrayPool<int>.Shared.Return(ColumnIndices);
     }

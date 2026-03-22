@@ -7,7 +7,7 @@ namespace ExtenderApp.ECS.Accessors
     /// 用于避免值类型拷贝并以安全方式暴露对组件的只读访问。
     /// </summary>
     /// <typeparam name="T">组件类型（值类型且实现 <see cref="IComponent"/>）。</typeparam>
-    public readonly struct RefRO<T> where T : struct, IComponent
+    public readonly struct RefRO<T> where T : struct
     {
         /// <summary>
         /// 目标组件列对应的 ArchetypeChunk（可能为 null，表示无效包装）。
