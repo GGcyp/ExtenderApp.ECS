@@ -32,7 +32,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 组件列块列表数组，索引与组件编码位置一致。
         /// </summary>
-        private readonly ArchetypeChunkList[] _columns;
+        private readonly ArchetypeChunkList?[] _columns;
 
         /// <summary>
         /// 组件句柄池，用于管理组件句柄的租用与归还，支持实体移除时的尾部交换操作。 该池为共享实例，适用于所有 ArchetypeChunkManager。
@@ -53,7 +53,13 @@ namespace ExtenderApp.ECS.Archetypes
             _archetypeChunkProviders = providers;
             _columns = new ArchetypeChunkList[providers.Length];
             for (int i = 0; i < providers.Length; i++)
-                _columns[i] = providers[i].CreateChunkList(DefaultListSize);
+            {
+                var provider = providers[i];
+                if (provider.IsEmptyComponent)
+                    continue;
+
+                _columns[i] = provider.CreateChunkList(DefaultListSize);
+            }
 
             Entities = new(DefaultListSize);
         }
@@ -69,7 +75,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="columnIndex">列索引（0-based）。</param>
         /// <returns>存在头块则返回对应块，否则返回 null。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArchetypeChunk? GetHead(int columnIndex) => _columns[columnIndex].Count > 0 ? _columns[columnIndex][0] : null;
+        public ArchetypeChunk? GetHead(int columnIndex) => _columns[columnIndex]?.Count > 0 ? _columns[columnIndex]?[0] : null;
 
         /// <summary>
         /// 按段序号获取下一段容量。
@@ -99,6 +105,7 @@ namespace ExtenderApp.ECS.Archetypes
             Entities.AddToSegment(entity, null, out globalIndex);
 
             int capacity = GetNextSize(Entities.Count - 1);
+
             for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
                 AddToColumn(columnIndex, worldVersion, capacity);
         }
@@ -173,18 +180,20 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="capacity">新建块时使用的容量。</param>
         private void AddToColumn(int columnIndex, ulong worldVersion, int capacity)
         {
-            var list = _columns[columnIndex];
+            if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
+                return;
+
             ArchetypeChunk? chunk;
             // 该列尚无块，尝试从提供者租用一个新块并追加
-            if (list.Count == 0)
+            if (chunkList.Count == 0)
             {
                 var provider = _archetypeChunkProviders[columnIndex];
                 chunk = provider.Rent();
                 chunk.Initialize(capacity);
-                list.Add(chunk);
+                chunkList.Add(chunk);
             }
             else
-                chunk = list[0];
+                chunk = chunkList[0];
 
             while (chunk != null)
             {
@@ -197,7 +206,7 @@ namespace ExtenderApp.ECS.Archetypes
                 if (chunk.Next == null)
                 {
                     chunk = chunk.RentAndSetNext(capacity);
-                    list.Add(chunk);
+                    chunkList.Add(chunk);
                 }
                 else
                     chunk = chunk.Next;
@@ -213,18 +222,20 @@ namespace ExtenderApp.ECS.Archetypes
         /// <remarks>新块容量按增长表递增，超过预设后固定为 2048。</remarks>
         private void AddToColumns(int columnIndex, ulong worldVersion, int count)
         {
-            var list = _columns[columnIndex];
+            if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
+                return;
+
             ArchetypeChunk? chunk;
-            int capacity = GetNextSize(list.Count - 1);
-            if (list.Count == 0)
+            int capacity = GetNextSize(chunkList.Count - 1);
+            if (chunkList.Count == 0)
             {
                 var provider = _archetypeChunkProviders[columnIndex];
                 chunk = provider.Rent();
                 chunk.Initialize(capacity);
-                list.Add(chunk);
+                chunkList.Add(chunk);
             }
             else
-                chunk = list[0];
+                chunk = chunkList[0];
 
             while (chunk != null && count > 0)
             {
@@ -234,9 +245,9 @@ namespace ExtenderApp.ECS.Archetypes
                     chunk.Version = worldVersion;
                     if (chunk.Next == null)
                     {
-                        capacity = GetNextSize(list.Count);
+                        capacity = GetNextSize(chunkList.Count);
                         chunk = chunk.RentAndSetNext(capacity);
-                        list.Add(chunk);
+                        chunkList.Add(chunk);
                     }
                     else
                         chunk = chunk.Next;
@@ -341,9 +352,12 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="columnIndex">列索引。</param>
         private void RemoveEmptyChunks(int columnIndex)
         {
-            var chunkList = _columns[columnIndex];
+            if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
+                return;
+
             int count = chunkList.Count;
-            for (int i = count - 1; i > 0; i--)
+            int lastIndex = count - 1;
+            for (int i = lastIndex; i >= 0; i--)
             {
                 var chunk = chunkList[i];
                 if (chunk.Count > 0)
@@ -351,7 +365,11 @@ namespace ExtenderApp.ECS.Archetypes
 
                 chunkList.RemoveAt(i);
                 chunk.Return();
+                lastIndex--;
             }
+
+            if (chunkList.Count == 0) return;
+            chunkList[lastIndex].Next = null;
         }
 
         /// <summary>
@@ -363,7 +381,9 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="worldVersion">当前世界版本。</param>
         private void RemoveFromColumn(int columnIndex, int chunkIndex, int localIndex, ulong worldVersion)
         {
-            var chunkList = _columns[columnIndex];
+            if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
+                return;
+
             var chunk = chunkList[chunkIndex];
             chunk.Remove(localIndex);
             chunk.Version = worldVersion;
@@ -380,7 +400,9 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="worldVersion">当前世界版本。</param>
         private void RemoveFromColumns(int columnIndex, Span<int> chunkIndexSpan, Span<int> localIndexSpan, ulong worldVersion)
         {
-            var chunkList = _columns[columnIndex];
+            if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
+                return;
+
             int count = chunkIndexSpan.Length;
 
             for (int i = 0; i < count; i++)
@@ -398,15 +420,6 @@ namespace ExtenderApp.ECS.Archetypes
         #endregion Remove
 
         #region Find
-
-        /// <summary>
-        /// 获取指定列与块索引对应的块。 该方法不进行有效性检查，调用前请确保索引合法。 若需要按全局索引查找块与局部索引，请使用 <see cref="TryFindChunkForGlobalIndex" /> 方法。
-        /// </summary>
-        /// <param name="columnIndex">列索引。</param>
-        /// <param name="chunkIndex">块索引。</param>
-        /// <returns>指定列与块索引对应的块。</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArchetypeChunk GetArchetypeChunk(int columnIndex, int chunkIndex) => _columns[columnIndex][chunkIndex];
 
         /// <summary>
         /// 按列索引与全局索引查找对应块及局部索引。
@@ -434,9 +447,10 @@ namespace ExtenderApp.ECS.Archetypes
         public bool TryFindChunkForGlobalIndex(int columnIndex, int globalIndex, out ArchetypeChunk foundChunk, out int localIndex, out int chunkIndex)
         {
             foundChunk = null!;
-            if (Entities.TryFindLocalIndexForGlobalIndex(globalIndex, out localIndex, out chunkIndex))
+            if (Entities.TryFindLocalIndexForGlobalIndex(globalIndex, out localIndex, out chunkIndex) &&
+                TryGetChunkListForColumn(columnIndex, out var chunkList))
             {
-                foundChunk = _columns[columnIndex][chunkIndex];
+                foundChunk = chunkList[chunkIndex];
                 return true;
             }
             return false;
@@ -451,8 +465,8 @@ namespace ExtenderApp.ECS.Archetypes
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetChunkListForColumn(int columnIndex, out ArchetypeChunkList chunkList)
         {
-            chunkList = _columns[columnIndex];
-            return chunkList.Count > 0;
+            chunkList = _columns[columnIndex]!;
+            return chunkList != null;
         }
 
         #endregion Find
@@ -511,8 +525,14 @@ namespace ExtenderApp.ECS.Archetypes
                 int oldColumnIndex = oldIndexSpan[i];
                 int newColumnIndex = newIndexSpan[i];
 
-                var oldChunk = GetArchetypeChunk(oldColumnIndex, chunkIndex);
-                var newChunk = newManager.GetArchetypeChunk(newColumnIndex, newChunkIndex);
+                if (!TryGetChunkListForColumn(oldColumnIndex, out var chunkList) ||
+                   !newManager.TryGetChunkListForColumn(newColumnIndex, out var newChunkList))
+                {
+                    continue;
+                }
+
+                var oldChunk = chunkList[chunkIndex];
+                var newChunk = newChunkList[newChunkIndex];
 
                 if (!oldChunk.TryCopyTo(globalIndex, newChunk, newGlobalIndex))
                     return false;

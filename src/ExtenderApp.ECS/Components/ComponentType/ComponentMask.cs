@@ -176,11 +176,24 @@ namespace ExtenderApp.ECS
         /// </summary>
         /// <param name="componentTypes">要设置的组件类型数组。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponents(params ComponentType[] componentTypes)
+        public void SetComponents(IEnumerable<ComponentType> componentTypes)
         {
             foreach (var componentType in componentTypes)
             {
                 SetComponent(componentType);
+            }
+        }
+
+        /// <summary>
+        /// 将另一个掩码中的所有组件类型添加到当前掩码（位或操作）。相当于对每个段进行按位或运算。提供一个快速的批量设置方法。
+        /// </summary>
+        /// <param name="mask">指定掩码。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetComponents(in ComponentMask mask)
+        {
+            foreach (var type in mask)
+            {
+                SetComponent(type);
             }
         }
 
@@ -212,6 +225,19 @@ namespace ExtenderApp.ECS
         /// <typeparam name="T">要移除的组件类型（值类型并实现 IComponent）。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Remove<T>() where T : struct => Remove(ComponentType.Create<T>());
+
+        /// <summary>
+        /// 将另一个掩码中的所有组件类型从当前掩码中移除（位与非操作）。相当于对每个段进行按位与非运算。提供一个快速的批量移除方法。
+        /// </summary>
+        /// <param name="mask">指定掩码。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Remove(in ComponentMask mask)
+        {
+            foreach (var type in mask)
+            {
+                Remove(type);
+            }
+        }
 
         /// <summary>
         /// 将指定索引位置的位设置为 0。 索引范围在 0 到 MaxComponentCount-1 之间（包含）。
@@ -351,7 +377,7 @@ namespace ExtenderApp.ECS
         }
 
         /// <summary>
-        /// 尝试计算指定掩码中所有组件在当前掩码中的编码位置，跳过未设置的组件。 positions 数组长度必须至少等于 mask 中组件数量。
+        /// 尝试计算指定掩码中所有组件在当前掩码中的编码位置，跳过未设置的组件。 positions 数组长度必须至少等于 AddMask 中组件数量。
         /// </summary>
         /// <param name="mask">要查询的掩码。</param>
         /// <param name="positions">输出的编码位置数组。</param>

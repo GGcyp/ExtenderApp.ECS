@@ -79,12 +79,13 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         public void RemoveRange(Span<int> indexs, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
-            foreach (var index in indexs)
+            for (int outIdx = 0; outIdx < indexs.Length; outIdx++)
             {
+                int index = indexs[outIdx];
                 Remove(index, out var removedHandle, out var changedEntity, out var changedHandle);
-                removedHandles[index] = removedHandle;
-                changedEntities[index] = changedEntity;
-                changedHandles[index] = changedHandle;
+                removedHandles[outIdx] = removedHandle;
+                changedEntities[outIdx] = changedEntity;
+                changedHandles[outIdx] = changedHandle;
             }
         }
 
@@ -94,6 +95,7 @@ namespace ExtenderApp.ECS.Archetypes
         public bool TryAdd(Entity entity, ComponentHandle? handle, out int index)
         {
             index = -1;
+            // 修复：应使用 '<'，避免当 Count == Entities.Length 时写入越界
             if (Count < Entities.Length)
             {
                 index = Count++;

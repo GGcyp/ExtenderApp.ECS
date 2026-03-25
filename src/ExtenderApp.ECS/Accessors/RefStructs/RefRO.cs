@@ -35,8 +35,5 @@ namespace ExtenderApp.ECS.Accessors
             _chunk = chunk;
             _index = index;
         }
-
-        public static implicit operator T(RefRO<T> wrapper)
-            => wrapper.Value;
     }
 }

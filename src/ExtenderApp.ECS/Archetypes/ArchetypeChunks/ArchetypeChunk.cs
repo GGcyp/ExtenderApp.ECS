@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 using ExtenderApp.Contracts;
+using ExtenderApp.ECS.Components;
 
 namespace ExtenderApp.ECS.Archetypes
 {
@@ -20,9 +21,9 @@ namespace ExtenderApp.ECS.Archetypes
         private readonly ArchetypeChunkProvider _provider;
 
         /// <summary>
-        /// 底层非托管内存块（Chunk）实例，派生类在 InitializeProtected 中应对其调用 Initialize&lt;T&gt;。
+        /// 底层非托管内存块（Chunk）实例，派生类在 InitializeProtected 中应对其调用 Initialize&lt;T1&gt;。
         /// </summary>
-        protected Chunk Chunk;
+        internal Chunk Chunk;
 
         /// <summary>
         /// 链表中的下一块引用（用于 Archetype 内维护块链）。
@@ -81,7 +82,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 派生类在此方法中应对底层 Chunk 执行类型相关的初始化（例如调用 Chunk.Initialize&lt;T&gt;）。
+        /// 派生类在此方法中应对底层 Chunk 执行类型相关的初始化（例如调用 Chunk.Initialize&lt;T1&gt;）。
         /// </summary>
         protected abstract void InitializeProtected();
 
@@ -176,6 +177,19 @@ namespace ExtenderApp.ECS.Archetypes
         public void Swap(int localIndexA, int localIndexB) => Chunk.Swap(localIndexA, localIndexB);
 
         /// <summary>
+        /// 复制指定数量的数据从源指针到当前块的底层 Chunk 内存。 注意：调用前应确保块已初始化且 soure 指向的数据大小不超过当前块剩余容量。
+        /// 该方法直接调用底层 Chunk 的 CopiedUnsafe 实现，适用于在批量添加或迁移数据时执行高效的内存复制。
+        /// </summary>
+        /// <param name="localIndex">当前块内的局部索引，表示复制数据的起始位置。</param>
+        /// <param name="soure">数据源。</param>
+        /// <param name="count">元素个数。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CopiedUnsafe(int localIndex, nint soure, int count)
+        {
+            Chunk.CopiedUnsafe(localIndex, soure, count);
+        }
+
+        /// <summary>
         /// 将底层 Chunk 归还到池中并清理状态（Count 重置）。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -206,8 +220,39 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         public void Return()
         {
-            Next?.Return();
-            _provider.Return(this);
+            // Use iterative traversal to avoid deep recursion on long chains
+            ArchetypeChunk? cur = this;
+            while (cur != null)
+            {
+                var next = cur.Next;
+                cur.Next = null;
+                try
+                {
+                    cur._provider.Return(cur);
+                }
+                catch
+                {
+                    // ignore errors during return to avoid breaking cleanup
+                }
+                cur = next;
+            }
+        }
+
+        /// <summary>
+        /// 释放非托管资源：归还底层 Chunk 并调用基类释放逻辑。 同时递归释放 Next 链（如果存在）。
+        /// </summary>
+        protected override void DisposeUnmanagedResources()
+        {
+            ArchetypeChunk? cur = this;
+            while (cur != null)
+            {
+                cur.ReturnChunkToPool();
+                var next = cur.Next;
+                cur.Next = null;
+                cur = next;
+            }
+
+            base.DisposeUnmanagedResources();
         }
 
         /// <summary>
@@ -220,17 +265,6 @@ namespace ExtenderApp.ECS.Archetypes
                 throw new InvalidOperationException("当前原型块未初始化,请先调用 Initialize。");
             }
         }
-
-        /// <summary>
-        /// 释放非托管资源：归还底层 Chunk 并调用基类释放逻辑。 同时递归释放 Next 链（如果存在）。
-        /// </summary>
-        protected override void DisposeUnmanagedResources()
-        {
-            ReturnChunkToPool();
-            Next?.Dispose();
-            Next = null;
-            base.DisposeUnmanagedResources();
-        }
     }
 
     /// <summary>
@@ -239,6 +273,8 @@ namespace ExtenderApp.ECS.Archetypes
     /// <typeparam name="T">组件类型。</typeparam>
     internal sealed class ArchetypeChunk<T> : ArchetypeChunk where T : struct
     {
+        public static readonly ArchetypeChunk<T> Empty = new(null!, null!);
+
         /// <summary>
         /// 链表中的下一块引用（用于 Archetype 内维护块链）。
         /// </summary>
@@ -258,7 +294,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 在派生类初始化阶段对底层 Chunk 执行 T 类型的初始化。
+        /// 在派生类初始化阶段对底层 Chunk 执行 T1 类型的初始化。
         /// </summary>
         protected override void InitializeProtected()
         {
@@ -269,23 +305,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// 返回当前块链的文本表示。
         /// </summary>
         /// <returns>块链内容字符串。</returns>
-        public override string ToString()
-        {
-            StringBuilder sb = new();
-            sb.Append("Chunk [");
-            ArchetypeChunk<T>? current = this;
-            while (current != null)
-            {
-                foreach (var item in current)
-                {
-                    sb.Append(item.ToString());
-                    sb.Append(' ');
-                }
-                current = current.Next;
-            }
-            sb.Append(']');
-            return sb.ToString();
-        }
+        public override string ToString() => $"ArchetypeChunk<{typeof(T).Name}> (StartIndex: {StartIndex}, Count: {Count}, Capacity: {Capacity})";
 
         /// <summary>
         /// 放入组件数据

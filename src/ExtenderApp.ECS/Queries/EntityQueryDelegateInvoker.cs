@@ -27,6 +27,13 @@ namespace ExtenderApp.ECS.Queries
         private static void WriteRefRWValue<T>(RefRW<T> value, T component) where T : struct => value.Value = component;
 
         /// <summary>
+        /// 执行实体查询对应的委托。
+        /// </summary>
+        public static void Invoke<TDelegate>(EntityQuery query, TDelegate @delegate)
+            where TDelegate : Delegate
+            => Cache<TDelegate>.Invoker(query, @delegate);
+
+        /// <summary>
         /// 执行单组件查询对应的委托。
         /// </summary>
         public static void Invoke<TDelegate, T1>(EntityQuery<T1> query, TDelegate @delegate)
@@ -75,6 +82,19 @@ namespace ExtenderApp.ECS.Queries
             where T4 : struct
             where T5 : struct
             => Cache<TDelegate, T1, T2, T3, T4, T5>.Invoker(query, @delegate);
+
+        /// <summary>
+        /// 单组件查询的静态缓存。
+        /// 每种委托签名只会编译一次执行器。
+        /// </summary>
+        private static class Cache<TDelegate>
+            where TDelegate : Delegate
+        {
+            internal static readonly Action<EntityQuery, TDelegate> Invoker = Build();
+
+            private static Action<EntityQuery, TDelegate> Build()
+                => BuildInvoker<EntityQuery, TDelegate>(null);
+        }
 
         /// <summary>
         /// 单组件查询的静态缓存。
@@ -177,6 +197,49 @@ namespace ExtenderApp.ECS.Queries
             if (parameters.Length == 0)
                 throw new NotSupportedException($"委托 {typeof(TDelegate)} 至少需要一个参数。");
 
+            // Special-case: queryComponentTypes == null means this is the non-generic EntityQuery (only entities)
+            if (queryComponentTypes == null)
+            {
+                // Delegate must accept exactly one parameter of type Entity
+                if (parameters.Length != 1 || parameters[0].ParameterType != typeof(Entity))
+                    throw new NotSupportedException($"对于只查询实体的 Query，委托必须形如: void (Entity e)。");
+
+                var qp = Expression.Parameter(typeof(TQuery), "query");
+                var ap = Expression.Parameter(typeof(TDelegate), "action");
+
+                // Call query.GetEnumerator()
+                var getEnumMethod = typeof(TQuery).GetMethod("GetEnumerator", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?? throw new NotSupportedException($"未找到方法 {typeof(TQuery)}.GetEnumerator()。");
+
+                var enumeratorVar = Expression.Variable(getEnumMethod.ReturnType, "enumerator");
+                var assignEnum = Expression.Assign(enumeratorVar, Expression.Call(qp, getEnumMethod));
+
+                var moveNextMethod = getEnumMethod.ReturnType.GetMethod(nameof(EntityQueryRowEnumerator.MoveNext));
+                var currentProp = getEnumMethod.ReturnType.GetProperty(nameof(EntityQueryRowEnumerator.Current));
+                if (moveNextMethod == null || currentProp == null)
+                    throw new NotSupportedException("枚举器缺少 MoveNext/Current 方法或属性。");
+
+                var breakLabel = Expression.Label("break_loop");
+
+                var loopBody = Expression.Block(
+                    Expression.Call(ap, invokeMethod, Expression.Property(enumeratorVar, currentProp)),
+                    Expression.Empty()
+                );
+
+                var loop = Expression.Loop(
+                    Expression.IfThenElse(
+                        Expression.Call(enumeratorVar, moveNextMethod),
+                        loopBody,
+                        Expression.Break(breakLabel)
+                    ),
+                    breakLabel
+                );
+
+                var body = Expression.Block(new[] { enumeratorVar }, assignEnum, loop);
+
+                return Expression.Lambda<Action<TQuery, TDelegate>>(body, qp, ap).Compile();
+            }
+
             var descriptors = CreateDescriptors(parameters, queryComponentTypes);
             var queryParameter = Expression.Parameter(typeof(TQuery), "query");
             var actionParameter = Expression.Parameter(typeof(TDelegate), "action");
@@ -195,47 +258,60 @@ namespace ExtenderApp.ECS.Queries
                 variables.Add(enumeratorVariable);
                 setupExpressions.Add(Expression.Assign(enumeratorVariable, Expression.Call(queryParameter, enumeratorMethod)));
 
-                var moveNextExpression = Expression.Call(enumeratorVariable, enumeratorMethod.ReturnType.GetMethod(nameof(EntityQueryAccessor<int>.Enumerator.MoveNext))!);
+                var moveNextExpression = Expression.Call(enumeratorVariable, enumeratorMethod.ReturnType.GetMethod(nameof(ArchetypeAccessor<int>.Enumerator.MoveNext))!);
                 moveNextCondition = moveNextCondition == null
                     ? moveNextExpression
                     : Expression.AndAlso(moveNextCondition, moveNextExpression);
 
-                var currentExpression = Expression.Property(enumeratorVariable, nameof(EntityQueryAccessor<int>.Enumerator.Current));
+                var currentExpression = Expression.Property(enumeratorVariable, nameof(ArchetypeAccessor<int>.Enumerator.Current));
+                var componentValueExpression = GetComponentValueExpression(currentExpression, descriptors[i].ComponentType);
                 switch (descriptors[i].PassKind)
                 {
                     case PassKind.ByValue:
-                        invokeArguments[i] = currentExpression;
+                        // 若委托参数为值类型（非 RefRO/RefRW），则传递 componentValueExpression（即 T1 的副本）。
+                        // 若委托参数为 RefRO/RefRW，这里需要传递包装类型。我们统一让底层返回 RefRW，并在需要只读包装时进行类型转换。
+                        if (descriptors[i].AccessorKind == AccessorKind.Value)
+                        {
+                            invokeArguments[i] = componentValueExpression;
+                        }
+                        else if (descriptors[i].AccessorKind == AccessorKind.RefRO)
+                        {
+                            // 将底层的 RefRW<T1> 转换为 RefRO<T1>（存在隐式转换），在表达式树中使用显式转换。
+                            var refROType = typeof(RefRO<>).MakeGenericType(descriptors[i].ComponentType);
+                            invokeArguments[i] = Expression.Convert(currentExpression, refROType);
+                        }
+                        else // RefRW
+                        {
+                            invokeArguments[i] = currentExpression;
+                        }
                         break;
+
                     case PassKind.In:
-                    {
-                        var tempVariable = Expression.Variable(descriptors[i].ComponentType, $"arg{i + 1}");
-                        variables.Add(tempVariable);
-                        prepareExpressions.Add(Expression.Assign(
-                            tempVariable,
-                            Expression.Convert(currentExpression, descriptors[i].ComponentType)));
-                        invokeArguments[i] = tempVariable;
-                        break;
-                    }
+                        {
+                            var tempVariable = Expression.Variable(descriptors[i].ComponentType, $"arg{i + 1}");
+                            variables.Add(tempVariable);
+                            prepareExpressions.Add(Expression.Assign(tempVariable, componentValueExpression));
+                            invokeArguments[i] = tempVariable;
+                            break;
+                        }
                     case PassKind.Ref:
-                    {
-                        var tempVariable = Expression.Variable(descriptors[i].ComponentType, $"arg{i + 1}");
-                        variables.Add(tempVariable);
-                        prepareExpressions.Add(Expression.Assign(
-                            tempVariable,
-                            Expression.Convert(currentExpression, descriptors[i].ComponentType)));
-                        invokeArguments[i] = tempVariable;
-                        writeBackExpressions.Add(Expression.Call(
-                            WriteRefRWValueMethod.MakeGenericMethod(descriptors[i].ComponentType),
-                            currentExpression,
-                            tempVariable));
-                        break;
-                    }
+                        {
+                            var tempVariable = Expression.Variable(descriptors[i].ComponentType, $"arg{i + 1}");
+                            variables.Add(tempVariable);
+                            prepareExpressions.Add(Expression.Assign(tempVariable, componentValueExpression));
+                            invokeArguments[i] = tempVariable;
+                            writeBackExpressions.Add(Expression.Call(
+                                WriteRefRWValueMethod.MakeGenericMethod(descriptors[i].ComponentType),
+                                currentExpression,
+                                tempVariable));
+                            break;
+                        }
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
 
-            var breakLabel = Expression.Label("break_loop");
+            var breakLabel2 = Expression.Label("break_loop");
             var loopBodyExpressions = new List<Expression>(prepareExpressions.Count + 1 + writeBackExpressions.Count);
             loopBodyExpressions.AddRange(prepareExpressions);
             loopBodyExpressions.Add(Expression.Call(actionParameter, invokeMethod, invokeArguments));
@@ -248,8 +324,8 @@ namespace ExtenderApp.ECS.Queries
                     Expression.IfThenElse(
                         moveNextCondition!,
                         Expression.Block(loopBodyExpressions),
-                        Expression.Break(breakLabel)),
-                    breakLabel));
+                        Expression.Break(breakLabel2)),
+                    breakLabel2));
 
             return Expression.Lambda<Action<TQuery, TDelegate>>(
                 Expression.Block(variables, expressions),
@@ -283,27 +359,48 @@ namespace ExtenderApp.ECS.Queries
 
         /// <summary>
         /// 根据参数描述选择当前查询类型上对应的枚举器方法。
+        /// 改动：统一使用可写枚举器（RefRW），当参数为 RefRO 时在表达式中做转换以避免额外的枚举器方法。
         /// </summary>
         private static MethodInfo GetEnumeratorMethod(Type queryType, ParameterDescriptor descriptor)
         {
-            string methodName = queryType.GenericTypeArguments.Length == 1
-                ? descriptor.AccessorKind switch
-                {
-                    AccessorKind.Value => nameof(EntityQuery<int>.GetValues),
-                    AccessorKind.RefRO => nameof(EntityQuery<int>.GetRefROs),
-                    AccessorKind.RefRW => nameof(EntityQuery<int>.GetRefRWs),
-                    _ => throw new ArgumentOutOfRangeException(nameof(descriptor))
-                }
-                : descriptor.AccessorKind switch
-                {
-                    AccessorKind.Value => $"GetEnumeratorForT{descriptor.QueryIndex + 1}",
-                    AccessorKind.RefRO => $"GetRefROsForT{descriptor.QueryIndex + 1}",
-                    AccessorKind.RefRW => $"GetRefRWsForT{descriptor.QueryIndex + 1}",
-                    _ => throw new ArgumentOutOfRangeException(nameof(descriptor))
-                };
+            // 统一使用 EntityQuery 上的泛型方法 GetRefRWsFor<T1>()，避免为不同组件位次暴露 GetRefRWsForT1..T5。
+            var genericMethod = queryType.GetMethod(
+                "GetRefRWsFor",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-            return queryType.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public)
-                ?? throw new NotSupportedException($"未找到方法 {queryType.FullName}.{methodName}。");
+            if (genericMethod == null)
+                throw new NotSupportedException($"未找到方法 {queryType.FullName}.GetRefRWsFor<T1>()。");
+
+            if (!genericMethod.IsGenericMethodDefinition)
+                throw new NotSupportedException($"方法 {queryType.FullName}.GetRefRWsFor 必须是泛型方法定义。");
+
+            return genericMethod.MakeGenericMethod(descriptor.ComponentType);
+        }
+
+        private static Expression GetComponentValueExpression(Expression currentExpression, Type componentType)
+        {
+            if (currentExpression.Type == componentType)
+                return currentExpression;
+
+            if (currentExpression.Type.IsGenericType)
+            {
+                var genericTypeDefinition = currentExpression.Type.GetGenericTypeDefinition();
+                if (genericTypeDefinition == typeof(RefRO<>))
+                {
+                    return Expression.Call(
+                        ReadRefROValueMethod.MakeGenericMethod(componentType),
+                        currentExpression);
+                }
+
+                if (genericTypeDefinition == typeof(RefRW<>))
+                {
+                    return Expression.Call(
+                        ReadRefRWValueMethod.MakeGenericMethod(componentType),
+                        currentExpression);
+                }
+            }
+
+            return Expression.Convert(currentExpression, componentType);
         }
 
         /// <summary>
@@ -359,6 +456,9 @@ namespace ExtenderApp.ECS.Queries
             RefRW,
         }
 
+        /// <summary>
+        /// 跳过、按值传递或按引用传递。
+        /// </summary>
         private enum PassKind : byte
         {
             ByValue,

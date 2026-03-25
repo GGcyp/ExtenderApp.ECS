@@ -23,7 +23,7 @@ namespace ExtenderApp.ECS
                 throw new ArgumentNullException(nameof(mask));
 
             Archetype archetype = ArchetypeManager.GetOrCreateArchetype(mask);
-            return EntityManager.CreateEntity(archetype);
+            return Entities.CreateEntity(archetype);
         }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Entity CreateEntityPrivate(Archetype archetype)
         {
-            return EntityManager.CreateEntity(archetype);
+            return Entities.CreateEntity(archetype);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace ExtenderApp.ECS
         public Entity CreateEntity()
         {
             ThrowIfNotMainThread();
-            return EntityManager.CreateEntity();
+            return Entities.CreateEntity();
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace ExtenderApp.ECS
             ThrowIfNotMainThread();
             if (entities.IsEmpty)
                 return;
-            EntityManager.CreateEntity(entities);
+            Entities.CreateEntity(entities);
         }
 
         /// <summary>
@@ -242,7 +242,7 @@ namespace ExtenderApp.ECS
         public void DestroyEntity(Entity entity)
         {
             ThrowIfNotMainThread();
-            EntityManager.DestroyEntity(entity);
+            Entities.DestroyEntity(entity);
         }
 
         /// <summary>
@@ -253,7 +253,7 @@ namespace ExtenderApp.ECS
         public void DestroyEntity(ReadOnlySpan<Entity> entities)
         {
             ThrowIfNotMainThread();
-            EntityManager.DestroyEntity(entities);
+            Entities.DestroyEntity(entities);
         }
 
         #endregion Destroy
@@ -267,7 +267,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentLookup GetEntityComponentLookup(Entity entity)
         {
-            if (EntityManager.TryGetArchetype(entity, out var archetype, out int archetypeIndex) &&
+            if (Entities.TryGetArchetype(entity, out var archetype, out int archetypeIndex) &&
                (archetype?.TryGetComponentHandle(archetypeIndex, out var handle) ?? false))
             {
                 return new (handle);

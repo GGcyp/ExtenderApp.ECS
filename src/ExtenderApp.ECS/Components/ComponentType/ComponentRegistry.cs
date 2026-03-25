@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace ExtenderApp.ECS.Components
 {
@@ -57,6 +58,11 @@ namespace ExtenderApp.ECS.Components
             /// 组件运行时类型。
             /// </summary>
             public abstract Type ComponentType { get; }
+
+            /// <summary>
+            /// 是否为“空组件”。 空组件是一个特殊占位类型，表示“无组件”，其索引固定为 0。 该属性用于区分空组件与普通组件，以支持特殊处理（如掩码计算中的跳过）。
+            /// </summary>
+            public abstract bool IsEmptyComponent { get; }
         }
 
         /// <summary>
@@ -78,6 +84,8 @@ namespace ExtenderApp.ECS.Components
             /// 空组件对应的占位类型。
             /// </summary>
             public override Type ComponentType => typeof(void);
+
+            public override bool IsEmptyComponent => true;
         }
 
         /// <summary>
@@ -111,6 +119,8 @@ namespace ExtenderApp.ECS.Components
             /// </summary>
             public override Type ComponentType => typeof(T);
 
+            public override bool IsEmptyComponent { get; }
+
             /// <summary>
             /// 初始化泛型组件类型缓存并分配唯一索引。
             /// </summary>
@@ -118,6 +128,26 @@ namespace ExtenderApp.ECS.Components
             {
                 componentTypes.Add(this);
                 index = (ushort)componentTypes.Count;
+                IsEmptyComponent = IsEmptyStruct();
+            }
+
+            /// <summary>
+            /// 判断类型是否是【没有任何字段的空结构体】
+            /// </summary>
+            public static bool IsEmptyStruct()
+            {
+                Type type = typeof(T);
+                // 必须是值类型，且不是基本类型（int/bool等）
+                if (!type.IsValueType || type.IsPrimitive || type == typeof(void))
+                    return false;
+
+                // 获取所有实例字段（public/private 都算）
+                FieldInfo[] fields = type.GetFields(
+                    BindingFlags.Instance |
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic);
+
+                return fields.Length == 0;
             }
         }
     }

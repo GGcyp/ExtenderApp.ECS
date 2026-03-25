@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using ExtenderApp.Contracts;
 
-namespace ExtenderApp.ECS.Archetypes
+namespace ExtenderApp.ECS.Components
 {
     /// <summary>
     /// 非托管内存块（Chunk）的简单对象池。

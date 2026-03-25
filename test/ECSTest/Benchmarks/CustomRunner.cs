@@ -26,6 +26,7 @@ public static class CustomRunner
         mask.Add(ComponentType.Create<Team>());
         mask.Add(ComponentType.Create<State>());
         mask.Add(ComponentType.Create<HugePayload>());
+        mask.Add<PlayerTag>();
 
         var sw = new Stopwatch();
         var entities = new List<Entity>(N);
@@ -75,7 +76,6 @@ public static class CustomRunner
             }
             sw.Stop();
             Console.WriteLine($"Get: {N * 10} component ops in {sw.ElapsedMilliseconds} ms");
-
         }
         catch (Exception ex)
         {
@@ -360,6 +360,7 @@ public static class CustomRunner
             world.SetComponent(entities[i], new Acceleration { X = i * 0.003f, Y = i * 0.004f });
             world.SetComponent(entities[i], new Team { Id = i % 8 });
             world.SetComponent(entities[i], new State { Value = i % 5 });
+
             if (includeHuge)
             {
                 world.SetComponent(entities[i], new HugePayload { Seed = i });
@@ -439,6 +440,7 @@ public static class CustomRunner
         mask.Add(ComponentType.Create<Acceleration>());
         mask.Add(ComponentType.Create<Team>());
         mask.Add(ComponentType.Create<State>());
+        mask.Add<PlayerTag>();
         if (includeHuge)
         {
             mask.Add(ComponentType.Create<HugePayload>());
@@ -467,6 +469,8 @@ public static class CustomRunner
             RunHugeComponentComparison(n);
             RunEntityComponentApiTest(Math.Min(n, 5000));
         }
+
+        RunEntityQueryBuildTest();
     }
 
     // 新增：实体组件 API 行为测试
@@ -554,11 +558,11 @@ public static class CustomRunner
 
         var entity = world.CreateEntity(new Position { X = 7, Y = -7 });
 
-        var allPosition = world.CreateEntityQuery<Position>();
-        var withVelocity = world.CreateEntityQueryBuilder()
+        var allPosition = world.Query<Position>();
+        var withVelocity = world.QueryBuilder()
             .WithAll<Velocity>()
             .Build<Position>();
-        var noVelocity = world.CreateEntityQueryBuilder()
+        var noVelocity = world.QueryBuilder()
             .WithNone<Velocity>()
             .Build<Position>();
 
@@ -585,7 +589,7 @@ public static class CustomRunner
         world.AddComponent(entity, new Velocity { Vx = 10, Vy = 20 });
 
         int delegateCount = 0;
-        var moveQuery = world.CreateEntityQuery<Position, Velocity>();
+        var moveQuery = world.Query<Position, Velocity>();
         moveQuery.Query((ref Position position, in Velocity velocity) =>
         {
             delegateCount++;
@@ -596,11 +600,13 @@ public static class CustomRunner
         var p4 = world.GetComponent<Position>(entity);
         bool delegateQueryOk = delegateCount == 1 && p4.X == 17 && p4.Y == 13;
         bool multiDelegateQueryOk = RunMultiComponentDelegateTest();
+        bool foreachQueryOk = RunForeachDeconstructTest();
 
-        bool ok = valueStable && countOk && filterOk && delegateQueryOk && multiDelegateQueryOk;
+        bool ok = valueStable && countOk && filterOk && delegateQueryOk && multiDelegateQueryOk && foreachQueryOk;
 
         Console.WriteLine($"DelegateQuery: {(delegateQueryOk ? "OK" : "FAILED")}, Position=({p4.X},{p4.Y})");
         Console.WriteLine($"MultiDelegateQuery: {(multiDelegateQueryOk ? "OK" : "FAILED")}");
+        Console.WriteLine($"ForeachDeconstructQuery: {(foreachQueryOk ? "OK" : "FAILED")}");
         Console.WriteLine($"Phase1: Position=({p1.X},{p1.Y}), All={allCount1}, WithVelocity={withCount1}, NoVelocity={noneCount1}");
         Console.WriteLine($"Phase2: Position=({p2.X},{p2.Y}), All={allCount2}, WithVelocity={withCount2}, NoVelocity={noneCount2}");
         Console.WriteLine($"Phase3: Position=({p3.X},{p3.Y}), All={allCount3}, WithVelocity={withCount3}, NoVelocity={noneCount3}");
@@ -611,11 +617,10 @@ public static class CustomRunner
         {
             count = 0;
             Position value = default;
-            var e = query.GetRefROs();
-            while (e.MoveNext())
+            foreach (Position item in query)
             {
                 count++;
-                value = e.Current.Value;
+                value = item;
             }
             return value;
         }
@@ -623,8 +628,7 @@ public static class CustomRunner
         static int Count(EntityQuery<Position> query)
         {
             int count = 0;
-            var e = query.GetRefROs();
-            while (e.MoveNext())
+            foreach (var item in query)
             {
                 count++;
             }
@@ -645,23 +649,12 @@ public static class CustomRunner
             world.AddComponent(ignored, new Velocity { Vx = 1, Vy = 1 });
 
             int count = 0;
-            var query = world.CreateEntityQuery<Health, Position, Velocity>();
+            var query = world.Query<Health, Position, Velocity>();
 
             var directPosition = world.GetComponent<Position>(entity);
             var directVelocity = world.GetComponent<Velocity>(entity);
             var directHealth = world.GetComponent<Health>(entity);
             Console.WriteLine($"MultiDelegateDirectRead: Position=({directPosition.X},{directPosition.Y}), Velocity=({directVelocity.Vx},{directVelocity.Vy}), Health={directHealth.Value}");
-
-            var positionEnum = query.GetRefROsForT2();
-            var velocityEnum = query.GetRefROsForT3();
-            var healthEnum = query.GetRefROsForT1();
-            if (positionEnum.MoveNext() && velocityEnum.MoveNext() && healthEnum.MoveNext())
-            {
-                var prePosition = positionEnum.Current.Value;
-                var preVelocity = velocityEnum.Current.Value;
-                var preHealth = healthEnum.Current.Value;
-                Console.WriteLine($"MultiDelegatePreRead: Position=({prePosition.X},{prePosition.Y}), Velocity=({preVelocity.Vx},{preVelocity.Vy}), Health={preHealth.Value}");
-            }
 
             query.Query((in Velocity velocity, in Health health, ref Position position) =>
             {
@@ -674,8 +667,59 @@ public static class CustomRunner
             Console.WriteLine($"MultiDelegateDetail: Count={count}, Result=({result.X},{result.Y})");
             return count == 1 && result.X == 12 && result.Y == 2;
         }
-    }
 
+        static bool RunForeachDeconstructTest()
+        {
+            using var world = new World();
+
+            var entity = world.CreateEntity();
+            world.AddComponent(entity, new Position { X = 2, Y = 3 });
+            world.AddComponent(entity, new Velocity { Vx = 4, Vy = 5 });
+            world.AddComponent(entity, new Health { Value = 6 });
+
+            var ignored = world.CreateEntity();
+            world.AddComponent(ignored, new Position { X = 100, Y = 200 });
+            world.AddComponent(ignored, new Velocity { Vx = 1, Vy = 1 });
+
+            var query = world.Query<Velocity, Health, Position>();
+            var query1 = world.Query<Velocity, Position>();
+
+            foreach ((Velocity v, Position p) in query1)
+            {
+            }
+
+            int count1 = 0;
+            float checksum = 0;
+            Entity visitedEntity = Entity.Empty;
+            foreach ((Velocity velocity, Health health, Position position, Entity rowEntity) in query)
+            {
+                count1++;
+                visitedEntity = rowEntity;
+                checksum += velocity.Vx + velocity.Vy + health.Value + position.X + position.Y;
+            }
+
+            int count2 = 0;
+            foreach ((RefRW<Velocity> velocity, Health health, Position position, Entity rowEntity) in query)
+            {
+                count2++;
+                if (rowEntity != entity) return false;
+                velocity.Value = new Velocity
+                {
+                    Vx = velocity.Value.Vx + health.Value,
+                    Vy = velocity.Value.Vy + position.X
+                };
+            }
+
+            var updatedVelocity = world.GetComponent<Velocity>(entity);
+            Console.WriteLine($"ForeachDeconstructDetail: Count1={count1}, Count2={count2}, Entity={visitedEntity}, Checksum={checksum}, Velocity=({updatedVelocity.Vx},{updatedVelocity.Vy})");
+            return count1 == 1
+                && count2 == 1
+                && visitedEntity == entity
+                && checksum == 20
+                && updatedVelocity.Vx == 10
+                && updatedVelocity.Vy == 7;
+        }
+    }
 
     public static void RunRelationPairCase(int _)
     {
@@ -720,6 +764,207 @@ public static class CustomRunner
         ownerRelations[child][0] = childOfB;
         Console.WriteLine($"Owner {child} ChildOf targetId changed to {ownerRelations[child][0].TargetId}");
 
+        Console.WriteLine("========================================");
+    }
+
+    // 新增：命令缓冲并发写入测试
+    public static void RunCommandBufferConcurrencyTest(int opsPerWriter)
+    {
+        Console.WriteLine($"=== CommandBuffer Concurrency Test: writers=8, opsPerWriter={opsPerWriter} ===");
+        using var world = new World();
+
+        // 从 World 获取命令缓冲实例
+        var buffer = world.CommandBuffer;
+
+        int writers = 8;
+        int ops = Math.Max(1, opsPerWriter);
+
+        // 使用真实实体作为标记，便于在回放后验证数据正确性
+        var smoke = world.CreateEntity();
+        buffer.AddComponent(smoke, new Position { X = 1, Y = 2 });
+
+        // 预先在主线程创建每个任务将要使用的真实实体集合，避免在工作线程上调用 World API
+        var precreated = new Entity[writers][];
+        for (int w = 0; w < writers; w++)
+        {
+            precreated[w] = new Entity[ops];
+            for (int i = 0; i < ops; i++)
+            {
+                precreated[w][i] = world.CreateEntity();
+            }
+        }
+
+        var barrier = new Barrier(writers);
+        var tasks = new Task[writers];
+        var sw = Stopwatch.StartNew();
+
+        for (int w = 0; w < writers; w++)
+        {
+            int writerIndex = w; // capture
+            tasks[w] = Task.Run(() =>
+            {
+                barrier.SignalAndWait();
+
+                // Use pre-created real entities to avoid virtual entity mapping path
+                var localEntities = precreated[writerIndex];
+                for (int i = 0; i < ops; i++)
+                {
+                    var e = localEntities[i];
+                    // record operations against the real entity
+                    buffer.AddComponent(e, new Position { X = i, Y = -i });
+                    buffer.SetComponent(e, new Position { X = i + 1, Y = -i - 1 });
+                    buffer.RemoveComponent<Position>(e);
+                    buffer.DestroyEntity(e);
+                }
+            });
+        }
+
+        Task.WaitAll(tasks);
+        sw.Stop();
+
+        long totalOps = (long)writers * ops * 5 + 1; // 每轮 5 条命令, +1 为 smoke 的 Add
+        Console.WriteLine($"Command write finished: totalCommands={totalOps}, elapsed={sw.ElapsedMilliseconds} ms");
+
+        // 验证：回放后，唯一存在 Position 的实体应为 smoke，且值应为 (1,2)
+        bool ok = true;
+        int posCount = 0;
+        foreach (var p in world.Query<Position>())
+        {
+            posCount++;
+        }
+
+        try
+        {
+            var sp = world.GetComponent<Position>(smoke);
+            if (sp.X != 1 || sp.Y != 2) ok = false;
+        }
+        catch
+        {
+            ok = false;
+        }
+
+        if (posCount != 1) ok = false;
+
+        Console.WriteLine($"Verification: PositionCount={posCount}, SmokeValid={ok}");
+
+        if (!ok)
+        {
+            Console.WriteLine("--- Diagnostic: listing up to 50 Position entities ---");
+            try
+            {
+                int printed = 0;
+                // first try to get entity with deconstruct form
+                try
+                {
+                    foreach ((Position p, Entity e) in world.Query<Position>())
+                    {
+                        Console.WriteLine($"Entity={e}, Position=({p.X},{p.Y}){(e == smoke ? " [smoke]" : "")} ");
+                        if (++printed >= 50) break;
+                    }
+                }
+                catch
+                {
+                    // fallback: only values available
+                    foreach (var p in world.Query<Position>())
+                    {
+                        Console.WriteLine($"Position value: {p}");
+                        if (++printed >= 50) break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Diagnostic enumeration failed: " + ex.Message);
+            }
+
+            Console.WriteLine("--- End Diagnostic ---");
+        }
+    }
+
+    // 新增：只使用 World API 的对照测试（不经过 CommandBuffer）
+    public static void RunWorldDirectExecutionTest(int opsPerWriter)
+    {
+        Console.WriteLine($"=== World Direct Execution opsPerWriter={opsPerWriter} ===");
+        using var world = new World();
+
+        int ops = Math.Max(1, opsPerWriter);
+
+        var smoke = world.CreateEntity();
+        world.AddComponent(smoke, new Position { X = 1, Y = 2 });
+
+        var sw = Stopwatch.StartNew();
+
+        for (int i = 0; i < ops; i++)
+        {
+            var e = world.CreateEntity();
+            world.AddComponent(e, new Position { X = i, Y = -i });
+            world.SetComponent(e, new Position { X = i + 1, Y = -i - 1 });
+            world.AddComponent(e, new Velocity { Vx = i, Vy = -i });
+            world.AddComponent(e, new Health { Value = i });
+            world.AddComponent(e, new Rotation { Value = i });
+            world.AddComponent(e, new Scale { Value = i });
+            world.RemoveComponent<Position>(e);
+            world.DestroyEntity(e);
+        }
+
+        sw.Stop();
+
+        long totalOps = (long)ops * 8 + 1;
+        Console.WriteLine($"World direct execution finished: totalOps={totalOps}, elapsed={sw.ElapsedMilliseconds} ms");
+
+        bool ok = true;
+        int posCount = 0;
+        foreach (var p in world.Query<Position>())
+        {
+            posCount++;
+        }
+
+        try
+        {
+            var sp = world.GetComponent<Position>(smoke);
+            if (sp.X != 1 || sp.Y != 2) ok = false;
+        }
+        catch
+        {
+            ok = false;
+        }
+
+        if (posCount != 1) ok = false;
+
+        Console.WriteLine($"Verification: PositionCount={posCount}, SmokeValid={ok}");
+        Console.WriteLine("========================================");
+    }
+
+    // 新增：DestroyEntitiesForQuery 测试
+    public static void RunDestroyEntitiesForQueryTest()
+    {
+        Console.WriteLine("=== CustomRunner: DestroyEntitiesForQuery Test ===");
+        using var world = new World();
+
+        int total = 1000;
+        int withPos = 400;
+        var entities = new List<Entity>(total);
+        for (int i = 0; i < total; i++)
+        {
+            var e = world.CreateEntity();
+            if (i < withPos)
+                world.AddComponent(e, new Position { X = i, Y = i });
+            entities.Add(e);
+        }
+
+        // 构造仅匹配包含 Position 的查询，然后隐式转换为仅实体的 EntityQuery
+        var typedQuery = world.Query<Position>();
+        EntityQuery query = typedQuery; // implicit conversion
+
+        // 调用被测方法
+        world.DestroyEntitiesForQuery(query);
+
+        // 验证：回放后不应再存在任何 Position 实体
+        int posCount = 0;
+        foreach (var p in world.Query<Position>()) posCount++;
+
+        bool ok = posCount == 0;
+        Console.WriteLine($"DestroyEntitiesForQuery: initialWithPosition={withPos}, remainingPositionCount={posCount}, Result={(ok ? "OK" : "FAILED")}");
         Console.WriteLine("========================================");
     }
 }

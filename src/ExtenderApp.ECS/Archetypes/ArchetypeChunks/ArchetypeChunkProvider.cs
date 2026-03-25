@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using ExtenderApp.ECS.Components;
 
 namespace ExtenderApp.ECS.Archetypes
 {
@@ -48,10 +49,15 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
+        /// 当前提供器管理的组件类型是否为一个空结构体（即不包含任何字段）。
+        /// </summary>
+        public abstract bool IsEmptyComponent { get; }
+
+        /// <summary>
         /// 从提供器中租用一个 <see cref="ArchetypeChunk" /> 实例（抽象方法，由子类实现具体类型返回）。
         /// </summary>
         /// <param name="startIndex">分配给返回块的全局起始索引（可选）。</param>
-        /// <returns>可用的 <see cref="ArchetypeChunk" /> 实例（可能为具体的 ArchetypeChunk{T}）。</returns>
+        /// <returns>可用的 <see cref="ArchetypeChunk" /> 实例（可能为具体的 ArchetypeChunk{T1}）。</returns>
         public abstract ArchetypeChunk Rent(int startIndex = 0);
 
         /// <summary>
@@ -69,7 +75,7 @@ namespace ExtenderApp.ECS.Archetypes
     }
 
     /// <summary>
-    /// 按组件类型 T 管理的 <see cref="ArchetypeChunk{T}" /> 对象池与提供器。
+    /// 按组件类型 T1 管理的 <see cref="ArchetypeChunk{T}" /> 对象池与提供器。
     ///
     /// 特性：
     /// - 提供无锁的单元素快速槽（ <c>lastChunk</c>）作为 fast-path；
@@ -110,6 +116,8 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         public int Count => (lastChunk != null ? 1 : 0) + (_pool?.Count ?? 0);
 
+        public override bool IsEmptyComponent { get; }
+
         /// <summary>
         /// 创建默认的提供器，使用共享的 <see cref="ChunkPool.Share" />。
         /// </summary>
@@ -123,8 +131,9 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="chunkPool">用于分配底层 Chunk 的池，不可为 null。</param>
         public ArchetypeChunkProvider(ChunkPool chunkPool)
         {
-            _poolLazy = new(() => new ConcurrentQueue<ArchetypeChunk<T>>());
+            _poolLazy = new(() => new());
             _chunkPool = chunkPool ?? throw new ArgumentNullException(nameof(chunkPool));
+            IsEmptyComponent = ComponentType.Create<T>().IsEmptyComponent;
         }
 
         /// <summary>
@@ -141,12 +150,16 @@ namespace ExtenderApp.ECS.Archetypes
             ArchetypeChunk<T>? item = Interlocked.Exchange(ref lastChunk, null);
             if (item != null)
             {
+                // 复用前清理链表指针，避免带入旧链
+                item.Next = null;
                 item.StartIndex = startIndex;
                 return item;
             }
 
             if (_pool != null && _pool.TryDequeue(out item))
             {
+                // 复用前清理链表指针，避免带入旧链
+                item.Next = null;
                 item.StartIndex = startIndex;
                 return item;
             }
@@ -176,6 +189,9 @@ namespace ExtenderApp.ECS.Archetypes
         {
             if (chunk == null)
                 return;
+
+            // 归还前断开链表，避免把旧 Next 一并带入对象池
+            chunk.Next = null;
 
             // 先归还底层 Chunk，这样保存在池中的 ArchetypeChunk 对象为未初始化状态
             try

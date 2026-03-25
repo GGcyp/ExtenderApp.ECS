@@ -80,11 +80,8 @@ namespace ExtenderApp.ECS.Archetypes
 
         protected override void DisposeManagedResources()
         {
+            _archetypes.Dispose();
             base.DisposeManagedResources();
-            foreach (var archetype in _archetypes.Values)
-            {
-                archetype.Dispose();
-            }
         }
     }
 }

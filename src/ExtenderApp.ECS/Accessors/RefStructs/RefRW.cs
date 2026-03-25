@@ -38,7 +38,13 @@ namespace ExtenderApp.ECS.Accessors
             _index = index;
         }
 
-        public static implicit operator T(RefRW<T> rw)
-            => rw.Value;
+        /// <summary>
+        /// 将当前可写引用包装转换为只读引用包装。
+        /// </summary>
+        internal RefRO<T> AsReadOnly() => new(_chunk, _index);
+
+        public static implicit operator RefRO<T>(RefRW<T> rw) => rw.AsReadOnly();
+
+        public static implicit operator T(RefRW<T> rw) => rw.Value;
     }
 }

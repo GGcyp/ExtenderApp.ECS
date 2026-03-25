@@ -10,12 +10,12 @@ namespace ExtenderApp.ECS.Entities
     public struct EntityComponentOperation
     {
         /// <summary>
-        /// 当前 ComponentBuffer 所属的 World 实例，提供访问 EntityManager 与 ArchetypeManager 的入口。
+        /// 当前 ComponentBuffer 所属的 World 实例，提供访问 Entities 与 ArchetypeManager 的入口。
         /// </summary>
         private readonly World _world;
 
         /// <summary>
-        /// 当前实体的 Entity 句柄，标识了该 ComponentBuffer 操作的目标实体。通过 EntityManager 获取或修改组件数据。
+        /// 当前实体的 Entity 句柄，标识了该 ComponentBuffer 操作的目标实体。通过 Entities 获取或修改组件数据。
         /// </summary>
         private readonly Entity _entity;
 
@@ -30,9 +30,9 @@ namespace ExtenderApp.ECS.Entities
         private int currentArchetypeIndex;
 
         /// <summary>
-        /// 当前 World 中的 EntityManager 实例，提供获取实体 Archetype、迁移实体等功能。
+        /// 当前 World 中的 Entities 实例，提供获取实体 Archetype、迁移实体等功能。
         /// </summary>
-        private EntityManager Entities => _world.EntityManager;
+        private EntityManager Entities => _world.Entities;
 
         /// <summary>
         /// 当前 World 中的 ArchetypeManager 实例，提供获取或创建 Archetype 的功能。
@@ -53,7 +53,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 设置实体在其当前 Archetype 中已存在的组件的值。 若该组件列不存在会抛出异常。
         /// </summary>
-        /// <typeparam name="T">组件类型（值类型并实现 IComponent）。</typeparam>
+        /// <typeparam name="T">组件类型。</typeparam>
         /// <param name="component">要写入的组件值。</param>
         /// <returns>返回自身以支持链式调用（轻量便捷）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -71,7 +71,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 获取实体在其当前 Archetype 中已存在的组件的值。 若该组件列不存在会抛出异常。
         /// </summary>
-        /// <typeparam name="T">组件类型（值类型并实现 IComponent）。</typeparam>
+        /// <typeparam name="T">组件类型。</typeparam>
         /// <returns>指定组件的值。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetComponent<T>() where T : struct
@@ -87,7 +87,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 获取实体在其当前 Archetype 中已存在的组件的值，并通过输出参数返回。
         /// </summary>
-        /// <typeparam name="T">组件类型（值类型并实现 IComponent）。</typeparam>
+        /// <typeparam name="T">组件类型。</typeparam>
         /// <param name="value">输出参数，用于返回组件的值。</param>
         /// <returns>返回自身以支持链式调用（轻量便捷）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -105,7 +105,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加一个新组件（可能导致实体迁移到新的 Archetype）。 如果实体已经包含该组件则直接覆盖组件的值。
         /// </summary>
-        /// <typeparam name="T">组件类型（值类型并实现 IComponent）。</typeparam>
+        /// <typeparam name="T">组件类型。</typeparam>
         /// <param name="component">要添加或覆盖的组件值。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddComponent<T>(T component) where T : struct
@@ -121,13 +121,13 @@ namespace ExtenderApp.ECS.Entities
             }
             else
             {
-                if (archetype.ComponentTypes.On(compType))
+                if (archetype.ComponentMask.On(compType))
                 {
                     archetype.SetComponent(archetypeIndex, component);
                     return this;
                 }
 
-                var newMask = archetype.ComponentTypes;
+                var newMask = archetype.ComponentMask;
                 newMask.Add(compType);
                 archetype = BuildArchetype(newMask, archetype.RelationTypes);
             }
@@ -135,6 +135,34 @@ namespace ExtenderApp.ECS.Entities
             var newIndex = archetype.AddEntity(_entity);
             ChangedArchetype(archetype, newIndex);
             archetype.SetComponent(newIndex, component);
+            return this;
+        }
+
+        /// <summary>
+        /// 向实体添加一个新组件（可能导致实体迁移到新的 Archetype）。
+        /// </summary>
+        /// <typeparam name="T">组件类型。</typeparam>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityComponentOperation AddComponent<T>() where T : struct
+        {
+            ThrowIfNotMainThread();
+
+            var compType = ComponentType.Create<T>();
+            if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
+                archetype == null)
+            {
+                ComponentMask componentMask = new(compType);
+                archetype = BuildArchetype(componentMask);
+            }
+            else
+            {
+                var newMask = archetype.ComponentMask;
+                newMask.Add(compType);
+                archetype = BuildArchetype(newMask, archetype.RelationTypes);
+            }
+
+            var newIndex = archetype.AddEntity(_entity);
+            ChangedArchetype(archetype, newIndex);
             return this;
         }
 
@@ -152,14 +180,19 @@ namespace ExtenderApp.ECS.Entities
                 return this; // 实体无效或已被销毁，忽略
 
             var compType = ComponentType.Create<T>();
-            if (!archetype.ComponentTypes.On(compType))
+            if (!archetype.ComponentMask.On(compType))
                 return this; // 不存在，忽略
 
-            var newMask = archetype.ComponentTypes;
+            var newMask = archetype.ComponentMask;
             newMask.Remove(compType);
 
             if (newMask.IsEmpty)
             {
+                if (currentArchetype?.TryRemoveEntity(currentArchetypeIndex, out var changedEntity) == true &&
+                    !changedEntity.IsEmpty)
+                {
+                    Entities.TryChangedArchetypeIndex(changedEntity, currentArchetypeIndex);
+                }
                 ChangedArchetype(null, -1); // 无组件 Archetype 视为 null
                 return this;
             }
@@ -200,7 +233,7 @@ namespace ExtenderApp.ECS.Entities
             var newRelationMask = archetype.RelationTypes;
             newRelationMask.Add(relationType);
 
-            var migratedArchetype = BuildArchetype(archetype.ComponentTypes, newRelationMask);
+            var migratedArchetype = BuildArchetype(archetype.ComponentMask, newRelationMask);
             var migratedIndex = migratedArchetype.AddEntity(_entity);
             ChangedArchetype(migratedArchetype, migratedIndex);
             migratedArchetype.AddRelation(relationType, target);
@@ -226,7 +259,7 @@ namespace ExtenderApp.ECS.Entities
             var newRelationMask = archetype.RelationTypes;
             newRelationMask.Remove(relationType);
 
-            var newArchetype = BuildArchetype(archetype.ComponentTypes, newRelationMask);
+            var newArchetype = BuildArchetype(archetype.ComponentMask, newRelationMask);
             var newIndex = newArchetype.AddEntity(_entity);
             ChangedArchetype(newArchetype, newIndex);
             return this;
@@ -277,16 +310,20 @@ namespace ExtenderApp.ECS.Entities
         }
 
         /// <summary>
-        /// 将实体切换到指定的 Archetype，并输出新 Archetype 中的索引。 该方法委托给 EntityManager 执行实际的迁移逻辑。
+        /// 将实体切换到指定的 Archetype，并输出新 Archetype 中的索引。 该方法委托给 Entities 执行实际的迁移逻辑。
         /// </summary>
         /// <param name="archetype">目标 Archetype。</param>
         /// <param name="archetypeIndex">输出迁移后实体在目标 Archetype 中的索引。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ChangedArchetype(Archetype? archetype, int archetypeIndex)
         {
-            if (archetype != null && currentArchetype != null && archetypeIndex >= 0)
+            if (archetype != null && archetypeIndex >= 0 && currentArchetype != null)
             {
-                currentArchetype.TryCopyToAndRemove(currentArchetypeIndex, archetype, archetypeIndex);
+                if (currentArchetype.TryCopyToAndRemove(currentArchetypeIndex, archetype, archetypeIndex, out var changedEntity) &&
+                    !changedEntity.IsEmpty)
+                {
+                    Entities.TryChangedArchetypeIndex(changedEntity, currentArchetypeIndex);
+                }
             }
 
             if (Entities.TryChangedArchetype(_entity, archetype, archetypeIndex))

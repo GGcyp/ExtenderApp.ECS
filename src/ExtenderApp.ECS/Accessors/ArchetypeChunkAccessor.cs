@@ -30,7 +30,7 @@ namespace ExtenderApp.ECS.Accessors
         public int Count => _chunks.Count;
 
         /// <summary>
-        /// 按块序号（0 基）尝试获取对应块的 `ComponentAccessor{T}`。
+        /// 按块序号（0 基）尝试获取对应块的 `ComponentAccessor{T1}`。
         /// </summary>
         /// <param name="chunkIndex">目标块的序号（0 表示列表第一个块）。</param>
         /// <param name="accessor">当返回 true 时，输出的单块访问器，可用于在该块内按局部索引访问组件。</param>

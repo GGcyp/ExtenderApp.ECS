@@ -1,16 +1,15 @@
-﻿using ExtenderApp.ECS.Abstract;
-using ExtenderApp.ECS.Archetypes;
+﻿using ExtenderApp.ECS.Archetypes;
 
 namespace ExtenderApp.ECS.Accessors
 {
     /// <summary>
-    /// 按列访问指定组件类型 <c>T</c> 的轻量访问器。
+    /// 按列访问指定组件类型 <c>T1</c> 的轻量访问器。
     ///
-    /// 语义：当调用方已经知道某列的组件类型为 <c>T</c> 时，使用此类型可以直接 从对应的 <see cref="ArchetypeChunk{T}" /> 读取组件副本或创建对组件的引用包装（ <see cref="RefRO{T}" /> / <see
+    /// 语义：当调用方已经知道某列的组件类型为 <c>T1</c> 时，使用此类型可以直接 从对应的 <see cref="ArchetypeChunk{T}" /> 读取组件副本或创建对组件的引用包装（ <see cref="RefRO{T}" /> / <see
     /// cref="RefRW{T}" />）， 避免在热路径中频繁进行运行时类型转换或产生堆分配。
     /// </summary>
     /// <typeparam name="T">组件类型（值类型，且实现 <see cref="IComponent" />）。</typeparam>
-    public readonly struct ComponentAccessor<T> where T : struct
+    internal readonly struct ComponentAccessor<T> where T : struct
     {
         /// <summary>
         /// 对应的组件列块，构造时由上层传入（已为 <see cref="ArchetypeChunk{T}" />）。
@@ -23,10 +22,13 @@ namespace ExtenderApp.ECS.Accessors
         public int Count => _chunk.Count;
 
         /// <summary>
-        /// 使用指定的 <see cref="ArchetypeChunk{T}" /> 创建访问器实例。 请确保传入的 current 类型与 T 对应且已被正确初始化（已调用 Initialize）。
+        /// 使用指定的 <see cref="ArchetypeChunk{T}" /> 创建访问器实例。 请确保传入的 current 类型与 T1 对应且已被正确初始化（已调用 Initialize）。
         /// </summary>
         /// <param name="chunk">已初始化且类型匹配的组件块。</param>
-        internal ComponentAccessor(ArchetypeChunk<T> chunk) => _chunk = chunk;
+        internal ComponentAccessor(ArchetypeChunk<T> chunk)
+        {
+            _chunk = chunk;
+        }
 
         /// <summary>
         /// 按值读取指定局部索引处的组件副本。
@@ -53,7 +55,7 @@ namespace ExtenderApp.ECS.Accessors
         /// 获取结构体枚举器，用于遍历该单个块内的所有现有元素（不跨块链）。 返回的枚举器为 struct，可与 foreach 一起使用以避免堆分配。
         /// </summary>
         /// <returns>组件枚举器（返回可写引用）。</returns>
-        public Enumerator GetEnumerator() => new Enumerator(_chunk);
+        public Enumerator GetEnumerator() => new(_chunk);
 
         /// <summary>
         /// 获取返回只读包装的枚举器（每个元素以 <see cref="RefRO{T}" /> 形式返回），枚举仅限当前块。
@@ -68,7 +70,7 @@ namespace ExtenderApp.ECS.Accessors
         /// <summary>
         /// 组件枚举器：按单块内顺序枚举当前块中所有已占用的槽位，并返回对应元素的副本（值语义）。 注意：在持有返回的引用期间不要对底层 Chunk 做结构性修改（如归还、释放或重新初始化），否则可能导致悬挂引用或未定义行为。
         /// </summary>
-        public struct Enumerator : IStructEnumerator<T>
+        public struct Enumerator
         {
             private readonly ArchetypeChunk<T> _chunk;
             private int _localIndex;
@@ -83,7 +85,8 @@ namespace ExtenderApp.ECS.Accessors
             public bool MoveNext()
             {
                 var cur = _chunk;
-                if (cur == null) return false;
+                if (cur == null)
+                    return false;
 
                 int idx = _localIndex + 1;
                 if (idx < cur.Count)
@@ -97,17 +100,19 @@ namespace ExtenderApp.ECS.Accessors
         }
 
         /// <summary>
-        /// 枚举器：返回每个元素的只读包装（RefRO&lt;T&gt;），仅遍历当前块。
+        /// 枚举器：返回每个元素的只读包装（RefRO&lt;T1&gt;），仅遍历当前块。
         /// </summary>
-        public struct RefROEnumerator : IStructEnumerator<RefRO<T>>
+        public struct RefROEnumerator
         {
             private readonly ArchetypeChunk<T> _currentChunk;
+            private readonly bool _isEmptyComponent;
             private int _localIndex;
             public RefRO<T> Current => new RefRO<T>(_currentChunk, _localIndex);
 
             internal RefROEnumerator(ArchetypeChunk<T> chunk)
             {
                 _currentChunk = chunk;
+                _isEmptyComponent = ComponentType.Create<T>().IsEmptyComponent;
                 _localIndex = -1;
             }
 
@@ -128,9 +133,9 @@ namespace ExtenderApp.ECS.Accessors
         }
 
         /// <summary>
-        /// 枚举器：返回每个元素的可写包装（RefRW&lt;T&gt;），仅遍历当前块。
+        /// 枚举器：返回每个元素的可写包装（RefRW&lt;T1&gt;），仅遍历当前块。
         /// </summary>
-        public struct RefRWEnumerator : IStructEnumerator<RefRW<T>>
+        public struct RefRWEnumerator
         {
             private readonly ArchetypeChunk<T> _currentChunk;
             private int _localIndex;

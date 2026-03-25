@@ -49,7 +49,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 获取当前 Archetype 的组件掩码只读引用。
         /// </summary>
-        public ref readonly ComponentMask ComponentTypes => ref _componentTypes;
+        public ref readonly ComponentMask ComponentMask => ref _componentTypes;
 
         /// <summary>
         /// 当前 Archetype 的关系掩码只读引用。
@@ -211,11 +211,12 @@ namespace ExtenderApp.ECS
         /// <param name="changedEntity">若触发尾部交换，返回被移动的实体；否则为 <see cref="Entity.Empty" />。</param>
         /// <returns>移除成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryRemoveEntity(int globalIndex, out ComponentHandle? removedHandle, out Entity changedEntity, out ComponentHandle? changedHandle)
+        internal bool TryRemoveEntity(int globalIndex, out Entity changedEntity)
         {
-            if (!_chunkManager.TryRemove(globalIndex, _wvManager.WorldVersion, out removedHandle, out changedEntity, out changedHandle))
+            if (!_chunkManager.TryRemove(globalIndex, _wvManager.WorldVersion, out var removedHandle, out changedEntity, out _))
                 return false;
 
+            removedHandle?.Return();
             EntityCount--;
             return true;
         }
@@ -262,19 +263,50 @@ namespace ExtenderApp.ECS
         #region Chunk
 
         /// <summary>
+        /// 尝试获取指定组件类型和实体全局索引对应的块和局部索引。
+        /// </summary>
+        /// <param name="type">指定组件类型。</param>
+        /// <param name="globalIndex">指定全局索引。</param>
+        /// <param name="chunk">指定块。</param>
+        /// <param name="localIndex">指定本地索引。</param>
+        /// <returns>如果成功返回true，否则返回false</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetChunk(ComponentType type, int globalIndex, [NotNullWhen(true)] out ArchetypeChunk chunk, out int localIndex)
+        {
+            chunk = default!;
+            localIndex = -1;
+            if (!ComponentMask.TryGetEncodedPosition(type, out int pos))
+                return false;
+
+            return TryGetChunk(pos, globalIndex, out chunk, out localIndex);
+        }
+
+        /// <summary>
+        /// 尝试获取指定组件列索引和实体全局索引对应的块和局部索引。
+        /// </summary>
+        /// <param name="cloumn">指定列索引。</param>
+        /// <param name="globalIndex">指定全局索引。</param>
+        /// <param name="chunk">指定块。</param>
+        /// <param name="localIndex">指定本地索引。</param>
+        /// <returns>如果成功返回true，否则返回false</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetChunk(int cloumn, int globalIndex, [NotNullWhen(true)] out ArchetypeChunk chunk, out int localIndex)
+            => _chunkManager.TryFindChunkForGlobalIndex(cloumn, globalIndex, out chunk, out localIndex);
+
+        /// <summary>
         /// 尝试按列索引获取指定组件列的块列表。
         /// </summary>
         /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="index">组件列索引。</param>
+        /// <param name="cloumn">组件列索引。</param>
         /// <param name="chunks">输出对应类型的块列表。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetChunkList<T>(int index, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks) where T : struct
+        internal bool TryGetChunkList<T>(int cloumn, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks) where T : struct
         {
             chunks = default!;
-            if (_chunkManager.TryGetChunkListForColumn(index, out var chunkList) && chunkList is ArchetypeChunkList<T> archetypeChunks)
+            if (_chunkManager.TryGetChunkListForColumn(cloumn, out var chunkList))
             {
-                return (chunks = archetypeChunks) != null;
+                return (chunks = (chunkList as ArchetypeChunkList<T>)!) != null;
             }
             return false;
         }
@@ -444,16 +476,21 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
         /// <param name="newArchetype">目标 Archetype。</param>
         /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
-        internal bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex)
+        /// <param name="changedEntity">发生改变的实体。</param>
+        internal bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, out Entity changedEntity)
         {
             const int CopyThreshold = 512;
+            changedEntity = Entity.Empty;
 
             if (newArchetype == null)
                 return false;
 
-            var sameTypeCount = ComponentTypes.GetSameTypeCount(newArchetype.ComponentTypes);
+            var sameTypeCount = ComponentMask.GetSameTypeCount(newArchetype.ComponentMask);
             if (sameTypeCount == 0)
-                return false;
+            {
+                // 没有共同组件也需要从旧 Archetype 移除，否则会残留
+                TryRemoveEntity(globalIndex, out changedEntity);
+            }
 
             if (sameTypeCount <= CopyThreshold)
             {
@@ -493,9 +530,9 @@ namespace ExtenderApp.ECS
             int copiedCount = 0;
             int oldColumnIndex = 0;
 
-            foreach (var componentType in ComponentTypes)
+            foreach (var componentType in ComponentMask)
             {
-                if (!newArchetype.ComponentTypes.TryGetEncodedPosition(componentType, out var newColumnIndex))
+                if (!newArchetype.ComponentMask.TryGetEncodedPosition(componentType, out var newColumnIndex))
                 {
                     oldColumnIndex++;
                     continue;
@@ -507,16 +544,18 @@ namespace ExtenderApp.ECS
                 oldColumnIndex++;
             }
 
-            if (copiedCount == 0)
-                return false;
-
-            return _chunkManager.TryCopyToAndRemove(
+            if (_chunkManager.TryCopyToAndRemove(
                 globalIndex,
                 newArchetype._chunkManager,
                 newGlobalIndex,
                 oldIndexSpan[..copiedCount],
                 newIndexSpan[..copiedCount],
-                newArchetype.ComponentTypes);
+                newArchetype.ComponentMask))
+            {
+                EntityCount--;
+                return true;
+            }
+            return false;
         }
 
         #endregion Copy
@@ -528,7 +567,7 @@ namespace ExtenderApp.ECS
         {
             if (_chunkManager.TryGetComponentHandle(globalIndex, out handle))
             {
-                handle.ComponentTypes = ComponentTypes;
+                handle.ComponentTypes = ComponentMask;
                 return true;
             }
             return false;

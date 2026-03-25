@@ -65,6 +65,11 @@ namespace ExtenderApp.ECS.Queries
         public int ComponentCount { get; }
 
         /// <summary>
+        /// 返回当前查询描述是否表示一个空查询（即没有任何查询条件）。通常情况下，空查询不应被创建或使用。
+        /// </summary>
+        public bool IsEmpty => Query.IsEmpty;
+
+        /// <summary>
         /// 使用指定的 All/Any/None 掩码创建一个新的查询描述符实例。
         /// </summary>
         /// <param name="query">表示查询条件的组件掩码（不可为空掩码）。</param>

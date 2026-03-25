@@ -1,4 +1,6 @@
-﻿using ExtenderApp.ECS.Entities;
+﻿using System.Runtime.InteropServices;
+using ExtenderApp.Contracts;
+using ExtenderApp.ECS.Entities;
 
 namespace ExtenderApp.ECS.Archetypes
 {
@@ -7,7 +9,7 @@ namespace ExtenderApp.ECS.Archetypes
     /// - 查询路径使用字典（ComponentMask + RelationMask -&gt; Archetype）
     /// - 遍历路径使用列表（按插入顺序）
     /// </summary>
-    internal class ArchetypeRepository
+    internal class ArchetypeRepository : DisposableObject
     {
         private readonly Dictionary<ArchetypeKey, Archetype> _dictionary;
         private readonly List<Archetype> _list;
@@ -41,16 +43,18 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         public int Count => _list.Count;
 
-        /// <summary>
-        /// 用于遍历的 Archetype 列表视图。
-        /// </summary>
-        public IReadOnlyList<Archetype> Values => _list;
-
         public ArchetypeRepository()
         {
             _dictionary = new();
             _list = new();
         }
+
+        /// <summary>
+        /// 获取从指定索引开始的 Archetype 只读切片。
+        /// </summary>
+        /// <param name="startIndex">起始索引</param>
+        /// <returns>从指定索引开始的 Archetype 只读切片</returns>
+        public ReadOnlySpan<Archetype> GetArchetypeSpan(int startIndex) => CollectionsMarshal.AsSpan(_list).Slice(startIndex);
 
         /// <summary>
         /// 按组件掩码（关系掩码为空）获取 Archetype。
@@ -148,5 +152,16 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         public bool Remove(in ArchetypeBuilder builder, out Archetype archetype)
             => Remove(builder.ComponentMask, builder.RelationMask, out archetype);
+
+        protected override void DisposeManagedResources()
+        {
+            _dictionary.Clear();
+            foreach (var archetype in _list)
+            {
+                archetype.Dispose();
+            }
+
+            base.DisposeManagedResources();
+        }
     }
 }

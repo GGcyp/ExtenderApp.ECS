@@ -36,10 +36,12 @@ public static class Program
             Console.WriteLine("  10. 自定义快速运行：EntityComponentLookup/Operation (CustomRunner)");
             Console.WriteLine("  11. 自定义示例：RelationPair (CustomRunner)");
             Console.WriteLine("  12. 自定义快速运行：EntityQuery Build 测试 (CustomRunner)");
-            Console.WriteLine("  a. 运行全部 Benchmarks");
+            Console.WriteLine("  13. 命令缓冲并发写入测试 (CustomRunner)");
+            Console.WriteLine("  14. 仅 World 直接执行测试 (CustomRunner)");
+            Console.WriteLine("  15. DestroyEntitiesForQuery 测试 (CustomRunner)");
             Console.WriteLine("  q. 退出");
             Console.WriteLine();
-            Console.Write("请输入选项 (1-12, a 或 q): ");
+            Console.Write("请输入选项 (1-15 或 q): ");
 
             var choice = Console.ReadLine()?.Trim();
             if (string.IsNullOrEmpty(choice)) continue;
@@ -51,42 +53,74 @@ public static class Program
                 case "1":
                     BenchmarksRunner.Run(new string[] { "CreateSetGet" });
                     break;
+
                 case "2":
                     BenchmarksRunner.Run(new string[] { "Transfer" });
                     break;
+
                 case "3":
                     RunCustomWithPrompt(CustomRunner.RunCreateSetGet, 10000);
                     break;
+
                 case "4":
                     RunCustomWithPrompt(CustomRunner.RunTransfer, 10000);
                     break;
+
                 case "5":
                     RunCustomWithPrompt(CustomRunner.RunMultipleEntitiesCRUD, 2000);
                     break;
+
                 case "6":
                     RunCustomWithPrompt(CustomRunner.RunBulkAddRemove, 1000);
                     break;
+
                 case "7":
                     CustomRunner.RunExceptionBehavior();
                     break;
+
                 case "8":
                     RunCustomWithPrompt(CustomRunner.RunBatchCreate, 10000);
                     break;
+
                 case "9":
                     RunCustomWithPrompt(CustomRunner.RunHugeComponentComparison, 200000);
                     break;
+
                 case "10":
                     RunCustomWithPrompt(CustomRunner.RunEntityComponentApiTest, 50000);
                     break;
+
                 case "11":
                     CustomRunner.RunRelationPairCase(0);
                     break;
+
                 case "12":
                     CustomRunner.RunEntityQueryBuildTest();
                     break;
-                case "a":
-                    BenchmarksRunner.Run(new string[0]);
+
+                case "13":
+                    // 询问每个写线程的操作数量
+                    Console.Write("输入每个写线程的操作次数（默认 1000）：");
+                    var s = Console.ReadLine();
+                    int n = 1000;
+                    if (!string.IsNullOrWhiteSpace(s) && int.TryParse(s.Trim(), out var parsed) && parsed > 0)
+                        n = parsed;
+                    CustomRunner.RunCommandBufferConcurrencyTest(n);
                     break;
+
+                case "14":
+                    Console.Write("输入每个写线程的操作次数（默认 1000）：");
+                    var s2 = Console.ReadLine();
+                    int n2 = 1000;
+                    if (!string.IsNullOrWhiteSpace(s2) && int.TryParse(s2.Trim(), out var parsed2) && parsed2 > 0)
+                        n2 = parsed2;
+                    CustomRunner.RunWorldDirectExecutionTest(n2);
+                    break;
+
+                case "15":
+                    CustomRunner.RunDestroyEntitiesForQueryTest();
+                    break;
+
                 default:
                     Console.WriteLine("无效选项。");
                     break;

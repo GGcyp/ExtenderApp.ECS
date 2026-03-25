@@ -1,53 +1,50 @@
-using System.Buffers;
-using System.Runtime.CompilerServices;
-using ExtenderApp.Contracts;
-using ExtenderApp.ECS.Abstract;
 using ExtenderApp.ECS.Accessors;
-using ExtenderApp.ECS.Threading;
-using ExtenderApp.ECS.Worlds;
 
 namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
-    /// 单组件实体查询包装。
-    /// 负责基于 <see cref="QueryCore" /> 创建指定组件类型的访问器与枚举器。
+    /// 实体查询（只返回实体句柄）的轻量包装。
+    ///
+    /// 用途：
+    /// - 适用于仅需要遍历实体句柄的场景（不访问任何组件数据）；
+    /// - 提供 foreach 语法的枚举支持（返回 Entity），以及通过委托对每个实体执行操作的能力。
+    ///
+    /// 语义与线程：该查询基于内部的 <see cref="QueryCore"/> 构建，枚举/回调应在主线程上执行以保证数据一致性。
     /// </summary>
-    public readonly struct EntityQuery<T> where T : struct
+    public readonly struct EntityQuery
     {
-        private readonly QueryCore _core;
-        private readonly bool _skipUnchanged;
+        /// <summary>
+        /// 获取当前查询的核心数据结构，包含查询条件、匹配的 Archetype/Chunk 信息等。该属性提供对查询核心的只读访问，供内部使用和调试参考。
+        /// </summary>
+        internal QueryCore Core { get; }
 
-        internal EntityQuery(QueryCore core, bool skipUnchanged = false)
+        /// <summary>
+        /// 获取当前查询的描述信息，包含查询条件、匹配的 Archetype/Chunk 信息等。该属性提供对查询核心描述的只读访问，供内部使用和调试参考。
+        /// </summary>
+        internal ref readonly EntityQueryDesc QueryDesc => ref Core.QueryDesc;
+
+        /// <summary>
+        /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
+        /// </summary>
+        public bool IsEmpty => Core == null;
+
+        internal EntityQuery(QueryCore core)
         {
-            _core = core;
-            _skipUnchanged = skipUnchanged;
+            Core = core;
         }
 
         /// <summary>
-        /// 设置是否跳过未变化块。
+        /// 获取按行输出的查询行枚举器（用于 foreach）。
+        /// 返回的枚举器会按 Archetype/Chunk 顺序遍历所有匹配实体，并在每行中只包含实体句柄（Entity）。
         /// </summary>
-        public EntityQuery<T> SkipUnchanged(bool skip = true) => new(_core, skip);
-
-        private EntityQueryAccessor<T> GetAccessor() => _core.CreateAccessor<T>(_skipUnchanged);
+        public EntityQueryRowEnumerator GetEnumerator() => new(Core.GetEntityEnumerator());
 
         /// <summary>
-        /// 获取按值输出的枚举器，可直接用于 foreach。
+        /// 使用指定的委托对查询中的每一行执行操作。
+        /// 委托签名应为 <c>void (Entity)</c>；调用时会通过 <see cref="EntityQueryDelegateInvoker"/> 生成并缓存的调用器执行，避免反射开销。
         /// </summary>
-        public EntityQueryAccessor<T>.Enumerator GetEnumerator() => GetValues();
-
-        /// <summary>
-        /// 获取按组件值遍历的结构体枚举器。
-        /// </summary>
-        public EntityQueryAccessor<T>.Enumerator GetValues() => GetAccessor().GetEnumerator();
-
-        /// <summary>
-        /// 获取按块输出的组件访问器枚举器。
-        /// </summary>
-        public EntityQueryAccessor<T>.ComponentAccessorEnumerator GetComponentAccessors() => GetAccessor().GetComponentAccessorEnumerator();
-
-        public EntityQueryAccessor<T>.RefROEnumerator GetRefROs() => GetAccessor().GetRefROs();
-        public EntityQueryAccessor<T>.RefRWEnumerator GetRefRWs() => GetAccessor().GetRefRWs();
-
+        /// <typeparam name="TDelegate">要执行的委托类型，必须返回 void 且接收单个 Entity 参数。</typeparam>
+        /// <param name="delegate">要执行的委托实例。</param>
         public void Query<TDelegate>(TDelegate @delegate)
             where TDelegate : Delegate
         {
@@ -57,9 +54,80 @@ namespace ExtenderApp.ECS.Queries
     }
 
     /// <summary>
-    /// 双组件实体查询包装。
-    /// 无参 <see cref="GetEnumerator" /> 直接返回可 foreach 的值元组枚举器。
+    /// 单组件实体查询包装。
+    /// 负责基于 <see cref="QueryCore" /> 创建指定组件类型的访问器与枚举器。
+    /// 可通过 <see cref="GetEnumerator"/> 与 foreach 语法遍历查询结果行，或使用 <see cref="Query{TDelegate}(TDelegate)"/> 传入委托进行批量处理。
     /// </summary>
+    /// <typeparam name="T1">查询的组件类型。</typeparam>
+    public readonly struct EntityQuery<T1> where T1 : struct
+    {
+        private readonly QueryCore _core;
+        private readonly bool _skipUnchanged;
+
+        /// <summary>
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="QueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// </summary>
+        public int Count => _core.Count;
+
+        /// <summary>
+        /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
+        /// </summary>
+        public bool IsEmpty => _core == null;
+
+        internal EntityQuery(QueryCore core, bool skipUnchanged = false)
+        {
+            _core = core;
+            _skipUnchanged = skipUnchanged;
+        }
+
+        /// <summary>
+        /// 返回一个新的查询副本并设置是否在遍历时跳过未变化的块。
+        /// 用于在对性能敏感的场景中排除未发生变更的数据块。
+        /// </summary>
+        /// <param name="skip">是否跳过未变化块，默认 true。</param>
+        /// <returns>返回配置后的查询对象。</returns>
+        public EntityQuery<T1> SkipUnchanged(bool skip = true) => new(_core, skip);
+
+        /// <summary>
+        /// 获取按行输出的查询行枚举器（用于 foreach）。
+        /// 返回的枚举器会按 Archetype/Chunk 顺序遍历所有匹配实体，并在每行中包含组件访问器与实体信息。
+        /// </summary>
+        public EntityQueryRowEnumerator<T1> GetEnumerator()
+            => new(GetRefRWsFor<T1>(), _core.GetEntityEnumerator());
+
+        /// <summary>
+        /// 内部辅助：根据类型 T1 获取对应的 ArchetypeAccessor。
+        /// </summary>
+        private ArchetypeAccessor<T> GetAccessorFor<T>() where T : struct => _core.GetAccessor<T>(_skipUnchanged);
+
+        /// <summary>
+        /// 内部辅助：获取指定类型的 RefRW 枚举器，用于按行访问可写引用包装（RefRW&lt;T1&gt;）。
+        /// 供委托调用器通过统一泛型方法反射调用。
+        /// </summary>
+        internal ArchetypeAccessor<T>.RefRWEnumerator GetRefRWsFor<T>() where T : struct => GetAccessorFor<T>().GetRefRWs();
+
+        /// <summary>
+        /// 使用指定的委托对查询中的每一行执行操作。
+        /// 委托会被通过 <see cref="EntityQueryDelegateInvoker"/> 生成并缓存的调用器执行，避免反射开销。
+        /// </summary>
+        /// <typeparam name="TDelegate">要执行的委托类型，必须返回 void。</typeparam>
+        /// <param name="delegate">要执行的委托实例。</param>
+        public void Query<TDelegate>(TDelegate @delegate)
+            where TDelegate : Delegate
+        {
+            ArgumentNullException.ThrowIfNull(@delegate);
+            EntityQueryDelegateInvoker.Invoke(this, @delegate);
+        }
+
+        public static implicit operator EntityQuery(EntityQuery<T1> query) => new(query._core);
+    }
+
+    /// <summary>
+    /// 双组件实体查询包装。
+    /// 提供按行枚举与委托执行的能力，支持链式设置是否跳过未变化块。
+    /// </summary>
+    /// <typeparam name="T1">第一个组件类型。</typeparam>
+    /// <typeparam name="T2">第二个组件类型。</typeparam>
     public readonly struct EntityQuery<T1, T2>
         where T1 : struct
         where T2 : struct
@@ -67,31 +135,47 @@ namespace ExtenderApp.ECS.Queries
         private readonly QueryCore _core;
         private readonly bool _skipUnchanged;
 
+        /// <summary>
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="QueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// </summary>
+        public int Count => _core.Count;
+
+        /// <summary>
+        /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
+        /// </summary>
+        public bool IsEmpty => _core == null;
+
         internal EntityQuery(QueryCore core, bool skipUnchanged = false)
         {
             _core = core;
             _skipUnchanged = skipUnchanged;
-
         }
 
         /// <summary>
-        /// 设置是否跳过未变化块。
+        /// 返回一个新的查询副本并设置是否在遍历时跳过未变化的块。
         /// </summary>
         public EntityQuery<T1, T2> SkipUnchanged(bool skip = true) => new(_core, skip);
 
-        private EntityQueryAccessor<T1> GetAccessorForT1() => _core.CreateAccessor<T1>(_skipUnchanged);
-        private EntityQueryAccessor<T2> GetAccessorForT2() => _core.CreateAccessor<T2>(_skipUnchanged);
+        /// <summary>
+        /// 获取用于 foreach 的行枚举器，枚举每一行中的两个组件访问器及实体信息。
+        /// </summary>
+        public EntityQueryRowEnumerator<T1, T2> GetEnumerator()
+            => new(GetRefRWsFor<T1>(), GetRefRWsFor<T2>(), _core.GetEntityEnumerator());
 
-        public MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2>.Enumerator GetEnumerator()
-            => new EntityQueryEnumerator<EntityQueryAccessor<T1>.Enumerator, EntityQueryAccessor<T2>.Enumerator>(GetEnumeratorForT1(), GetEnumeratorForT2()).GetEnumerator();
+        /// <summary>
+        /// 内部辅助：根据类型 T1 获取对应的 ArchetypeAccessor。
+        /// </summary>
+        private ArchetypeAccessor<T> GetAccessorFor<T>() where T : struct => _core.GetAccessor<T>(_skipUnchanged);
 
-        public EntityQueryAccessor<T1>.Enumerator GetEnumeratorForT1() => GetAccessorForT1().GetEnumerator();
-        public EntityQueryAccessor<T2>.Enumerator GetEnumeratorForT2() => GetAccessorForT2().GetEnumerator();
-        public EntityQueryAccessor<T1>.RefROEnumerator GetRefROsForT1() => GetAccessorForT1().GetRefROs();
-        public EntityQueryAccessor<T2>.RefROEnumerator GetRefROsForT2() => GetAccessorForT2().GetRefROs();
-        public EntityQueryAccessor<T1>.RefRWEnumerator GetRefRWsForT1() => GetAccessorForT1().GetRefRWs();
-        public EntityQueryAccessor<T2>.RefRWEnumerator GetRefRWsForT2() => GetAccessorForT2().GetRefRWs();
+        /// <summary>
+        /// 内部辅助：获取指定类型的 RefRW 枚举器，用于按行访问可写引用包装（RefRW&lt;T1&gt;）。
+        /// 供委托调用器通过统一泛型方法反射调用。
+        /// </summary>
+        internal ArchetypeAccessor<T>.RefRWEnumerator GetRefRWsFor<T>() where T : struct => GetAccessorFor<T>().GetRefRWs();
 
+        /// <summary>
+        /// 使用指定的委托对查询结果进行处理。
+        /// </summary>
         public void Query<TDelegate>(TDelegate @delegate)
             where TDelegate : Delegate
         {
@@ -99,28 +183,15 @@ namespace ExtenderApp.ECS.Queries
             EntityQueryDelegateInvoker.Invoke(this, @delegate);
         }
 
-        public struct EntityQueryEnumerator<TEnum1, TEnum2>
-            where TEnum1 : struct, IStructEnumerator<T1>
-            where TEnum2 : struct, IStructEnumerator<T2>
-        {
-            private TEnum1 enum1;
-            private TEnum2 enum2;
-
-            public EntityQueryEnumerator(TEnum1 enum1, TEnum2 enum2)
-            {
-                this.enum1 = enum1;
-                this.enum2 = enum2;
-            }
-
-            public MulticastEnumerator<TEnum1, T1, TEnum2, T2>.Enumerator GetEnumerator()
-                => MulticastEnumerator.Create<TEnum1, T1, TEnum2, T2>(enum1, enum2).GetEnumerator();
-        }
+        public static implicit operator EntityQuery(EntityQuery<T1, T2> query) => new(query._core);
     }
 
     /// <summary>
     /// 三组件实体查询包装。
-    /// 无参 <see cref="GetEnumerator" /> 直接返回可 foreach 的值元组枚举器。
     /// </summary>
+    /// <typeparam name="T1">第一个组件类型。</typeparam>
+    /// <typeparam name="T2">第二个组件类型。</typeparam>
+    /// <typeparam name="T3">第三个组件类型。</typeparam>
     public readonly struct EntityQuery<T1, T2, T3>
         where T1 : struct
         where T2 : struct
@@ -128,6 +199,16 @@ namespace ExtenderApp.ECS.Queries
     {
         private readonly QueryCore _core;
         private readonly bool _skipUnchanged;
+
+        /// <summary>
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="QueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// </summary>
+        public int Count => _core.Count;
+
+        /// <summary>
+        /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
+        /// </summary>
+        public bool IsEmpty => _core == null;
 
         internal EntityQuery(QueryCore core, bool skipUnchanged = false)
         {
@@ -140,29 +221,26 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         public EntityQuery<T1, T2, T3> SkipUnchanged(bool skip = true) => new(_core, skip);
 
-        private EntityQueryAccessor<T1> GetAccessorForT1() => _core.CreateAccessor<T1>(_skipUnchanged);
-        private EntityQueryAccessor<T2> GetAccessorForT2() => _core.CreateAccessor<T2>(_skipUnchanged);
-        private EntityQueryAccessor<T3> GetAccessorForT3() => _core.CreateAccessor<T3>(_skipUnchanged);
+        /// <summary>
+        /// 获取用于 foreach 的行枚举器，枚举每一行中的三个组件访问器及实体信息。
+        /// </summary>
+        public EntityQueryRowEnumerator<T1, T2, T3> GetEnumerator()
+            => new(GetRefRWsFor<T1>(), GetRefRWsFor<T2>(), GetRefRWsFor<T3>(), _core.GetEntityEnumerator());
 
-        public MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2, EntityQueryAccessor<T3>.Enumerator, T3>.Enumerator GetEnumerator()
-            => new EntityQueryEnumerator<EntityQueryAccessor<T1>.Enumerator, EntityQueryAccessor<T2>.Enumerator, EntityQueryAccessor<T3>.Enumerator>(GetEnumeratorForT1(), GetEnumeratorForT2(), GetEnumeratorForT3()).GetEnumerator();
+        /// <summary>
+        /// 内部辅助：根据类型 T1 获取对应的 ArchetypeAccessor。
+        /// </summary>
+        private ArchetypeAccessor<T> GetAccessorFor<T>() where T : struct => _core.GetAccessor<T>(_skipUnchanged);
 
-        public EntityQueryEnumerator<TEnum1, TEnum2, TEnum3> GetEnumerator<TEnum1, TEnum2, TEnum3>(in TEnum1 enum1, in TEnum2 enum2, in TEnum3 enum3)
-            where TEnum1 : struct, IStructEnumerator<T1>
-            where TEnum2 : struct, IStructEnumerator<T2>
-            where TEnum3 : struct, IStructEnumerator<T3>
-            => new(enum1, enum2, enum3);
+        /// <summary>
+        /// 内部辅助：获取指定类型的 RefRW 枚举器，用于按行访问可写引用包装（RefRW&lt;T1&gt;）。
+        /// 供委托调用器通过统一泛型方法反射调用。
+        /// </summary>
+        internal ArchetypeAccessor<T>.RefRWEnumerator GetRefRWsFor<T>() where T : struct => GetAccessorFor<T>().GetRefRWs();
 
-        public EntityQueryAccessor<T1>.Enumerator GetEnumeratorForT1() => GetAccessorForT1().GetEnumerator();
-        public EntityQueryAccessor<T2>.Enumerator GetEnumeratorForT2() => GetAccessorForT2().GetEnumerator();
-        public EntityQueryAccessor<T3>.Enumerator GetEnumeratorForT3() => GetAccessorForT3().GetEnumerator();
-        public EntityQueryAccessor<T1>.RefROEnumerator GetRefROsForT1() => GetAccessorForT1().GetRefROs();
-        public EntityQueryAccessor<T2>.RefROEnumerator GetRefROsForT2() => GetAccessorForT2().GetRefROs();
-        public EntityQueryAccessor<T3>.RefROEnumerator GetRefROsForT3() => GetAccessorForT3().GetRefROs();
-        public EntityQueryAccessor<T1>.RefRWEnumerator GetRefRWsForT1() => GetAccessorForT1().GetRefRWs();
-        public EntityQueryAccessor<T2>.RefRWEnumerator GetRefRWsForT2() => GetAccessorForT2().GetRefRWs();
-        public EntityQueryAccessor<T3>.RefRWEnumerator GetRefRWsForT3() => GetAccessorForT3().GetRefRWs();
-
+        /// <summary>
+        /// 使用指定的委托对查询结果进行处理。
+        /// </summary>
         public void Query<TDelegate>(TDelegate @delegate)
             where TDelegate : Delegate
         {
@@ -170,31 +248,16 @@ namespace ExtenderApp.ECS.Queries
             EntityQueryDelegateInvoker.Invoke(this, @delegate);
         }
 
-        public struct EntityQueryEnumerator<TEnum1, TEnum2, TEnum3>
-            where TEnum1 : struct, IStructEnumerator<T1>
-            where TEnum2 : struct, IStructEnumerator<T2>
-            where TEnum3 : struct, IStructEnumerator<T3>
-        {
-            private TEnum1 enum1;
-            private TEnum2 enum2;
-            private TEnum3 enum3;
-
-            public EntityQueryEnumerator(TEnum1 enum1, TEnum2 enum2, TEnum3 enum3)
-            {
-                this.enum1 = enum1;
-                this.enum2 = enum2;
-                this.enum3 = enum3;
-            }
-
-            public MulticastEnumerator<TEnum1, T1, TEnum2, T2, TEnum3, T3>.Enumerator GetEnumerator()
-                => MulticastEnumerator.Create<TEnum1, T1, TEnum2, T2, TEnum3, T3>(enum1, enum2, enum3).GetEnumerator();
-        }
+        public static implicit operator EntityQuery(EntityQuery<T1, T2, T3> query) => new(query._core);
     }
 
     /// <summary>
     /// 四组件实体查询包装。
-    /// 无参 <see cref="GetEnumerator" /> 直接返回可 foreach 的值元组枚举器。
     /// </summary>
+    /// <typeparam name="T1">第一个组件类型。</typeparam>
+    /// <typeparam name="T2">第二个组件类型。</typeparam>
+    /// <typeparam name="T3">第三个组件类型。</typeparam>
+    /// <typeparam name="T4">第四个组件类型。</typeparam>
     public readonly struct EntityQuery<T1, T2, T3, T4>
         where T1 : struct
         where T2 : struct
@@ -203,6 +266,16 @@ namespace ExtenderApp.ECS.Queries
     {
         private readonly QueryCore _core;
         private readonly bool _skipUnchanged;
+
+        /// <summary>
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="QueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// </summary>
+        public int Count => _core.Count;
+
+        /// <summary>
+        /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
+        /// </summary>
+        public bool IsEmpty => _core == null;
 
         internal EntityQuery(QueryCore core, bool skipUnchanged = false)
         {
@@ -215,34 +288,26 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         public EntityQuery<T1, T2, T3, T4> SkipUnchanged(bool skip = true) => new(_core, skip);
 
-        private EntityQueryAccessor<T1> GetAccessorForT1() => _core.CreateAccessor<T1>(_skipUnchanged);
-        private EntityQueryAccessor<T2> GetAccessorForT2() => _core.CreateAccessor<T2>(_skipUnchanged);
-        private EntityQueryAccessor<T3> GetAccessorForT3() => _core.CreateAccessor<T3>(_skipUnchanged);
-        private EntityQueryAccessor<T4> GetAccessorForT4() => _core.CreateAccessor<T4>(_skipUnchanged);
+        /// <summary>
+        /// 获取用于 foreach 的行枚举器，枚举每一行中的四个组件访问器及实体信息。
+        /// </summary>
+        public EntityQueryRowEnumerator<T1, T2, T3, T4> GetEnumerator()
+            => new(GetRefRWsFor<T1>(), GetRefRWsFor<T2>(), GetRefRWsFor<T3>(), GetRefRWsFor<T4>(), _core.GetEntityEnumerator());
 
-        public MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2, EntityQueryAccessor<T3>.Enumerator, T3, EntityQueryAccessor<T4>.Enumerator, T4>.Enumerator GetEnumerator()
-            => new EntityQueryEnumerator<EntityQueryAccessor<T1>.Enumerator, EntityQueryAccessor<T2>.Enumerator, EntityQueryAccessor<T3>.Enumerator, EntityQueryAccessor<T4>.Enumerator>(GetEnumeratorForT1(), GetEnumeratorForT2(), GetEnumeratorForT3(), GetEnumeratorForT4()).GetEnumerator();
+        /// <summary>
+        /// 内部辅助：根据类型 T1 获取对应的 ArchetypeAccessor。
+        /// </summary>
+        private ArchetypeAccessor<T> GetAccessorFor<T>() where T : struct => _core.GetAccessor<T>(_skipUnchanged);
 
-        public EntityQueryEnumerator<TEnum1, TEnum2, TEnum3, TEnum4> GetEnumerator<TEnum1, TEnum2, TEnum3, TEnum4>(in TEnum1 enum1, in TEnum2 enum2, in TEnum3 enum3, in TEnum4 enum4)
-            where TEnum1 : struct, IStructEnumerator<T1>
-            where TEnum2 : struct, IStructEnumerator<T2>
-            where TEnum3 : struct, IStructEnumerator<T3>
-            where TEnum4 : struct, IStructEnumerator<T4>
-            => new(enum1, enum2, enum3, enum4);
+        /// <summary>
+        /// 内部辅助：获取指定类型的 RefRW 枚举器，用于按行访问可写引用包装（RefRW&lt;T1&gt;）。
+        /// 供委托调用器通过统一泛型方法反射调用。
+        /// </summary>
+        internal ArchetypeAccessor<T>.RefRWEnumerator GetRefRWsFor<T>() where T : struct => GetAccessorFor<T>().GetRefRWs();
 
-        public EntityQueryAccessor<T1>.Enumerator GetEnumeratorForT1() => GetAccessorForT1().GetEnumerator();
-        public EntityQueryAccessor<T2>.Enumerator GetEnumeratorForT2() => GetAccessorForT2().GetEnumerator();
-        public EntityQueryAccessor<T3>.Enumerator GetEnumeratorForT3() => GetAccessorForT3().GetEnumerator();
-        public EntityQueryAccessor<T4>.Enumerator GetEnumeratorForT4() => GetAccessorForT4().GetEnumerator();
-        public EntityQueryAccessor<T1>.RefROEnumerator GetRefROsForT1() => GetAccessorForT1().GetRefROs();
-        public EntityQueryAccessor<T2>.RefROEnumerator GetRefROsForT2() => GetAccessorForT2().GetRefROs();
-        public EntityQueryAccessor<T3>.RefROEnumerator GetRefROsForT3() => GetAccessorForT3().GetRefROs();
-        public EntityQueryAccessor<T4>.RefROEnumerator GetRefROsForT4() => GetAccessorForT4().GetRefROs();
-        public EntityQueryAccessor<T1>.RefRWEnumerator GetRefRWsForT1() => GetAccessorForT1().GetRefRWs();
-        public EntityQueryAccessor<T2>.RefRWEnumerator GetRefRWsForT2() => GetAccessorForT2().GetRefRWs();
-        public EntityQueryAccessor<T3>.RefRWEnumerator GetRefRWsForT3() => GetAccessorForT3().GetRefRWs();
-        public EntityQueryAccessor<T4>.RefRWEnumerator GetRefRWsForT4() => GetAccessorForT4().GetRefRWs();
-
+        /// <summary>
+        /// 使用指定的委托对查询结果进行处理。
+        /// </summary>
         public void Query<TDelegate>(TDelegate @delegate)
             where TDelegate : Delegate
         {
@@ -250,34 +315,18 @@ namespace ExtenderApp.ECS.Queries
             EntityQueryDelegateInvoker.Invoke(this, @delegate);
         }
 
-        public struct EntityQueryEnumerator<TEnum1, TEnum2, TEnum3, TEnum4>
-            where TEnum1 : struct, IStructEnumerator<T1>
-            where TEnum2 : struct, IStructEnumerator<T2>
-            where TEnum3 : struct, IStructEnumerator<T3>
-            where TEnum4 : struct, IStructEnumerator<T4>
-        {
-            private TEnum1 enum1;
-            private TEnum2 enum2;
-            private TEnum3 enum3;
-            private TEnum4 enum4;
-
-            public EntityQueryEnumerator(TEnum1 enum1, TEnum2 enum2, TEnum3 enum3, TEnum4 enum4)
-            {
-                this.enum1 = enum1;
-                this.enum2 = enum2;
-                this.enum3 = enum3;
-                this.enum4 = enum4;
-            }
-
-            public MulticastEnumerator<TEnum1, T1, TEnum2, T2, TEnum3, T3, TEnum4, T4>.Enumerator GetEnumerator()
-                => MulticastEnumerator.Create<TEnum1, T1, TEnum2, T2, TEnum3, T3, TEnum4, T4>(enum1, enum2, enum3, enum4).GetEnumerator();
-        }
+        public static implicit operator EntityQuery(EntityQuery<T1, T2, T3, T4> query) => new(query._core);
     }
 
     /// <summary>
+    /// <typeparam name="T2">第二个组件类型。</typeparam>
     /// 五组件实体查询包装。
-    /// 无参 <see cref="GetEnumerator" /> 直接返回可 foreach 的值元组枚举器。
     /// </summary>
+    /// <typeparam name="T1">第一个组件类型。</typeparam>
+    /// <typeparam name="T2">第二个组件类型。</typeparam>
+    /// <typeparam name="T3">第三个组件类型。</typeparam>
+    /// <typeparam name="T4">第四个组件类型。</typeparam>
+    /// <typeparam name="T5">第五个组件类型。</typeparam>
     public readonly struct EntityQuery<T1, T2, T3, T4, T5>
         where T1 : struct
         where T2 : struct
@@ -287,6 +336,16 @@ namespace ExtenderApp.ECS.Queries
     {
         private readonly QueryCore _core;
         private readonly bool _skipUnchanged;
+
+        /// <summary>
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="QueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// </summary>
+        public int Count => _core.Count;
+
+        /// <summary>
+        /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
+        /// </summary>
+        public bool IsEmpty => _core == null;
 
         internal EntityQuery(QueryCore core, bool skipUnchanged = false)
         {
@@ -299,39 +358,26 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         public EntityQuery<T1, T2, T3, T4, T5> SkipUnchanged(bool skip = true) => new(_core, skip);
 
-        private EntityQueryAccessor<T1> GetAccessorForT1() => _core.CreateAccessor<T1>(_skipUnchanged);
-        private EntityQueryAccessor<T2> GetAccessorForT2() => _core.CreateAccessor<T2>(_skipUnchanged);
-        private EntityQueryAccessor<T3> GetAccessorForT3() => _core.CreateAccessor<T3>(_skipUnchanged);
-        private EntityQueryAccessor<T4> GetAccessorForT4() => _core.CreateAccessor<T4>(_skipUnchanged);
-        private EntityQueryAccessor<T5> GetAccessorForT5() => _core.CreateAccessor<T5>(_skipUnchanged);
+        /// <summary>
+        /// 获取用于 foreach 的行枚举器，枚举每一行中的五个组件访问器及实体信息。
+        /// </summary>
+        public EntityQueryRowEnumerator<T1, T2, T3, T4, T5> GetEnumerator()
+            => new(GetRefRWsFor<T1>(), GetRefRWsFor<T2>(), GetRefRWsFor<T3>(), GetRefRWsFor<T4>(), GetRefRWsFor<T5>(), _core.GetEntityEnumerator());
 
-        public MulticastEnumerator<EntityQueryAccessor<T1>.Enumerator, T1, EntityQueryAccessor<T2>.Enumerator, T2, EntityQueryAccessor<T3>.Enumerator, T3, EntityQueryAccessor<T4>.Enumerator, T4, EntityQueryAccessor<T5>.Enumerator, T5>.Enumerator GetEnumerator()
-            => new EntityQueryEnumerator<EntityQueryAccessor<T1>.Enumerator, EntityQueryAccessor<T2>.Enumerator, EntityQueryAccessor<T3>.Enumerator, EntityQueryAccessor<T4>.Enumerator, EntityQueryAccessor<T5>.Enumerator>(GetEnumeratorForT1(), GetEnumeratorForT2(), GetEnumeratorForT3(), GetEnumeratorForT4(), GetEnumeratorForT5()).GetEnumerator();
+        /// <summary>
+        /// 内部辅助：根据类型 T1 获取对应的 ArchetypeAccessor。
+        /// </summary>
+        private ArchetypeAccessor<T> GetAccessorFor<T>() where T : struct => _core.GetAccessor<T>(_skipUnchanged);
 
-        public EntityQueryEnumerator<TEnum1, TEnum2, TEnum3, TEnum4, TEnum5> GetEnumerator<TEnum1, TEnum2, TEnum3, TEnum4, TEnum5>(in TEnum1 enum1, in TEnum2 enum2, in TEnum3 enum3, in TEnum4 enum4, in TEnum5 enum5)
-            where TEnum1 : struct, IStructEnumerator<T1>
-            where TEnum2 : struct, IStructEnumerator<T2>
-            where TEnum3 : struct, IStructEnumerator<T3>
-            where TEnum4 : struct, IStructEnumerator<T4>
-            where TEnum5 : struct, IStructEnumerator<T5>
-            => new(enum1, enum2, enum3, enum4, enum5);
+        /// <summary>
+        /// 内部辅助：获取指定类型的 RefRW 枚举器，用于按行访问可写引用包装（RefRW&lt;T1&gt;）。
+        /// 供委托调用器通过统一泛型方法反射调用。
+        /// </summary>
+        internal ArchetypeAccessor<T>.RefRWEnumerator GetRefRWsFor<T>() where T : struct => GetAccessorFor<T>().GetRefRWs();
 
-        public EntityQueryAccessor<T1>.Enumerator GetEnumeratorForT1() => GetAccessorForT1().GetEnumerator();
-        public EntityQueryAccessor<T2>.Enumerator GetEnumeratorForT2() => GetAccessorForT2().GetEnumerator();
-        public EntityQueryAccessor<T3>.Enumerator GetEnumeratorForT3() => GetAccessorForT3().GetEnumerator();
-        public EntityQueryAccessor<T4>.Enumerator GetEnumeratorForT4() => GetAccessorForT4().GetEnumerator();
-        public EntityQueryAccessor<T5>.Enumerator GetEnumeratorForT5() => GetAccessorForT5().GetEnumerator();
-        public EntityQueryAccessor<T1>.RefROEnumerator GetRefROsForT1() => GetAccessorForT1().GetRefROs();
-        public EntityQueryAccessor<T2>.RefROEnumerator GetRefROsForT2() => GetAccessorForT2().GetRefROs();
-        public EntityQueryAccessor<T3>.RefROEnumerator GetRefROsForT3() => GetAccessorForT3().GetRefROs();
-        public EntityQueryAccessor<T4>.RefROEnumerator GetRefROsForT4() => GetAccessorForT4().GetRefROs();
-        public EntityQueryAccessor<T5>.RefROEnumerator GetRefROsForT5() => GetAccessorForT5().GetRefROs();
-        public EntityQueryAccessor<T1>.RefRWEnumerator GetRefRWsForT1() => GetAccessorForT1().GetRefRWs();
-        public EntityQueryAccessor<T2>.RefRWEnumerator GetRefRWsForT2() => GetAccessorForT2().GetRefRWs();
-        public EntityQueryAccessor<T3>.RefRWEnumerator GetRefRWsForT3() => GetAccessorForT3().GetRefRWs();
-        public EntityQueryAccessor<T4>.RefRWEnumerator GetRefRWsForT4() => GetAccessorForT4().GetRefRWs();
-        public EntityQueryAccessor<T5>.RefRWEnumerator GetRefRWsForT5() => GetAccessorForT5().GetRefRWs();
-
+        /// <summary>
+        /// 使用指定的委托对查询结果进行处理。
+        /// </summary>
         public void Query<TDelegate>(TDelegate @delegate)
             where TDelegate : Delegate
         {
@@ -339,30 +385,6 @@ namespace ExtenderApp.ECS.Queries
             EntityQueryDelegateInvoker.Invoke(this, @delegate);
         }
 
-        public struct EntityQueryEnumerator<TEnum1, TEnum2, TEnum3, TEnum4, TEnum5>
-            where TEnum1 : struct, IStructEnumerator<T1>
-            where TEnum2 : struct, IStructEnumerator<T2>
-            where TEnum3 : struct, IStructEnumerator<T3>
-            where TEnum4 : struct, IStructEnumerator<T4>
-            where TEnum5 : struct, IStructEnumerator<T5>
-        {
-            private TEnum1 enum1;
-            private TEnum2 enum2;
-            private TEnum3 enum3;
-            private TEnum4 enum4;
-            private TEnum5 enum5;
-
-            public EntityQueryEnumerator(TEnum1 enum1, TEnum2 enum2, TEnum3 enum3, TEnum4 enum4, TEnum5 enum5)
-            {
-                this.enum1 = enum1;
-                this.enum2 = enum2;
-                this.enum3 = enum3;
-                this.enum4 = enum4;
-                this.enum5 = enum5;
-            }
-
-            public MulticastEnumerator<TEnum1, T1, TEnum2, T2, TEnum3, T3, TEnum4, T4, TEnum5, T5>.Enumerator GetEnumerator()
-                => MulticastEnumerator.Create<TEnum1, T1, TEnum2, T2, TEnum3, T3, TEnum4, T4, TEnum5, T5>(enum1, enum2, enum3, enum4, enum5).GetEnumerator();
-        }
+        public static implicit operator EntityQuery(EntityQuery<T1, T2, T3, T4, T5> query) => new(query._core);
     }
 }

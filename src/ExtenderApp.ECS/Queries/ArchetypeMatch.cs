@@ -41,7 +41,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 尝试根据查询内部的顺序位置获取对应列的 ArchetypeChunk{T} 头（若存在）。
+        /// 尝试根据查询内部的顺序位置获取对应列的 ArchetypeChunk{T1} 头（若存在）。
         /// </summary>
         /// <typeparam name="T">期望的组件类型。</typeparam>
         /// <param name="index">查询组件的位置索引（0-based），对应于 <see cref="ColumnIndices" /> 的下标。</param>

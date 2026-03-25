@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using ExtenderApp.Contracts;
 
-namespace ExtenderApp.ECS.Archetypes
+namespace ExtenderApp.ECS.Components
 {
     /// <summary>
     /// 非托管内存块（Chunk）封装。
@@ -10,7 +10,7 @@ namespace ExtenderApp.ECS.Archetypes
     /// 说明：
     /// - 在构造函数中分配一段固定大小的非托管内存（当前为 DefaultChunkSize）;
     /// - 通过 Initialize 设置元素的字节大小与可容纳的元素数量（ElementSize / Capacity），但不重新分配内存;
-    /// - 上层可以通过 GetElementPtr/GetRawPointer/GetSpan/Read/Write 等方法直接读写底层内存;
+    /// - 上层可以通过 GetElementPtr/GetRawPointer/GetSpan/Read/TryWrite 等方法直接读写底层内存;
     /// - 设计限制：单个元素最大为 MaxElementSize 字节（默认为 128），以便在交换时使用 stackalloc 临时缓冲，避免堆分配;
     /// - 该类型管理非托管资源并在 DisposeUnmanagedResources 中释放对应内存，应通过引用类型使用并避免复制（因此为 class）。
     /// </summary>
@@ -32,7 +32,7 @@ namespace ExtenderApp.ECS.Archetypes
         public int ElementSize { get; private set; }
 
         /// <summary>
-        /// 构造函数：立即在非托管堆上分配一段固定大小的内存。 Initialize 之后请调用 Read/Write/TryCopyToAndRemove/Swap 等方法来访问存储。
+        /// 构造函数：立即在非托管堆上分配一段固定大小的内存。 Initialize 之后请调用 Read/TryWrite/TryCopyToAndRemove/Swap 等方法来访问存储。
         /// </summary>
         public Chunk(int capacity)
         {
@@ -41,7 +41,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 初始化块以容纳指定数量的 T 型元素。 注意：T 不需要是 unmanaged 编译时限定，但应保证其实际布局大小等于 ElementSize 的期望。 Initialize 仅检查并设置 ElementSize/Capacity，不会清理或重新分配内存。
+        /// 初始化块以容纳指定数量的 T1 型元素。 注意：T1 不需要是 unmanaged 编译时限定，但应保证其实际布局大小等于 ElementSize 的期望。 Initialize 仅检查并设置 ElementSize/Capacity，不会清理或重新分配内存。
         /// </summary>
         /// <typeparam name="T">元素类型（建议为值类型、大小确定的 struct）。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -56,7 +56,7 @@ namespace ExtenderApp.ECS.Archetypes
         #region Operations
 
         /// <summary>
-        /// 将值按类型写入指定索引位置（包含边界与初始化检查）。 上层应确保传入的 T 实例大小与初始化时的 ElementSize 匹配（否则可能导致语义错误）。
+        /// 将值按类型写入指定索引位置（包含边界与初始化检查）。 上层应确保传入的 T1 实例大小与初始化时的 ElementSize 匹配（否则可能导致语义错误）。
         /// </summary>
         /// <typeparam name="T">要写入的类型（值类型）。</typeparam>
         /// <param name="index">元素索引（0 基）。</param>
@@ -112,7 +112,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         /// <typeparam name="T">元素类型。</typeparam>
         /// <param name="index">元素索引（0-based）。</param>
-        /// <returns>指向元素的引用（ref T）。</returns>
+        /// <returns>指向元素的引用（ref T1）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetElementRef<T>(int index) where T : struct
         {
@@ -125,7 +125,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         /// <typeparam name="T">元素类型。</typeparam>
         /// <param name="index">元素索引（0-based）。</param>
-        /// <returns>指向元素的引用（ref T），基于未检查的内存视图。</returns>
+        /// <returns>指向元素的引用（ref T1），基于未检查的内存视图。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T ReadUnsafeRef<T>(int index) where T : struct
         {
@@ -299,10 +299,10 @@ namespace ExtenderApp.ECS.Archetypes
         #region Get
 
         /// <summary>
-        /// 获取指定类型的 Span&lt;T&gt; 覆盖整个已初始化容量。 返回的 Span 长度为 Capacity。
+        /// 获取指定类型的 Span&lt;T1&gt; 覆盖整个已初始化容量。 返回的 Span 长度为 Capacity。
         /// </summary>
         /// <typeparam name="T">目标类型。</typeparam>
-        /// <returns>覆盖整个块的 Span&lt;T&gt;。</returns>
+        /// <returns>覆盖整个块的 Span&lt;T1&gt;。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<T> GetSpan<T>() where T : struct
         {
@@ -312,10 +312,10 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 获取指定类型的 Span&lt;T&gt; 的非检查版本，适合在已知安全的内部路径使用以获得更少的检查开销。
+        /// 获取指定类型的 Span&lt;T1&gt; 的非检查版本，适合在已知安全的内部路径使用以获得更少的检查开销。
         /// </summary>
         /// <typeparam name="T">目标类型。</typeparam>
-        /// <returns>覆盖整个块的 Span&lt;T&gt;（不做初始化检查）。</returns>
+        /// <returns>覆盖整个块的 Span&lt;T1&gt;（不做初始化检查）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<T> GetSpanUnsafe<T>() where T : struct
         {
@@ -386,6 +386,18 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         #endregion Ensure
+
+        /// <summary>
+        /// 将外部源内存复制到当前块的起始位置。 该方法直接调用内存拷贝，不在堆上分配临时缓冲。
+        /// </summary>
+        /// <param name="offset">目标偏移（位数）。</param>
+        /// <param name="source">源内存指针。</param>
+        /// <param name="count">要复制的字节数。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CopiedUnsafe(int offset, nint source, int count)
+        {
+            NativeMemory.Copy((void*)source, (void*)IntPtr.Add(chunkPtr, offset * ElementSize), (nuint)count);
+        }
 
         public override string ToString() => $"Chunk: Capacity={Capacity}, ElementSize={ElementSize}, IsDisposed={IsDisposed}";
 

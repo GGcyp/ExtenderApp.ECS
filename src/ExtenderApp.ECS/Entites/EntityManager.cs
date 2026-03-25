@@ -96,8 +96,8 @@ namespace ExtenderApp.ECS.Entities
             void InitializeEntityInfo(ref EntityInfo info, int globalId, Archetype? archetype, out int archetypeIndex)
             {
                 archetypeIndex = 0;
-                if (info.Id == 0) info.Id = globalId;
-                info.Version = info.Version == 0 ? (ushort)1 : (ushort)(info.Version + 1); // 初始版本为 1，0 代表无效
+                if (info.Id == 0)
+                    info.Id = globalId;
 
                 if (archetype != null)
                 {
@@ -194,7 +194,6 @@ namespace ExtenderApp.ECS.Entities
 
                     if (info.Id == 0)
                         info.Id = segment.StartIndex + localIndex;
-                    info.Version = info.Version == 0 ? (ushort)1 : (ushort)(info.Version + 1);
 
                     if (targetArchetype != null)
                     {
@@ -225,7 +224,13 @@ namespace ExtenderApp.ECS.Entities
             if (!TryFindSegmentForEntity(entity, out var segment, out var localIndex))
                 return;
 
-            segment.ReturnEntity(localIndex, entity.Version);
+            segment.ReturnEntity(localIndex, entity.Version, out var changedEntity);
+
+            if (!changedEntity.IsEmpty)
+            {
+                var index = segment.GetEntityInfo(localIndex).ArchetypeIndex;
+                TryChangedArchetypeIndex(changedEntity, index);
+            }
 
             RemoveEmptySegment();
         }
@@ -259,7 +264,14 @@ namespace ExtenderApp.ECS.Entities
                     continue;
                 if (!TryFindSegmentForEntity(entity, out var segment, out var localIndex))
                     continue;
-                segment.ReturnEntity(localIndex, entity.Version);
+
+                segment.ReturnEntity(localIndex, entity.Version, out var changedEntity);
+
+                if (!changedEntity.IsEmpty)
+                {
+                    var index = segment.GetEntityInfo(localIndex).ArchetypeIndex;
+                    TryChangedArchetypeIndex(changedEntity, index);
+                }
             }
             RemoveEmptySegment();
         }
@@ -281,6 +293,28 @@ namespace ExtenderApp.ECS.Entities
         }
 
         #endregion Destroy
+
+        /// <summary>
+        /// 将指定实体从其当前 Archetype 的索引变更为新的索引。 仅当实体仍然存活且版本匹配时才执行变更。
+        /// </summary>
+        /// <param name="entity">要变更的实体句柄。</param>
+        /// <param name="archetypeIndex">新索引</param>
+        public bool TryChangedArchetypeIndex(Entity entity, int archetypeIndex)
+        {
+            if (entity.IsEmpty)
+                return false;
+
+            if (TryFindSegmentForEntity(entity, out var entitySegment, out var localIndex))
+            {
+                ref var info = ref entitySegment.GetEntityInfo(localIndex);
+                if (!info.IsAlive(entity))
+                    return false;
+
+                info.ArchetypeIndex = archetypeIndex;
+                return true;
+            }
+            return false;
+        }
 
         /// <summary>
         /// 将指定实体从其当前 Archetype 切换到新的 Archetype。 仅当实体仍然存活且版本匹配时才执行切换。
@@ -594,15 +628,17 @@ namespace ExtenderApp.ECS.Entities
             /// </summary>
             /// <param name="localIndex">要回收的段内局部索引。</param>
             /// <param name="version">待校验的实体版本。</param>
+            /// <param name="changedEntity">如果回收成功且实体关联了 Archetype，则输出被修改的实体句柄；否则返回空实体。</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void ReturnEntity(int localIndex, uint version)
+            public void ReturnEntity(int localIndex, uint version, out Entity changedEntity)
             {
                 ref var info = ref _entityInfos[localIndex];
+                changedEntity = Entity.Empty;
                 // 实体已被销毁或版本不匹配，忽略回收请求
                 if (info.Id == 0 || info.Version != version)
                     return;
 
-                info.Archetype?.TryRemoveEntity(info.ArchetypeIndex, out _, out _, out _);
+                info.Archetype?.TryRemoveEntity(info.ArchetypeIndex, out changedEntity);
                 info.Archetype = default!;
                 info.Version++;
                 _freeStack.Push(localIndex);

@@ -18,7 +18,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 组件元数据缓存（可能为空）。
         /// </summary>
-        private readonly ComponentTypeCache _cache;
+        internal ComponentTypeCache Cache { get; }
 
         /// <summary>
         /// 组件类型索引，用于比较和哈希。
@@ -28,12 +28,17 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 组件运行时类型。
         /// </summary>
-        internal Type TypeInstance => _cache.ComponentType;
+        internal Type TypeInstance => Cache.ComponentType;
 
         /// <summary>
         /// 组件类型名称。
         /// </summary>
-        internal string TypeName => _cache.Name;
+        internal string TypeName => Cache.Name;
+
+        /// <summary>
+        /// 获取组件类型是否为一个空结构体（即不包含任何字段）。
+        /// </summary>
+        internal bool IsEmptyComponent => Cache.IsEmptyComponent;
 
         /// <summary>
         /// 根据组件泛型类型创建（或获取）对应的 <see cref="ComponentType" />。
@@ -57,7 +62,7 @@ namespace ExtenderApp.ECS
         internal ComponentType(ComponentTypeCache cache)
         {
             TypeIndex = cache.Index;
-            _cache = cache;
+            Cache = cache;
         }
 
         /// <summary>
