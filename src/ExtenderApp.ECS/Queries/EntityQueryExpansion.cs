@@ -27,10 +27,8 @@ namespace ExtenderApp.ECS.Queries
             // 强制校验主线程
             MainThreadDetector.ThrowIfNotMainThread();
 
-            // 从查询核心获取匹配的 archetype 段链表头
             var current = query.Core.GetArchetypeSegmentHead();
 
-            // 遍历每个匹配的 archetype segment（链表），对其内部实体按从后向前顺序销毁
             while (current != null)
             {
                 var archetype = current.Archetype;

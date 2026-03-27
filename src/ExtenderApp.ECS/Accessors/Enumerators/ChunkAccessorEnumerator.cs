@@ -19,6 +19,15 @@ namespace ExtenderApp.ECS.Accessors
         /// </summary>
         public ComponentAccessor<T> Current => new(_current);
 
+        internal ChunkAccessorEnumerator(Archetype archetype, ulong version)
+        {
+            archetype.ComponentMask.TryGetEncodedPosition<T>(out var typeIndex);
+            archetype.TryGetChunkList(typeIndex, out _list);
+            this.version = version;
+            chunkIndex = 0;
+            _current = default!;
+        }
+
         /// <summary>
         /// 使用指定的块列表和版本号初始化枚举器实例。
         /// </summary>

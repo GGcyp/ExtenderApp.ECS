@@ -56,13 +56,13 @@ namespace ExtenderApp.ECS.Entities
         #region Create
 
         /// <summary>
-        /// 创建一个新实体（快捷方法）。等同于调用 <see cref="CreateEntity(Archetype?, out int)"/> 并忽略输出的 archetype 索引。
+        /// 创建新实体的快捷方法，等同于调用 <see cref="CreateEntity(Archetype?)" /> 并传入 null。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity() => CreateEntity(null, out _);
 
         /// <summary>
-        /// 创建一个新实体并可指定关联的 Archetype（快捷方法）。等同于调用 <see cref="CreateEntity(Archetype?, out int)"/> 并忽略输出的 archetype 索引。
+        /// 创建实体信息的快捷方法，等同于调用 <see cref="CreateEntity(Archetype?, out int)" /> 并忽略输出参数。
         /// </summary>
         /// <param name="archetype">可选的 Archetype，若为 null 则不关联。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

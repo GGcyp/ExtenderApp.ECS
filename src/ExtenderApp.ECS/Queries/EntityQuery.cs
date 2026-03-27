@@ -10,6 +10,8 @@ namespace ExtenderApp.ECS.Queries
     /// 用途：
     /// - 适用于仅需要遍历实体句柄的场景（不访问任何组件数据）；
     /// - 提供 foreach 语法的枚举支持（返回 Entity），以及通过委托对每个实体执行操作的能力。
+    ///
+    /// 语义与线程：该查询基于内部的 <see cref="QueryCore"/> 构建，枚举/回调应在主线程上执行以保证数据一致性。
     /// </summary>
     public readonly struct EntityQuery
     {

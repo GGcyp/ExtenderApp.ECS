@@ -28,5 +28,30 @@
         {
             Archetype = archetype;
         }
+
+        public ArchetypeSegmentEnumerator GetEnumerator() => new(this);
+
+        public struct ArchetypeSegmentEnumerator
+        {
+            private ArchetypeSegment? nextSegment;
+
+            public ArchetypeSegment Current => nextSegment!;
+
+            public ArchetypeSegmentEnumerator(ArchetypeSegment? head)
+            {
+                nextSegment = head;
+            }
+
+            public bool MoveNext()
+            {
+                if (nextSegment == null)
+                    return false;
+
+                nextSegment = nextSegment.Next;
+                return nextSegment != null;
+            }
+        }
+
+        public static implicit operator Archetype(ArchetypeSegment segment) => segment.Archetype;
     }
 }
