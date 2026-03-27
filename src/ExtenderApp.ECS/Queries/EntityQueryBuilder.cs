@@ -58,7 +58,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须全部匹配的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder WithAll<T>() where T : struct
+        public EntityQueryBuilder WithAll<T>()
         {
             all.SetComponent<T>();
             return this;
@@ -69,8 +69,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAll<T1, T2>()
-            where T1 : struct
-            where T2 : struct
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -82,9 +80,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAll<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -97,10 +92,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAll<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -114,11 +105,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAll<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -156,7 +142,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定任意匹配的单个泛型组件类型（满足其一即通过）。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder WithAny<T>() where T : struct
+        public EntityQueryBuilder WithAny<T>()
         {
             any.SetComponent<T>();
             return this;
@@ -167,8 +153,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAny<T1, T2>()
-            where T1 : struct
-            where T2 : struct
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -180,9 +164,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAny<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -195,10 +176,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAny<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -212,11 +189,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithAny<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -265,8 +237,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithNone<T1, T2>()
-            where T1 : struct
-            where T2 : struct
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -278,9 +248,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithNone<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -293,10 +260,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithNone<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -310,11 +273,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithNone<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -354,7 +312,8 @@ namespace ExtenderApp.ECS.Queries
         /// <typeparam name="T">关系类型的结构体类型。</typeparam>
         /// <returns>当前实体查询构建器实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder WithRelation<T>() where T : struct => WithRelation(RelationType.Create<T>());
+        public EntityQueryBuilder WithRelation<T>() where T : struct
+            => WithRelation(RelationType.Create<T>());
 
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
@@ -375,7 +334,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         /// <returns>从管理器缓存或新建的实体查询实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQuery<T1> Build<T1>() where T1 : struct
+        public EntityQuery<T1> Build<T1>()
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -389,8 +348,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2> Build<T1, T2>()
-            where T1 : struct
-            where T2 : struct
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -405,9 +362,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2, T3> Build<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -423,10 +378,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2, T3, T4> Build<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -443,11 +395,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2, T3, T4, T5> Build<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -467,7 +415,7 @@ namespace ExtenderApp.ECS.Queries
         /// <returns>有效的组件类型实例。</returns>
         /// <exception cref="ArgumentOutOfRangeException">当组件类型无效时抛出。</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ComponentType CheckAndGetComponent<T>() where T : struct
+        internal static ComponentType CheckAndGetComponent<T>()
         {
             ComponentType componentType = ComponentType.Create<T>();
             if (componentType.IsEmptyComponent)
@@ -478,7 +426,6 @@ namespace ExtenderApp.ECS.Queries
     }
 
     public struct EntityQueryBuilder<TQ1>
-        where TQ1 : struct
     {
         private readonly EntityQueryManager _queryManager;
 
@@ -521,7 +468,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须全部匹配的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1> WithAll<T>() where T : struct
+        public EntityQueryBuilder<TQ1> WithAll<T>()
         {
             all.SetComponent<T>();
             return this;
@@ -532,8 +479,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAll<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -545,9 +491,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAll<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -560,10 +504,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAll<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -577,11 +518,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAll<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -630,8 +567,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAny<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -643,9 +579,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAny<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -658,10 +592,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAny<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -675,11 +606,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithAny<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -728,8 +655,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithNone<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -741,9 +667,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithNone<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -756,10 +680,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithNone<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -773,11 +694,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithNone<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -849,8 +766,6 @@ namespace ExtenderApp.ECS.Queries
     }
 
     public struct EntityQueryBuilder<TQ1, TQ2>
-        where TQ1 : struct
-        where TQ2 : struct
     {
         private readonly EntityQueryManager _queryManager;
 
@@ -893,7 +808,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须全部匹配的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2> WithAll<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2> WithAll<T>()
         {
             all.SetComponent<T>();
             return this;
@@ -904,8 +819,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAll<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -917,9 +831,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAll<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -932,10 +844,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAll<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -949,11 +858,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAll<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1002,8 +907,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAny<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1015,9 +919,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAny<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1030,10 +932,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAny<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1047,11 +946,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithAny<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1100,8 +995,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithNone<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1113,9 +1007,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithNone<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1128,10 +1020,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithNone<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1145,11 +1034,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithNone<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1222,9 +1107,6 @@ namespace ExtenderApp.ECS.Queries
     }
 
     public struct EntityQueryBuilder<TQ1, TQ2, TQ3>
-        where TQ1 : struct
-        where TQ2 : struct
-        where TQ3 : struct
     {
         private readonly EntityQueryManager _queryManager;
 
@@ -1267,7 +1149,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须全部匹配的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAll<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAll<T>()
         {
             all.SetComponent<T>();
             return this;
@@ -1278,8 +1160,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAll<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1291,9 +1172,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAll<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1306,10 +1185,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAll<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1323,11 +1199,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAll<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1376,8 +1248,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAny<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1389,9 +1260,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAny<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1404,10 +1273,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAny<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1421,11 +1287,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithAny<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1474,8 +1336,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithNone<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1487,9 +1348,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithNone<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1502,10 +1361,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithNone<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1519,11 +1375,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithNone<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1597,10 +1449,6 @@ namespace ExtenderApp.ECS.Queries
     }
 
     public struct EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4>
-        where TQ1 : struct
-        where TQ2 : struct
-        where TQ3 : struct
-        where TQ4 : struct
     {
         private readonly EntityQueryManager _queryManager;
 
@@ -1643,7 +1491,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须全部匹配的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAll<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAll<T>()
         {
             all.SetComponent<T>();
             return this;
@@ -1654,8 +1502,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAll<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1667,9 +1514,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAll<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1682,10 +1527,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAll<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1699,11 +1541,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAll<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -1752,8 +1590,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAny<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1765,9 +1602,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAny<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1780,10 +1615,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAny<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1797,11 +1629,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithAny<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -1850,8 +1678,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithNone<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1863,9 +1690,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithNone<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1878,10 +1703,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithNone<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1895,11 +1717,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithNone<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -1974,11 +1792,6 @@ namespace ExtenderApp.ECS.Queries
     }
 
     public struct EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5>
-        where TQ1 : struct
-        where TQ2 : struct
-        where TQ3 : struct
-        where TQ4 : struct
-        where TQ5 : struct
     {
         private readonly EntityQueryManager _queryManager;
 
@@ -2021,7 +1834,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须全部匹配的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAll<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAll<T>()
         {
             all.SetComponent<T>();
             return this;
@@ -2032,8 +1845,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAll<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -2045,9 +1857,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAll<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -2060,10 +1870,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAll<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -2077,11 +1884,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAll<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             all.SetComponent<T1>();
             all.SetComponent<T2>();
@@ -2130,8 +1933,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAny<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -2143,9 +1945,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAny<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -2158,10 +1958,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAny<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -2175,11 +1972,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithAny<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             any.SetComponent<T1>();
             any.SetComponent<T2>();
@@ -2228,8 +2021,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithNone<T1, T2>()
-            where T1 : struct
-            where T2 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -2241,9 +2033,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithNone<T1, T2, T3>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -2256,10 +2046,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithNone<T1, T2, T3, T4>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();
@@ -2273,11 +2060,7 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithNone<T1, T2, T3, T4, T5>()
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
+
         {
             none.SetComponent<T1>();
             none.SetComponent<T2>();

@@ -266,11 +266,10 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="worldVersion">当前世界版本。</param>
         /// <param name="removedHandle">输出被移除实体对应的组件句柄。</param>
         /// <param name="changedEntity">若触发尾部交换，输出被移动到当前位置的实体；否则为 <see cref="Entity.Empty" />。</param>
-        /// <param name="changedHandle">若触发尾部交换，输出被移动到当前位置的句柄；否则为 null。</param>
         /// <returns>移除成功返回 true；否则返回 false。</returns>
-        public bool TryRemove(int globalIndex, ulong worldVersion, out ComponentHandle? removedHandle, out Entity changedEntity, out ComponentHandle? changedHandle)
+        public bool TryRemove(int globalIndex, ulong worldVersion, out ComponentHandle? removedHandle, out Entity changedEntity)
         {
-            if (!Entities.TryRemoveFromSegment(globalIndex, out int localIndex, out var chunkIndex, out removedHandle, out changedEntity, out changedHandle))
+            if (!Entities.TryRemoveFromSegment(globalIndex, out int localIndex, out var chunkIndex, out removedHandle, out changedEntity, out _))
                 return false;
 
             for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
@@ -385,7 +384,7 @@ namespace ExtenderApp.ECS.Archetypes
                 return;
 
             var chunk = chunkList[chunkIndex];
-            chunk.Remove(localIndex);
+            chunk.RemoveAt(localIndex);
             chunk.Version = worldVersion;
 
             RemoveEmptyChunks(columnIndex);
@@ -410,7 +409,7 @@ namespace ExtenderApp.ECS.Archetypes
                 var chunkIndex = chunkIndexSpan[i];
                 var localIndex = localIndexSpan[i];
                 var chunk = chunkList[chunkIndex];
-                chunk.Remove(localIndex);
+                chunk.RemoveAt(localIndex);
                 chunk.Version = worldVersion;
             }
 
@@ -537,7 +536,7 @@ namespace ExtenderApp.ECS.Archetypes
                 if (!oldChunk.TryCopyTo(globalIndex, newChunk, newGlobalIndex))
                     return false;
 
-                oldChunk.Remove(localIndex);
+                oldChunk.RemoveAt(localIndex);
             }
 
             ref var info = ref Entities.Span[chunkIndex];

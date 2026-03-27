@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using ExtenderApp.ECS.Accessors;
+using ExtenderApp.ECS.Queries.Rows;
 
 namespace ExtenderApp.ECS.Queries
 {
@@ -211,11 +212,11 @@ namespace ExtenderApp.ECS.Queries
                 var getEnumMethod = typeof(TQuery).GetMethod("GetEnumerator", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                     ?? throw new NotSupportedException($"未找到方法 {typeof(TQuery)}.GetEnumerator()。");
 
-                var enumeratorVar = Expression.Variable(getEnumMethod.ReturnType, "enumerator");
+                var enumeratorVar = Expression.Variable(getEnumMethod.ReturnType, "_list");
                 var assignEnum = Expression.Assign(enumeratorVar, Expression.Call(qp, getEnumMethod));
 
-                var moveNextMethod = getEnumMethod.ReturnType.GetMethod(nameof(EntityQueryRowEnumerator.MoveNext));
-                var currentProp = getEnumMethod.ReturnType.GetProperty(nameof(EntityQueryRowEnumerator.Current));
+                var moveNextMethod = getEnumMethod.ReturnType.GetMethod(nameof(ArchetypeRowEnumerator.MoveNext));
+                var currentProp = getEnumMethod.ReturnType.GetProperty(nameof(ArchetypeRowEnumerator.Current));
                 if (moveNextMethod == null || currentProp == null)
                     throw new NotSupportedException("枚举器缺少 MoveNext/Current 方法或属性。");
 
@@ -254,21 +255,21 @@ namespace ExtenderApp.ECS.Queries
             for (int i = 0; i < descriptors.Length; i++)
             {
                 var enumeratorMethod = GetEnumeratorMethod(typeof(TQuery), descriptors[i]);
-                var enumeratorVariable = Expression.Variable(enumeratorMethod.ReturnType, $"enumerator{i + 1}");
+                var enumeratorVariable = Expression.Variable(enumeratorMethod.ReturnType, $"_list{i + 1}");
                 variables.Add(enumeratorVariable);
                 setupExpressions.Add(Expression.Assign(enumeratorVariable, Expression.Call(queryParameter, enumeratorMethod)));
 
-                var moveNextExpression = Expression.Call(enumeratorVariable, enumeratorMethod.ReturnType.GetMethod(nameof(ArchetypeAccessor<int>.Enumerator.MoveNext))!);
+                var moveNextExpression = Expression.Call(enumeratorVariable, enumeratorMethod.ReturnType.GetMethod(nameof(ArchetypeAccessorEnumerator<int>.MoveNext))!);
                 moveNextCondition = moveNextCondition == null
                     ? moveNextExpression
                     : Expression.AndAlso(moveNextCondition, moveNextExpression);
 
-                var currentExpression = Expression.Property(enumeratorVariable, nameof(ArchetypeAccessor<int>.Enumerator.Current));
+                var currentExpression = Expression.Property(enumeratorVariable, nameof(ArchetypeAccessorEnumerator<int>.Current));
                 var componentValueExpression = GetComponentValueExpression(currentExpression, descriptors[i].ComponentType);
                 switch (descriptors[i].PassKind)
                 {
                     case PassKind.ByValue:
-                        // 若委托参数为值类型（非 RefRO/RefRW），则传递 componentValueExpression（即 T1 的副本）。
+                        // 若委托参数为值类型（非 RefRO/RefRW），则传递 componentValueExpression（即 T 的副本）。
                         // 若委托参数为 RefRO/RefRW，这里需要传递包装类型。我们统一让底层返回 RefRW，并在需要只读包装时进行类型转换。
                         if (descriptors[i].AccessorKind == AccessorKind.Value)
                         {
@@ -276,7 +277,7 @@ namespace ExtenderApp.ECS.Queries
                         }
                         else if (descriptors[i].AccessorKind == AccessorKind.RefRO)
                         {
-                            // 将底层的 RefRW<T1> 转换为 RefRO<T1>（存在隐式转换），在表达式树中使用显式转换。
+                            // 将底层的 RefRW<T> 转换为 RefRO<T>（存在隐式转换），在表达式树中使用显式转换。
                             var refROType = typeof(RefRO<>).MakeGenericType(descriptors[i].ComponentType);
                             invokeArguments[i] = Expression.Convert(currentExpression, refROType);
                         }
@@ -363,13 +364,13 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         private static MethodInfo GetEnumeratorMethod(Type queryType, ParameterDescriptor descriptor)
         {
-            // 统一使用 EntityQuery 上的泛型方法 GetRefRWsFor<T1>()，避免为不同组件位次暴露 GetRefRWsForT1..T5。
+            // 统一使用 EntityQuery 上的泛型方法 GetRefRWsFor<T>()，避免为不同组件位次暴露 GetRefRWsForT1..T5。
             var genericMethod = queryType.GetMethod(
                 "GetRefRWsFor",
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
             if (genericMethod == null)
-                throw new NotSupportedException($"未找到方法 {queryType.FullName}.GetRefRWsFor<T1>()。");
+                throw new NotSupportedException($"未找到方法 {queryType.FullName}.GetRefRWsFor<T>()。");
 
             if (!genericMethod.IsGenericMethodDefinition)
                 throw new NotSupportedException($"方法 {queryType.FullName}.GetRefRWsFor 必须是泛型方法定义。");

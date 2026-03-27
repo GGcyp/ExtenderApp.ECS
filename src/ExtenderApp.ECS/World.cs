@@ -18,6 +18,9 @@ namespace ExtenderApp.ECS
         internal WorldVersionManager VersionManager { get; }
         internal EntityQueryManager QueryManager { get; }
         internal SharedComponentManager SharedComponentManager { get; }
+        internal EntityCommandStorage CommandStorage { get; }
+        internal ArchetypeRepository ArchetypeRepository { get; }
+
         public EntityCommandBuffer CommandBuffer { get; }
 
         public string Name { get; }
@@ -37,13 +40,13 @@ namespace ExtenderApp.ECS
             Entities = new();
             VersionManager = new();
 
-            ArchetypeRepository archetypeRepository = new();
-            ArchetypeManager = new(archetypeRepository, VersionManager);
-            QueryManager = new(archetypeRepository, VersionManager);
+            ArchetypeRepository = new();
+            ArchetypeManager = new(ArchetypeRepository, VersionManager);
+            QueryManager = new(ArchetypeRepository, VersionManager);
             SharedComponentManager = new();
 
-            EntityCommandStorage commandStorage = new();
-            CommandBuffer = new(commandStorage);
+            CommandStorage = new();
+            CommandBuffer = new(CommandStorage);
         }
 
         /// <summary>

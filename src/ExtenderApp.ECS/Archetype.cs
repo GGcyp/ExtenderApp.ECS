@@ -213,7 +213,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryRemoveEntity(int globalIndex, out Entity changedEntity)
         {
-            if (!_chunkManager.TryRemove(globalIndex, _wvManager.WorldVersion, out var removedHandle, out changedEntity, out _))
+            if (!_chunkManager.TryRemove(globalIndex, _wvManager.WorldVersion, out var removedHandle, out changedEntity))
                 return false;
 
             removedHandle?.Return();
@@ -301,7 +301,7 @@ namespace ExtenderApp.ECS
         /// <param name="chunks">输出对应类型的块列表。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetChunkList<T>(int cloumn, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks) where T : struct
+        internal bool TryGetChunkList<T>(int cloumn, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks) 
         {
             chunks = default!;
             if (_chunkManager.TryGetChunkListForColumn(cloumn, out var chunkList))
@@ -319,7 +319,7 @@ namespace ExtenderApp.ECS
         /// <param name="component">输出头块。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct
+        internal bool TryGetHeadChunk<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component) 
         {
             component = default!;
             if (TryGetHeadChunk(index, out ArchetypeChunk chunk) && chunk is ArchetypeChunk<T> typedChunk)
@@ -375,7 +375,7 @@ namespace ExtenderApp.ECS
         /// <param name="component">输出头块。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct
+        internal bool TryGetHeadChunk<T>(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk<T> component) 
         {
             return TryGetHeadChunk(componentType, out ArchetypeChunk chunk) && chunk is ArchetypeChunk<T> typedChunk ? (component = typedChunk) != null : (component = default!) != null;
         }
@@ -387,7 +387,7 @@ namespace ExtenderApp.ECS
         /// <param name="component">输出头块。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>([NotNullWhen(true)] out ArchetypeChunk<T> component) where T : struct
+        internal bool TryGetHeadChunk<T>([NotNullWhen(true)] out ArchetypeChunk<T> component) 
         {
             return TryGetHeadChunk(ComponentType.Create<T>(), out component);
         }
@@ -403,7 +403,7 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <param name="component">组件值。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SetComponent<T>(int globalIndex, T component) where T : struct
+        internal void SetComponent<T>(int globalIndex, T component) 
         {
             if (!TrySetComponent(globalIndex, component))
                 throw new InvalidOperationException($"未找到指定类型的块更新 {globalIndex} : {typeof(T)}");
@@ -416,7 +416,7 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <param name="component">组件值。</param>
         /// <returns>设置成功返回 true；否则返回 false。</returns>
-        internal bool TrySetComponent<T>(int globalIndex, T component) where T : struct
+        internal bool TrySetComponent<T>(int globalIndex, T component) 
         {
             if (!_componentTypes.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
                 !_chunkManager.TryFindChunkForGlobalIndex(columnIndex, globalIndex, out var chuck, out int localIndex) ||
@@ -439,7 +439,7 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <returns>组件值。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal T GetComponent<T>(int globalIndex) where T : struct
+        internal T GetComponent<T>(int globalIndex) 
         {
             if (TryGetComponent(globalIndex, out T component))
                 return component;
@@ -454,7 +454,7 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <param name="component">输出组件值。</param>
         /// <returns>读取成功返回 true；否则返回 false。</returns>
-        internal bool TryGetComponent<T>(int globalIndex, out T component) where T : struct
+        internal bool TryGetComponent<T>(int globalIndex, out T component) 
         {
             component = default;
             if (!_componentTypes.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||

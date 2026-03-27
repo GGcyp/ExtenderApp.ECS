@@ -412,23 +412,7 @@ namespace ExtenderApp.ECS.Commands
         private void ApplyDestroyEntitiesForQuery(EntityQueryDesc desc)
         {
             var query = _entityQueryManager.GetOrCreateQuery(desc);
-            var current = query.Core.GetArchetypeSegmentHead();
-            while (current != null)
-            {
-                var archetype = current.Archetype;
-                var entities = archetype.Entities;
-                for (int i = entities.Count - 1; i >= 0; i--)
-                {
-                    var segmentInfo = entities[i];
-                    var infoEntities = segmentInfo.Entities;
-                    for (int j = infoEntities.Length - 1; j >= 0; j--)
-                    {
-                        var entity = infoEntities[j];
-                        _entityManager.DestroyEntity(entity);
-                    }
-                }
-                current = current.Next;
-            }
+            _entityManager.DestroyEntitiesForQuery(query);
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using ExtenderApp.ECS.Abstract;
 using ExtenderApp.ECS.Entities;
 
 namespace ExtenderApp.ECS.Archetypes
@@ -152,7 +151,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <typeparam name="T">组件类型。</typeparam>
         /// <returns>返回当前构造器，便于链式调用。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArchetypeBuilder AddComponent<T>() where T : struct
+        public ArchetypeBuilder AddComponent<T>()
         {
             _componentMask.Add(ComponentType.Create<T>());
             return this;
@@ -177,7 +176,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <typeparam name="T">组件类型。</typeparam>
         /// <returns>返回当前构造器，便于链式调用。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ArchetypeBuilder RemoveComponent<T>() where T : struct
+        public ArchetypeBuilder RemoveComponent<T>()
         {
             _componentMask.Remove(ComponentType.Create<T>());
             return this;

@@ -183,7 +183,7 @@ namespace ExtenderApp.ECS.Commands
         }
 
         /// <summary>
-        /// 释放所有剩余段资源。通常在 World/系统销毁时调用。
+        /// 释放所有剩余段资源。通常在 CurrentWorld/系统销毁时调用。
         /// </summary>
         public void Dispose()
         {

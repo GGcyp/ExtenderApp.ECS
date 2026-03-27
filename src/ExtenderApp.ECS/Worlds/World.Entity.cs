@@ -4,7 +4,7 @@ using ExtenderApp.ECS.Entities;
 namespace ExtenderApp.ECS
 {
     /// <summary>
-    /// World 的实体相关 API 的局部实现。 提供实体的创建与销毁操作，并在主线程上执行安全检查。
+    /// CurrentWorld 的实体相关 API 的局部实现。 提供实体的创建与销毁操作，并在主线程上执行安全检查。
     /// </summary>
     public partial class World
     {
@@ -82,7 +82,7 @@ namespace ExtenderApp.ECS
         /// <param name="component">组件初始值。</param>
         /// <returns>新创建的实体句柄。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Entity CreateEntity<T>(T component) where T : struct
+        public Entity CreateEntity<T>(T component)
         {
             ThrowIfNotMainThread();
 
@@ -102,8 +102,6 @@ namespace ExtenderApp.ECS
         /// <returns>新创建的实体句柄。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity<T1, T2>(T1 component1, T2 component2)
-            where T1 : struct
-            where T2 : struct
         {
             ThrowIfNotMainThread();
             ComponentMask mask = new()
@@ -131,9 +129,6 @@ namespace ExtenderApp.ECS
         /// <returns>新创建的实体句柄。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity<T1, T2, T3>(T1 component1, T2 component2, T3 component3)
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
         {
             ThrowIfNotMainThread();
             ComponentMask mask = new()
@@ -165,10 +160,6 @@ namespace ExtenderApp.ECS
         /// <returns>新创建的实体句柄。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity<T1, T2, T3, T4>(T1 component1, T2 component2, T3 component3, T4 component4)
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
         {
             ThrowIfNotMainThread();
             ComponentMask mask = new()
@@ -204,11 +195,6 @@ namespace ExtenderApp.ECS
         /// <returns>新创建的实体句柄。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Entity CreateEntity<T1, T2, T3, T4, T5>(T1 component1, T2 component2, T3 component3, T4 component4, T5 component5)
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
-            where T5 : struct
         {
             ThrowIfNotMainThread();
             ComponentMask mask = new()
@@ -270,7 +256,7 @@ namespace ExtenderApp.ECS
             if (Entities.TryGetArchetype(entity, out var archetype, out int archetypeIndex) &&
                (archetype?.TryGetComponentHandle(archetypeIndex, out var handle) ?? false))
             {
-                return new (handle);
+                return new(handle);
             }
 
             throw new Exception("未找到实体的组件句柄，可能实体无效或已销毁。");

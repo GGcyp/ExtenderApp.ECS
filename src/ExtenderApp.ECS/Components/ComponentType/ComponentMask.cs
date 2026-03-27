@@ -29,12 +29,12 @@ namespace ExtenderApp.ECS
         private const int MaxComponentCount = SegmentCount * SegmentBits;
 
         /// <summary>
-        /// 段内位掩码（用于计算 ChunkIndex % 64）。
+        /// 段内位掩码（用于计算 chunkIndex % 64）。
         /// </summary>
         private const int SegmentMask = SegmentBits - 1;
 
         /// <summary>
-        /// 将索引右移以获得段序号（等价于 ChunkIndex / 64）。
+        /// 将索引右移以获得段序号（等价于 chunkIndex / 64）。
         /// </summary>
         private const int IndexShift = 6;
 
@@ -159,10 +159,10 @@ namespace ExtenderApp.ECS
         /// </summary>
         /// <typeparam name="T">要添加的组件类型（值类型并实现 IComponent）。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add<T>() where T : struct => Add(ComponentType.Create<T>());
+        public void Add<T>() => Add(ComponentType.Create<T>());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>() where T : struct => SetComponent(ComponentType.Create<T>());
+        public void SetComponent<T>() => SetComponent(ComponentType.Create<T>());
 
         /// <summary>
         /// 将指定组件类型的对应位设置为 1，表示包含该组件。
@@ -205,8 +205,8 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetBit(int index)
         {
-            int ulongIndex = index >> IndexShift; // ChunkIndex / 64
-            int bitOffset = index & SegmentMask; // ChunkIndex % 64
+            int ulongIndex = index >> IndexShift; // chunkIndex / 64
+            int bitOffset = index & SegmentMask; // chunkIndex % 64
 
             ref ulong segment = ref GetMaskUlongRef(ulongIndex);
             segment |= 1UL << bitOffset;
@@ -220,11 +220,11 @@ namespace ExtenderApp.ECS
         public void Remove(ComponentType componentType) => ClearBit(componentType.TypeIndex);
 
         /// <summary>
-        /// 从掩码中移除指定泛型组件类型（等同于 Remove(ComponentType) 的泛型快捷重载）。
+        /// 从掩码中移除指定泛型组件类型（等同于 RemoveAt(ComponentType) 的泛型快捷重载）。
         /// </summary>
         /// <typeparam name="T">要移除的组件类型（值类型并实现 IComponent）。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Remove<T>() where T : struct => Remove(ComponentType.Create<T>());
+        public void Remove<T>() => Remove(ComponentType.Create<T>());
 
         /// <summary>
         /// 将另一个掩码中的所有组件类型从当前掩码中移除（位与非操作）。相当于对每个段进行按位与非运算。提供一个快速的批量移除方法。
@@ -246,8 +246,8 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearBit(int index)
         {
-            int ulongIndex = index >> IndexShift; // ChunkIndex / 64
-            int bitOffset = index & SegmentMask; // ChunkIndex % 64
+            int ulongIndex = index >> IndexShift; // chunkIndex / 64
+            int bitOffset = index & SegmentMask; // chunkIndex % 64
 
             ref ulong segment = ref GetMaskUlongRef(ulongIndex);
             segment &= ~(1UL << bitOffset);
@@ -273,7 +273,7 @@ namespace ExtenderApp.ECS
         /// <typeparam name="T">要检查的组件类型（值类型并实现 IComponent）。</typeparam>
         /// <returns>包含返回 true，否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool On<T>() where T : struct => On(ComponentType.Create<T>());
+        public bool On<T>() => On(ComponentType.Create<T>());
 
         /// <summary>
         /// 判断当前掩码是否包含另一个掩码的所有组件（位包含）。 若 other 的任何位在当前掩码中为 1，则该位必须在当前掩码中也是 1。
@@ -423,7 +423,7 @@ namespace ExtenderApp.ECS
         /// <param name="position">输出的 0-based 编码位置（若返回 true）。</param>
         /// <returns>若找到则返回 true 并设置 position；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetEncodedPosition<T>(out int position) where T : struct => TryGetEncodedPosition(ComponentType.Create<T>(), out position);
+        public bool TryGetEncodedPosition<T>(out int position) => TryGetEncodedPosition(ComponentType.Create<T>(), out position);
 
         /// <summary>
         /// 获取一个 ReadOnlySpan，包含掩码的所有段（u0..u7）。通过 MemoryMarshal 创建 Span 以避免数组分配。

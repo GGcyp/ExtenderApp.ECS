@@ -6,11 +6,11 @@ namespace ExtenderApp.ECS.Native
 {
     /// <summary>
     /// 简单的受限 NativeArray 实现（托管侧的轻量非托管数组）
-    /// - 约束 T1 为 unmanaged，以便安全地在非托管内存中存储
+    /// - 约束 T 为 unmanaged，以便安全地在非托管内存中存储
     /// - 提供索引器、Span 视图、Fill/CopyFrom、以及直接指针访问
     /// - 需显式 Dispose 以释放非托管内存
     /// </summary>
-    [DebuggerDisplay("NativeArray<{typeof(T1).Name}> Length = {_length}")]
+    [DebuggerDisplay("NativeArray<{typeof(T).Name}> Length = {_length}")]
     public unsafe struct NativeArray<T> : IDisposable where T : unmanaged
     {
         private void* _ptr;

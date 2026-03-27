@@ -80,7 +80,7 @@ namespace ExtenderApp.ECS.Entities
         /// 移除指定关系。
         /// </summary>
         /// <typeparam name="T">关系类型的结构体类型。</typeparam>
-        public void Remove<T>() where T : struct => Remove(RelationType.Create<T>());   
+        public void Remove<T>() where T : struct => Remove(RelationType.Create<T>());
 
         /// <summary>
         /// 移除关系类型。

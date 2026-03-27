@@ -5,12 +5,12 @@ using ExtenderApp.ECS.Threading;
 namespace ExtenderApp.ECS.Entities
 {
     /// <summary>
-    /// 按实体访问组件的轻量封装。提供获取、设置、添加与移除组件的便捷方法。 该结构体为只读值类型，包含对所属 World 与 Entity 的引用；调用前会检查主线程。
+    /// 按实体访问组件的轻量封装。提供获取、设置、添加与移除组件的便捷方法。 该结构体为只读值类型，包含对所属 CurrentWorld 与 Entity 的引用；调用前会检查主线程。
     /// </summary>
-    public struct EntityComponentOperation
+    public ref struct EntityComponentOperation
     {
         /// <summary>
-        /// 当前 ComponentBuffer 所属的 World 实例，提供访问 Entities 与 ArchetypeManager 的入口。
+        /// 当前 ComponentBuffer 所属的 CurrentWorld 实例，提供访问 Entities 与 ArchetypeManager 的入口。
         /// </summary>
         private readonly World _world;
 
@@ -30,19 +30,19 @@ namespace ExtenderApp.ECS.Entities
         private int currentArchetypeIndex;
 
         /// <summary>
-        /// 当前 World 中的 Entities 实例，提供获取实体 Archetype、迁移实体等功能。
+        /// 当前 CurrentWorld 中的 Entities 实例，提供获取实体 Archetype、迁移实体等功能。
         /// </summary>
         private EntityManager Entities => _world.Entities;
 
         /// <summary>
-        /// 当前 World 中的 ArchetypeManager 实例，提供获取或创建 Archetype 的功能。
+        /// 当前 CurrentWorld 中的 ArchetypeManager 实例，提供获取或创建 Archetype 的功能。
         /// </summary>
         private ArchetypeManager Components => _world.ArchetypeManager;
 
         /// <summary>
-        /// 使用指定 World 与 Entity 构造一个 ComponentBuffer 实例（内部使用）。
+        /// 使用指定 CurrentWorld 与 Entity 构造一个 ComponentBuffer 实例（内部使用）。
         /// </summary>
-        /// <param name="world">所属的 World 实例。</param>
+        /// <param name="world">所属的 CurrentWorld 实例。</param>
         /// <param name="entity">目标实体句柄。</param>
         internal EntityComponentOperation(World world, Entity entity)
         {
@@ -57,7 +57,7 @@ namespace ExtenderApp.ECS.Entities
         /// <param name="component">要写入的组件值。</param>
         /// <returns>返回自身以支持链式调用（轻量便捷）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityComponentOperation SetComponent<T>(T component) where T : struct
+        public EntityComponentOperation SetComponent<T>(T component)
         {
             ThrowIfNotMainThread();
             if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
@@ -74,7 +74,7 @@ namespace ExtenderApp.ECS.Entities
         /// <typeparam name="T">组件类型。</typeparam>
         /// <returns>指定组件的值。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T GetComponent<T>() where T : struct
+        public T GetComponent<T>()
         {
             ThrowIfNotMainThread();
             if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
@@ -91,7 +91,7 @@ namespace ExtenderApp.ECS.Entities
         /// <param name="value">输出参数，用于返回组件的值。</param>
         /// <returns>返回自身以支持链式调用（轻量便捷）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityComponentOperation GetComponent<T>(out T value) where T : struct
+        public EntityComponentOperation GetComponent<T>(out T value)
         {
             ThrowIfNotMainThread();
             if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
@@ -108,7 +108,7 @@ namespace ExtenderApp.ECS.Entities
         /// <typeparam name="T">组件类型。</typeparam>
         /// <param name="component">要添加或覆盖的组件值。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityComponentOperation AddComponent<T>(T component) where T : struct
+        public EntityComponentOperation AddComponent<T>(T component)
         {
             ThrowIfNotMainThread();
 
@@ -143,7 +143,7 @@ namespace ExtenderApp.ECS.Entities
         /// </summary>
         /// <typeparam name="T">组件类型。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityComponentOperation AddComponent<T>() where T : struct
+        public EntityComponentOperation AddComponent<T>()
         {
             ThrowIfNotMainThread();
 
@@ -171,7 +171,7 @@ namespace ExtenderApp.ECS.Entities
         /// </summary>
         /// <typeparam name="T">要移除的组件类型。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityComponentOperation RemoveComponent<T>() where T : struct
+        public EntityComponentOperation RemoveComponent<T>()
         {
             ThrowIfNotMainThread();
 

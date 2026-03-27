@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using ExtenderApp.Contracts;
-using ExtenderApp.ECS.Threading;
+using ExtenderApp.ECS.Archetypes;
 
 namespace ExtenderApp.ECS.Components
 {
@@ -10,34 +10,31 @@ namespace ExtenderApp.ECS.Components
     /// 适用于全局共享、低频更新、高频读取的数据（例如输入快照、全局配置快照、时间缩放等）。
     ///
     /// 约束：共享组件类型必须为 struct。
-    /// 线程模型：写入（Set/Remove/Clear）仅允许主线程；读取（TryGet/Get/Has）可在任意线程调用。
+    /// 线程模型：写入（Set/RemoveAt/Clear）仅允许主线程；读取（TryGet/Get/Has）可在任意线程调用。
     /// </summary>
     internal sealed class SharedComponentManager : DisposableObject
     {
-        private readonly ChunkPool _chunkPool;
-        private readonly Chunk?[] _chunks;
+        private readonly ArchetypeChunk?[] _chunks;
         private SharedComponentMask _mask;
 
         public SharedComponentManager()
         {
-            _chunkPool = ChunkPool.Share;
-            _chunks = new Chunk[SharedComponentRegistry.MaxSharedCount];
+            _chunks = new ArchetypeChunk[SharedComponentRegistry.MaxSharedCount];
             _mask = new();
         }
 
         /// <summary>
         /// 尝试添加共享组件；若已存在则直接覆盖。
         /// </summary>
-        public bool TryAddComponent<T>(in T value) where T : struct
+        public bool TryAddComponent<T>(in T value)
         {
             var type = SharedComponentType.Create<T>();
             if (_mask.On(type))
                 return TrySetComponent(value);
 
-            var chunk = _chunkPool.Rent(1);
-            chunk.Initialize<T>();
-            chunk.Write(0, in value);
-
+            var chunk = ArchetypeChunkProvider.GetOrCreate<T>().Rent();
+            chunk.Initialize(1);
+            chunk.SetComponent(0, value);
             _chunks[GetArrayIndex(type)] = chunk;
             _mask.Add(type);
             return true;
@@ -46,7 +43,7 @@ namespace ExtenderApp.ECS.Components
         /// <summary>
         /// 尝试覆盖已存在的共享组件。
         /// </summary>
-        public bool TrySetComponent<T>(in T value) where T : struct
+        public bool TrySetComponent<T>(in T value)
         {
             var type = SharedComponentType.Create<T>();
             if (!_mask.On(type))
@@ -55,43 +52,39 @@ namespace ExtenderApp.ECS.Components
             int index = GetArrayIndex(type);
             var chunk = _chunks[index];
             if (chunk == null)
-            {
-                chunk = _chunkPool.Rent(1);
-                chunk.Initialize<T>();
-                _chunks[index] = chunk;
-            }
+                return false;
 
-            chunk.Write(0, in value);
-            return true;
+            var chunkT = chunk as ArchetypeChunk<T>;
+            chunkT?.SetComponent(0, value);
+            return chunkT != null;
         }
 
         /// <summary>
         /// 尝试读取共享组件。
         /// </summary>
-        public bool TryGetComponent<T>(out T value) where T : struct
+        public bool TryGetComponent<T>(out T value)
         {
+            value = default!;
             var type = SharedComponentType.Create<T>();
             if (!_mask.On(type))
-            {
-                value = default;
                 return false;
-            }
 
             var chunk = _chunks[GetArrayIndex(type)];
             if (chunk == null)
-            {
-                value = default;
                 return false;
-            }
 
-            value = chunk.Read<T>(0);
+            var chunkT = chunk as ArchetypeChunk<T>;
+            if (chunkT == null)
+                return false;
+
+            value = chunkT.GetComponent(0);
             return true;
         }
 
         /// <summary>
         /// 设置共享组件：不存在则新增，存在则覆盖。
         /// </summary>
-        public void Set<T>(in T value) where T : struct
+        public void Set<T>(in T value)
         {
             if (!TryAddComponent(value))
             {
@@ -102,12 +95,12 @@ namespace ExtenderApp.ECS.Components
         /// <summary>
         /// 尝试读取共享组件（兼容命名）。
         /// </summary>
-        public bool TryGet<T>(out T value) where T : struct => TryGetComponent(out value);
+        public bool TryGet<T>(out T value) => TryGetComponent(out value);
 
         /// <summary>
         /// 读取共享组件，不存在则抛出异常。
         /// </summary>
-        public T Get<T>() where T : struct
+        public T Get<T>()
         {
             if (TryGetComponent<T>(out var value))
                 return value;
@@ -118,12 +111,12 @@ namespace ExtenderApp.ECS.Components
         /// <summary>
         /// 是否存在指定共享组件。
         /// </summary>
-        public bool Has<T>() where T : struct => _mask.On<T>();
+        public bool Has<T>() => _mask.On<T>();
 
         /// <summary>
         /// 移除共享组件。
         /// </summary>
-        public bool Remove<T>() where T : struct
+        public bool Remove<T>()
         {
             var type = SharedComponentType.Create<T>();
             if (!_mask.On(type))
@@ -133,7 +126,7 @@ namespace ExtenderApp.ECS.Components
             var chunk = _chunks[index];
             if (chunk != null)
             {
-                _chunkPool.Return(chunk);
+                chunk.ReturnChunkToPool();
                 _chunks[index] = null;
             }
 
@@ -156,7 +149,7 @@ namespace ExtenderApp.ECS.Components
                 var chunk = _chunks[i];
                 if (chunk != null)
                 {
-                    _chunkPool.Return(chunk);
+                    chunk.ReturnChunkToPool();
                     _chunks[i] = null;
                 }
             }

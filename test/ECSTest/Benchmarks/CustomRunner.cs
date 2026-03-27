@@ -214,7 +214,7 @@ public static class CustomRunner
         sw.Restart();
         for (int i = 0; i < N / 2; i++) world.RemoveComponent<Position>(entities[i]);
         sw.Stop();
-        Console.WriteLine($"Remove {N / 2} Position components in {sw.ElapsedMilliseconds} ms");
+        Console.WriteLine($"RemoveAt {N / 2} Position components in {sw.ElapsedMilliseconds} ms");
 
         // 验证
         bool ok = true;
@@ -504,7 +504,7 @@ public static class CustomRunner
             opRemoveOk = true;
         }
 
-        // Lookup：从 World 直接获取
+        // Lookup：从 CurrentWorld 直接获取
         bool lookupOk = false;
         bool lookupGetSetOk = false;
         bool lookupTryGetOk = false;
@@ -541,7 +541,7 @@ public static class CustomRunner
         sw.Stop();
 
         Console.WriteLine($"Operation.Basic: {(opBasicOk ? "OK" : "FAILED")}");
-        Console.WriteLine($"Operation.Add/Remove: {(opAddOk && opRemoveOk ? "OK" : "FAILED")}");
+        Console.WriteLine($"Operation.Add/RemoveAt: {(opAddOk && opRemoveOk ? "OK" : "FAILED")}");
         Console.WriteLine($"Lookup.Create: {(lookupOk ? "OK" : "FAILED")}");
         Console.WriteLine($"Lookup.Get/Add: {(lookupGetSetOk ? "OK" : "FAILED")}");
         Console.WriteLine($"Lookup.TryGet: {(lookupTryGetOk ? "OK" : "FAILED")}");
@@ -773,7 +773,7 @@ public static class CustomRunner
         Console.WriteLine($"=== CommandBuffer Concurrency Test: writers=8, opsPerWriter={opsPerWriter} ===");
         using var world = new World();
 
-        // 从 World 获取命令缓冲实例
+        // 从 CurrentWorld 获取命令缓冲实例
         var buffer = world.CommandBuffer;
 
         int writers = 8;
@@ -783,7 +783,7 @@ public static class CustomRunner
         var smoke = world.CreateEntity();
         buffer.AddComponent(smoke, new Position { X = 1, Y = 2 });
 
-        // 预先在主线程创建每个任务将要使用的真实实体集合，避免在工作线程上调用 World API
+        // 预先在主线程创建每个任务将要使用的真实实体集合，避免在工作线程上调用 CurrentWorld API
         var precreated = new Entity[writers][];
         for (int w = 0; w < writers; w++)
         {
@@ -881,10 +881,10 @@ public static class CustomRunner
         }
     }
 
-    // 新增：只使用 World API 的对照测试（不经过 CommandBuffer）
+    // 新增：只使用 CurrentWorld API 的对照测试（不经过 CommandBuffer）
     public static void RunWorldDirectExecutionTest(int opsPerWriter)
     {
-        Console.WriteLine($"=== World Direct Execution opsPerWriter={opsPerWriter} ===");
+        Console.WriteLine($"=== CurrentWorld Direct Execution opsPerWriter={opsPerWriter} ===");
         using var world = new World();
 
         int ops = Math.Max(1, opsPerWriter);
@@ -910,7 +910,7 @@ public static class CustomRunner
         sw.Stop();
 
         long totalOps = (long)ops * 8 + 1;
-        Console.WriteLine($"World direct execution finished: totalOps={totalOps}, elapsed={sw.ElapsedMilliseconds} ms");
+        Console.WriteLine($"CurrentWorld direct execution finished: totalOps={totalOps}, elapsed={sw.ElapsedMilliseconds} ms");
 
         bool ok = true;
         int posCount = 0;
@@ -966,5 +966,96 @@ public static class CustomRunner
         bool ok = posCount == 0;
         Console.WriteLine($"DestroyEntitiesForQuery: initialWithPosition={withPos}, remainingPositionCount={posCount}, Result={(ok ? "OK" : "FAILED")}");
         Console.WriteLine("========================================");
+    }
+
+    // 新增：Shared Component 增删改查测试（替换原来的托管 UseData 测试）
+    public static void RunSharedComponentCrudTest()
+    {
+        Console.WriteLine("=== CustomRunner: SharedComponent CRUD Test ===");
+        using var world = new World();
+
+        var sw = Stopwatch.StartNew();
+
+        // 尝试 Add（不应存在)
+        bool tryAddOk = world.TryAddSharedComponent(new SharedSample { X = 10, Y = 20 });
+
+        // 再次 Add 应失败
+        bool addFail = false;
+        try
+        {
+            world.AddSharedComponent(new SharedSample { X = 1, Y = 2 });
+            addFail = false;
+        }
+        catch
+        {
+            addFail = true;
+        }
+
+        // TryGet
+        bool tryGetOk = world.TryGetSharedComponent<SharedSample>(out var sample);
+
+        // Update
+        world.UpdateSharedComponent(new SharedSample { X = 100, Y = 200 });
+        var updated = world.GetSharedComponent<SharedSample>();
+
+        // TryUpdate (succeeds)
+        bool tryUpdateOk = world.TryUpdateSharedComponent(new SharedSample { X = 7, Y = 8 });
+
+        // RemoveAt
+        bool removed = world.RemoveSharedComponent<SharedSample>();
+
+        // After remove TryGet should fail
+        bool tryGetAfterRemove = world.TryGetSharedComponent<SharedSample>(out _);
+
+        sw.Stop();
+
+        Console.WriteLine($"TryAdd initial: {(tryAddOk ? "OK" : "FAILED")}");
+        Console.WriteLine($"Add when exists throws: {(addFail ? "OK" : "FAILED")}");
+        Console.WriteLine($"TryGet after add: {(tryGetOk ? "OK" : "FAILED")}, value=({sample.X},{sample.Y})");
+        Console.WriteLine($"Get after update: ({updated.X},{updated.Y})");
+        Console.WriteLine($"TryUpdate: {(tryUpdateOk ? "OK" : "FAILED")}");
+        Console.WriteLine($"RemoveAt: {(removed ? "OK" : "FAILED")}");
+        Console.WriteLine($"TryGet after remove: {(tryGetAfterRemove ? "FAILED" : "OK")}");
+        Console.WriteLine($"Elapsed: {sw.ElapsedMilliseconds} ms");
+        Console.WriteLine("========================================");
+    }
+
+    // 嵌套共享数据类型，仅用于测试
+    private struct SharedSample
+    {
+        public int X;
+        public int Y;
+        public override string ToString() => $"SharedSample(X={X},Y={Y})";
+    }
+
+    // 新增：托管对象 UseData 存取测试（重加回原有测试）
+    public static void RunManagedUseDataTest()
+    {
+        Console.WriteLine("=== CustomRunner: Managed UseData Test ===");
+        using var world = new World();
+
+        var sw = Stopwatch.StartNew();
+
+        for (int i = 0; i < 1000; i++)
+        {
+            world.CreateEntity(new ManagedData() { Name = i.ToString(), Level = i });
+        }
+
+        int count = 0;
+        foreach (var md in world.Query<ManagedData>())
+        {
+            count++;
+        }
+        sw.Stop();
+        Console.WriteLine($"Created and queried {count} ManagedData entities in {sw.ElapsedMilliseconds} ms");
+    }
+
+    // 嵌套托管数据类型，仅用于测试
+    private class ManagedData
+    {
+        public string? Name { get; set; }
+        public int Level { get; set; }
+
+        public override string ToString() => $"ManagedData(Name={Name}, Level={Level})";
     }
 }

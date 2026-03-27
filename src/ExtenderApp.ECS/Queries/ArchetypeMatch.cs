@@ -6,9 +6,6 @@ namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
     /// 表示查询匹配到的某个 Archetype 及其为当前查询预计算的列索引映射。
-    ///
-    /// 语义：ArchetypeMatch 将一个具体的 <see cref="Archetype" /> 与按查询顺序排列的 列索引数组关联起来。列索引数组通常来自 <see cref="ArrayPool{T}.Shared.Rent" />， 在不再使用时需要通过 <see
-    /// cref="Dispose" /> 将数组归还池中。
     /// </summary>
     internal readonly struct ArchetypeMatch : IDisposable
     {
@@ -41,7 +38,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 尝试根据查询内部的顺序位置获取对应列的 ArchetypeChunk{T1} 头（若存在）。
+        /// 尝试根据查询内部的顺序位置获取对应列的 ArchetypeChunk{T} 头（若存在）。
         /// </summary>
         /// <typeparam name="T">期望的组件类型。</typeparam>
         /// <param name="index">查询组件的位置索引（0-based），对应于 <see cref="ColumnIndices" /> 的下标。</param>

@@ -41,7 +41,10 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 当前 Archetype 数量。
         /// </summary>
-        public int Count => _list.Count;
+        public int Count => totalCount;
+
+        private int totalCount;
+        private int removeCount;
 
         public ArchetypeRepository()
         {
@@ -54,7 +57,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         /// <param name="startIndex">起始索引</param>
         /// <returns>从指定索引开始的 Archetype 只读切片</returns>
-        public ReadOnlySpan<Archetype> GetArchetypeSpan(int startIndex) => CollectionsMarshal.AsSpan(_list).Slice(startIndex);
+        public ReadOnlySpan<Archetype> GetArchetypeSpan(int startIndex) => CollectionsMarshal.AsSpan(_list).Slice(startIndex - removeCount);
 
         /// <summary>
         /// 按组件掩码（关系掩码为空）获取 Archetype。
@@ -66,12 +69,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// 按组件掩码与关系掩码获取 Archetype。
         /// </summary>
         public bool TryGetValue(in ComponentMask componentMask, in RelationMask relationMask, out Archetype archetype)
-            => _dictionary.TryGetValue(new ArchetypeKey(componentMask, relationMask), out archetype!);
-
-        /// <summary>
-        /// 创建一个新的 Archetype 键构造器。
-        /// </summary>
-        public static ArchetypeBuilder CreateBuilder() => new ArchetypeBuilder();
+            => _dictionary.TryGetValue(new(componentMask, relationMask), out archetype!);
 
         /// <summary>
         /// 使用键构造器查询 Archetype。
@@ -111,6 +109,7 @@ namespace ExtenderApp.ECS.Archetypes
 
                 _dictionary.Add(key, value);
                 _list.Add(value);
+                totalCount++;
             }
         }
 
@@ -144,6 +143,7 @@ namespace ExtenderApp.ECS.Archetypes
                 return false;
 
             _list.Remove(archetype);
+            removeCount++;
             return true;
         }
 

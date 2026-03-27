@@ -8,15 +8,10 @@ namespace ExtenderApp.ECS.Systems
 {
     public struct SystemHandle
     {
-        private readonly SystemCache _cache;
+        private readonly SystemSchedulerContext _cache;
 
-        public bool Enabled
-        {
-            get => _cache.Enabled;
-            set => _cache.Enabled = value;
-        }
 
-        internal SystemHandle(SystemCache cache)
+        internal SystemHandle(SystemSchedulerContext cache)
         {
             _cache = cache;
         }

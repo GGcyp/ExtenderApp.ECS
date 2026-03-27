@@ -1,9 +1,8 @@
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnosers;
-using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Exporters;
 using BenchmarkDotNet.Jobs;
+using BenchmarkDotNet.Loggers;
 
 public class QuickConfig : ManualConfig
 {
@@ -16,9 +15,8 @@ public class QuickConfig : ManualConfig
             .WithIterationCount(3)
         );
 
+        AddLogger(ConsoleLogger.Default);
         AddExporter(MarkdownExporter.GitHub);
         AddColumnProvider(DefaultColumnProviders.Instance);
-
-        // Do not add memory diagnoser by default (can be enabled via env variable)
     }
 }

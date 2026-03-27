@@ -10,7 +10,7 @@ namespace ExtenderApp.ECS.Commands
     internal readonly struct EntityCommandHead
     {
         /// <summary>
-        /// 命令类型（Create/Destroy/Add/Remove/Set）。
+        /// 命令类型（Create/Destroy/Add/RemoveAt/Set）。
         /// </summary>
         public readonly EntityCommandType Type;
 

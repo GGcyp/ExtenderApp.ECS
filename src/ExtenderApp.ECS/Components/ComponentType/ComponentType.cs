@@ -45,7 +45,7 @@ namespace ExtenderApp.ECS
         /// </summary>
         /// <typeparam name="T">组件类型，必须为结构体并实现 <see cref="IComponent" />。</typeparam>
         /// <returns>组件类型标识。</returns>
-        public static ComponentType Create<T>() where T : struct => GetOrCreateIndex<T>();
+        public static ComponentType Create<T>() => GetOrCreateIndex<T>();
 
         /// <summary>
         /// 程序集内通过类型索引创建组件类型标识。

@@ -59,7 +59,6 @@ namespace ExtenderApp.ECS.Archetypes
             // 创建并缓存新的 Archetype
             archetype = new(providers, componentMask, relationMask, _wvManager);
             _archetypes[componentMask, relationMask] = archetype;
-            _wvManager.IncrementArchetypeVersion(); // 组件类型发生变化，版本号递增
             return archetype;
         }
 
@@ -73,8 +72,6 @@ namespace ExtenderApp.ECS.Archetypes
 
             if (dispose)
                 archetype.Dispose();
-
-            _wvManager.IncrementArchetypeVersion();
             return true;
         }
 

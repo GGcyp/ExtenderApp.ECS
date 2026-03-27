@@ -29,7 +29,7 @@ public static class Program
             Console.WriteLine("  3. 自定义快速运行：Create/Add/Get (CustomRunner)");
             Console.WriteLine("  4. 自定义快速运行：Transfer (CustomRunner)");
             Console.WriteLine("  5. 自定义快速运行：Multi CRUD (CustomRunner)");
-            Console.WriteLine("  6. 自定义快速运行：Bulk AddEntity/Remove (CustomRunner)");
+            Console.WriteLine("  6. 自定义快速运行：Bulk AddEntity/RemoveAt (CustomRunner)");
             Console.WriteLine("  7. 自定义快速运行：异常行为 (CustomRunner)");
             Console.WriteLine("  8. 自定义快速运行：批量创建实体 (CustomRunner)");
             Console.WriteLine("  9. 自定义对照：超大组件影响对比 (CustomRunner)");
@@ -37,11 +37,13 @@ public static class Program
             Console.WriteLine("  11. 自定义示例：RelationPair (CustomRunner)");
             Console.WriteLine("  12. 自定义快速运行：EntityQuery Build 测试 (CustomRunner)");
             Console.WriteLine("  13. 命令缓冲并发写入测试 (CustomRunner)");
-            Console.WriteLine("  14. 仅 World 直接执行测试 (CustomRunner)");
+            Console.WriteLine("  14. 仅 CurrentWorld 直接执行测试 (CustomRunner)");
             Console.WriteLine("  15. DestroyEntitiesForQuery 测试 (CustomRunner)");
+            Console.WriteLine("  16. 共享组件增删改查测试 (CustomRunner)");
+            Console.WriteLine("  17. 托管对象 UseData 存取测试 (CustomRunner)");
             Console.WriteLine("  q. 退出");
             Console.WriteLine();
-            Console.Write("请输入选项 (1-15 或 q): ");
+            Console.Write("请输入选项 (1-17 或 q): ");
 
             var choice = Console.ReadLine()?.Trim();
             if (string.IsNullOrEmpty(choice)) continue;
@@ -119,6 +121,14 @@ public static class Program
 
                 case "15":
                     CustomRunner.RunDestroyEntitiesForQueryTest();
+                    break;
+
+                case "16":
+                    CustomRunner.RunSharedComponentCrudTest();
+                    break;
+
+                case "17":
+                    CustomRunner.RunManagedUseDataTest();
                     break;
 
                 default:

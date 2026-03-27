@@ -17,7 +17,7 @@ namespace ExtenderApp.ECS.Queries
     /// 组件列的动态解析由访问器层（如 <see cref="ArchetypeAccessor{T}"/>）在运行时完成。
     /// 此类型只负责匹配与维护匹配集合的生命周期与版本检测。
     /// </summary>
-    internal sealed class QueryCore
+    internal sealed class EntityQueryCore
     {
         /// <summary>
         /// 所有已注册的 Archetype 仓库引用（用于遍历并进行匹配扫描）。
@@ -73,12 +73,12 @@ namespace ExtenderApp.ECS.Queries
         internal ref readonly EntityQueryDesc QueryDesc => ref _desc;
 
         /// <summary>
-        /// 使用必要上下文创建 <see cref="QueryCore"/> 实例。
+        /// 使用必要上下文创建 <see cref="EntityQueryCore"/> 实例。
         /// </summary>
         /// <param name="allArchetypeList">全局 Archetype 仓库引用，用于匹配扫描。</param>
         /// <param name="desc">查询描述，包含筛选条件。</param>
         /// <param name="worldVersionManager">世界版本管理器，用于版本检测与跳过未变化块的优化。</param>
-        internal QueryCore(ArchetypeRepository allArchetypeList, EntityQueryDesc desc, WorldVersionManager worldVersionManager)
+        internal EntityQueryCore(ArchetypeRepository allArchetypeList, EntityQueryDesc desc, WorldVersionManager worldVersionManager)
         {
             _worldVersionManager = worldVersionManager;
             _repository = allArchetypeList;
@@ -94,19 +94,25 @@ namespace ExtenderApp.ECS.Queries
         /// <param name="skipUnchanged">是否启用跳过未发生变化的块的优化（true 将传入当前世界版本）。</param>
         /// <returns>相应类型的 <see cref="ArchetypeAccessor{T}"/>。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ArchetypeAccessor<T> GetAccessor<T>(bool skipUnchanged) where T : struct
-            => new(GetArchetypeSegmentHead(), ComponentType.Create<T>(), GetVersion(skipUnchanged));
+        internal ArchetypeEnumerator<T> GetArchetypeEnumerator<T>(bool skipUnchanged) => new(GetArchetypeAccessor<T>(skipUnchanged));
 
         /// <summary>
         /// 获取实体枚举器（按匹配的 Archetype 遍历实体句柄）。
         /// 该枚举器可与组件访问器配合使用以生成按行的查询结果。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal EntityAccessor.EntityEnumerator GetEntityEnumerator() => new(GetArchetypeSegmentHead());
+        internal ArchetypeEntityEnumerator GetArchetypeEntityEnumerator() => new(GetArchetypeEntityAccessorEnumerator());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ArchetypeAccessorEnumerator<T> GetArchetypeAccessor<T>(bool skipUnchanged) => new(GetArchetypeSegmentHead(), GetVersion(skipUnchanged));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ArchetypeEntityAccessorEnumerator GetArchetypeEntityAccessorEnumerator() => new(GetArchetypeSegmentHead());
 
         /// <summary>
         /// 返回当前缓存的匹配 Archetype 链表头。在返回前会确保匹配结果为最新（必要时触发重建）。
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ArchetypeSegment? GetArchetypeSegmentHead()
         {
             EnsureMatches();
@@ -150,6 +156,10 @@ namespace ExtenderApp.ECS.Queries
             }
         }
 
+        /// <summary>
+        /// 将满足查询条件的 Archetype 包装成 <see cref="ArchetypeSegment"/> 并追加到匹配链表的末尾。
+        /// </summary>
+        /// <param name="archetype">指定要添加的原型</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AppendSegment(Archetype archetype)
         {

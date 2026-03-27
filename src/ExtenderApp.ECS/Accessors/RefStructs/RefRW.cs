@@ -6,8 +6,8 @@ namespace ExtenderApp.ECS.Accessors
     /// 可写引用包装：在遍历时按索引获取组件的可写引用（ref）。
     /// 用于在不产生额外拷贝的情况下直接修改组件数据。
     /// </summary>
-    /// <typeparam name="T">组件类型（值类型且实现 <see cref="IComponent"/>）。</typeparam>
-    public readonly struct RefRW<T> where T : struct
+    /// <typeparam name="T">组件类型。</typeparam>
+    public readonly struct RefRW<T>
     {
         /// <summary>
         /// 目标组件列对应的 ArchetypeChunk（引用类型）。
@@ -15,13 +15,13 @@ namespace ExtenderApp.ECS.Accessors
         private readonly ArchetypeChunk<T> _chunk;
 
         /// <summary>
-        /// 组件在对应 Chunk/列内的局部索引。
+        /// 组件在对应 chunk/列内的局部索引。
         /// </summary>
         private readonly int _index;
 
         /// <summary>
         /// 获取当前组件的可写引用（ref）。
-        /// 注意：在持有该引用期间不要对底层 Chunk 做结构性修改（如归还、释放或重新分配），
+        /// 注意：在持有该引用期间不要对底层 chunk 做结构性修改（如归还、释放或重新分配），
         /// 否则可能导致悬挂引用或未定义行为。
         /// </summary>
         public ref T Value => ref _chunk.GetComponentRef(_index);

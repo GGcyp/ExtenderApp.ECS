@@ -6,8 +6,8 @@ namespace ExtenderApp.ECS.Accessors
     /// 只读引用包装：在遍历时按索引获取组件的只读引用（ref readonly）。
     /// 用于避免值类型拷贝并以安全方式暴露对组件的只读访问。
     /// </summary>
-    /// <typeparam name="T">组件类型（值类型且实现 <see cref="IComponent"/>）。</typeparam>
-    public readonly struct RefRO<T> where T : struct
+    /// <typeparam name="T">组件类型。</typeparam>
+    public readonly struct RefRO<T>
     {
         /// <summary>
         /// 目标组件列对应的 ArchetypeChunk（可能为 null，表示无效包装）。
@@ -15,7 +15,7 @@ namespace ExtenderApp.ECS.Accessors
         private readonly ArchetypeChunk<T> _chunk;
 
         /// <summary>
-        /// 组件在对应 Chunk/列内的局部索引。
+        /// 组件在对应 chunk/列内的局部索引。
         /// </summary>
         private readonly int _index;
 

@@ -24,7 +24,7 @@ namespace ExtenderApp.ECS.Components
         /// <typeparam name="T">组件类型，必须为值类型并实现 <see cref="IComponent" />。</typeparam>
         /// <returns>与 <typeparamref name="T" /> 对应的组件类型描述。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ComponentType GetOrCreateIndex<T>() where T : struct => new(ComponentTypeCache<T>.Instance);
+        public static ComponentType GetOrCreateIndex<T>() => new(ComponentTypeCache<T>.Instance);
 
         /// <summary>
         /// 按索引获取已注册的组件类型描述。
@@ -92,7 +92,7 @@ namespace ExtenderApp.ECS.Components
         /// 泛型组件类型缓存。 每个不同的 <typeparamref name="T" /> 会拥有独立静态实例，并在首次访问时分配唯一索引。
         /// </summary>
         /// <typeparam name="T">组件类型，必须为值类型并实现 <see cref="IComponent" />。</typeparam>
-        private sealed class ComponentTypeCache<T> : ComponentTypeCache where T : struct
+        private sealed class ComponentTypeCache<T> : ComponentTypeCache
         {
             /// <summary>
             /// 当前泛型组件类型的全局缓存实例。

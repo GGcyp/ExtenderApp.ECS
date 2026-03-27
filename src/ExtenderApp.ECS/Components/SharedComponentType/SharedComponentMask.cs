@@ -7,7 +7,7 @@ namespace ExtenderApp.ECS.Components
     /// 框架内部使用的共享组件掩码（internal）。
     /// 用于对引用类型的共享组件/单例进行位级快速筛选与集合运算。
     /// 设计为轻量值类型，采用固定段位表示（4 段 × 64 位 = 最多 256 个共享类型），
-    /// 提供 Add/Remove/On/All/Any/None 等常用操作以支持快速匹配逻辑。
+    /// 提供 Add/RemoveAt/On/All/Any/None 等常用操作以支持快速匹配逻辑。
     ///
     /// 说明：该类型仅供框架内部使用，不作为公共 API 暴露。
     /// 写入共享对象应仅在主线程进行；掩码用于在查询或系统调度中快速判断共享依赖。
@@ -55,9 +55,9 @@ namespace ExtenderApp.ECS.Components
         public void Add(SharedComponentType type) => SetBit(type.TypeIndex);
 
         /// <summary>
-        /// 泛型快捷添加共享类型（T1 必须为结构体类型）。
+        /// 泛型快捷添加共享类型（T 必须为结构体类型）。
         /// </summary>
-        public void Add<T>() where T : struct => Add(SharedComponentType.Create<T>());
+        public void Add<T>() => Add(SharedComponentType.Create<T>());
 
         /// <summary>
         /// 从掩码中移除指定共享类型（将对应位清零）。
@@ -65,9 +65,9 @@ namespace ExtenderApp.ECS.Components
         public void Remove(SharedComponentType type) => ClearBit(type.TypeIndex);
 
         /// <summary>
-        /// 泛型快捷移除共享类型（T1 必须为结构体类型）。
+        /// 泛型快捷移除共享类型（T 必须为结构体类型）。
         /// </summary>
-        public void Remove<T>() where T : struct => Remove(SharedComponentType.Create<T>());
+        public void Remove<T>() => Remove(SharedComponentType.Create<T>());
 
         /// <summary>
         /// 写入位操作：将指定索引对应的位设置为 1。
@@ -113,10 +113,10 @@ namespace ExtenderApp.ECS.Components
         }
 
         /// <summary>
-        /// 泛型快捷检查（T1 必须为值类型）。
+        /// 泛型快捷检查（T 必须为值类型）。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool On<T>() where T : struct => On(SharedComponentType.Create<T>());
+        public bool On<T>() => On(SharedComponentType.Create<T>());
 
         /// <summary>
         /// 判断当前掩码是否包含 other 的所有位（即包含全部共享类型）。
