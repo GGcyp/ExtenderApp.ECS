@@ -50,16 +50,15 @@ namespace ExtenderApp.ECS.Threading
                 throw new InvalidOperationException("只能在主线程调用该方法。");
         }
 
-#if DEBUG
-
         /// <summary>
-        /// 强制将当前线程设置为主线程，覆盖之前的记录（仅在确有必要时使用，例如测试场景）。
+        /// 强制将当前线程记录为“主线程”，覆盖之前的记录；仅供测试或宿主在合法边界内同步线程身份。
         /// </summary>
-        public static void ForceSetCurrentThreadAsMain()
+        internal static void ForceSetCurrentThreadAsMain()
         {
             _mainThreadId = Thread.CurrentThread.ManagedThreadId;
         }
 
+#if DEBUG
         /// <summary>
         /// 重置记录的主线程 Id（内部/测试用）。
         /// </summary>
@@ -67,7 +66,6 @@ namespace ExtenderApp.ECS.Threading
         {
             _mainThreadId = 0;
         }
-
 #endif
     }
 }

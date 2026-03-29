@@ -4,5 +4,6 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/ECSTest/ECSTest.csproj" Id="4066515f-cb7e-49cd-9a2a-283c32da514b" />
+    <Project Path="test/ECSTest.App/ECSTest.App.csproj" />
   </Folder>
 </Solution>

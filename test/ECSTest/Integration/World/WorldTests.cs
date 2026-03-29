@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ECSTest.Components;
 using ExtenderApp.ECS;
 using ExtenderApp.ECS.Accessors;
+using Xunit;
 
 namespace ECSTest.WorldTests;
 
@@ -38,30 +39,6 @@ public static class WorldTests
             sw.Stop();
             if (EnableConsoleMetrics)
                 Console.WriteLine($"[{name}] 用时: {sw.Elapsed.TotalMilliseconds:F3} ms");
-        }
-    }
-
-    private static void AssertEqual(int expected, int actual, string message)
-    {
-        if (expected != actual)
-            throw new InvalidOperationException($"{message} (expected {expected}, actual {actual}).");
-    }
-
-    private static void AssertFloatEqual(float expected, float actual, double tolerance, string message)
-    {
-        if (Math.Abs(expected - actual) > tolerance)
-        {
-            throw new InvalidOperationException(
-                $"{message} (expected {expected}, actual {actual}, tolerance {tolerance}).");
-        }
-    }
-
-    private static void AssertDoubleEqual(double expected, double actual, double tolerance, string message)
-    {
-        if (Math.Abs(expected - actual) > tolerance)
-        {
-            throw new InvalidOperationException(
-                $"{message} (expected {expected}, actual {actual}, tolerance {tolerance}).");
         }
     }
 
@@ -172,21 +149,21 @@ public static class WorldTests
             world.AddDefaultFrameSystem<LifecycleTestSystem>();
             InitializeAndStart(world);
 
-            AssertEqual(1, LifecycleTestSystem.CreateCount, "After Init, OnCreate");
-            AssertEqual(1, LifecycleTestSystem.StartCount, "After Start, OnStart");
-            AssertEqual(0, LifecycleTestSystem.UpdateCount, "Before first Update");
+            Assert.Equal(1, LifecycleTestSystem.CreateCount);
+            Assert.Equal(1, LifecycleTestSystem.StartCount);
+            Assert.Equal(0, LifecycleTestSystem.UpdateCount);
 
             world.Update(1.0f / 60f);
-            AssertEqual(1, LifecycleTestSystem.UpdateCount, "After first Update");
+            Assert.Equal(1, LifecycleTestSystem.UpdateCount);
 
             world.Update(1.0f / 60f);
-            AssertEqual(2, LifecycleTestSystem.UpdateCount, "After second Update");
-            AssertEqual(1, LifecycleTestSystem.CreateCount, "OnCreate once");
-            AssertEqual(1, LifecycleTestSystem.StartCount, "OnStart once");
+            Assert.Equal(2, LifecycleTestSystem.UpdateCount);
+            Assert.Equal(1, LifecycleTestSystem.CreateCount);
+            Assert.Equal(1, LifecycleTestSystem.StartCount);
         }
 
-        AssertEqual(1, LifecycleTestSystem.StopCount, "After Dispose, OnStop");
-        AssertEqual(1, LifecycleTestSystem.DestroyCount, "After Dispose, OnDestroy");
+        Assert.Equal(1, LifecycleTestSystem.StopCount);
+        Assert.Equal(1, LifecycleTestSystem.DestroyCount);
 
         MetricLine(
             $"  生命周期计数 — OnCreate: {LifecycleTestSystem.CreateCount}, OnStart: {LifecycleTestSystem.StartCount}, " +
@@ -203,12 +180,12 @@ public static class WorldTests
             InitializeAndStart(world);
             world.FixedUpdate(0.02f);
 
-            AssertEqual(1, LifecycleTestSystem.CreateCount, "FixedUpdate should bootstrap lifecycle");
-            AssertEqual(1, LifecycleTestSystem.StartCount, "FixedUpdate should run OnStart");
+            Assert.Equal(1, LifecycleTestSystem.CreateCount);
+            Assert.Equal(1, LifecycleTestSystem.StartCount);
         }
 
-        AssertEqual(1, LifecycleTestSystem.StopCount, "Dispose after FixedUpdate bootstrap");
-        AssertEqual(1, LifecycleTestSystem.DestroyCount, "Dispose after FixedUpdate bootstrap");
+        Assert.Equal(1, LifecycleTestSystem.StopCount);
+        Assert.Equal(1, LifecycleTestSystem.DestroyCount);
 
         MetricLine(
             $"  FixedUpdate 引导后计数 — OnCreate: {LifecycleTestSystem.CreateCount}, OnStart: {LifecycleTestSystem.StartCount}, " +
@@ -222,14 +199,14 @@ public static class WorldTests
         using var world = new World("TestWorld_LateSystem");
         InitializeAndStart(world);
         world.Update(1.0f / 60f);
-        AssertEqual(0, LifecycleTestSystem.CreateCount, "No systems registered yet");
+        Assert.Equal(0, LifecycleTestSystem.CreateCount);
 
         world.AddDefaultFrameSystem<LifecycleTestSystem>();
-        AssertEqual(1, LifecycleTestSystem.CreateCount, "Late register should run OnCreate immediately");
-        AssertEqual(1, LifecycleTestSystem.StartCount, "Late register should run OnStart immediately");
+        Assert.Equal(1, LifecycleTestSystem.CreateCount);
+        Assert.Equal(1, LifecycleTestSystem.StartCount);
 
         world.Update(1.0f / 60f);
-        AssertEqual(1, LifecycleTestSystem.UpdateCount, "One frame after late register");
+        Assert.Equal(1, LifecycleTestSystem.UpdateCount);
 
         MetricLine(
             $"  延迟注册后 — OnCreate: {LifecycleTestSystem.CreateCount}, OnStart: {LifecycleTestSystem.StartCount}, OnUpdate: {LifecycleTestSystem.UpdateCount}");
@@ -238,22 +215,15 @@ public static class WorldTests
     public static void TestUnknownSystemGroupThrows()
     {
         using var world = new World("TestWorld_BadGroup");
-        try
-        {
-            world.AddFrameSystemToCustomGroup<LifecycleTestSystem>("NoSuchGroup");
-            throw new InvalidOperationException("Expected ArgumentException for unknown group name.");
-        }
-        catch (ArgumentException ex)
-        {
-            MetricLine($"  已捕获 ArgumentException（组名错误）: {ex.ParamName}");
-        }
+        var ex = Assert.Throws<ArgumentException>(() =>
+            world.AddFrameSystemToCustomGroup<LifecycleTestSystem>("NoSuchGroup"));
+        MetricLine($"  已捕获 ArgumentException（组名错误）: {ex.ParamName ?? "(null)"}");
     }
 
     public static void TestWorldLightweightOptions()
     {
         using var world = new World("Test_Lightweight", WorldOptions.Lightweight);
-        if (world.Options.ParallelJobs != WorldParallelJobsMode.Disabled)
-            throw new InvalidOperationException("Lightweight preset should disable parallel jobs.");
+        Assert.Equal(WorldParallelJobsMode.Disabled, world.Options.ParallelJobs);
 
         InitializeAndStart(world);
         world.Update(1f / 60f);
@@ -271,7 +241,7 @@ public static class WorldTests
         world.AddFrameSystemToCustomGroup<LifecycleTestSystem>("Physics");
         InitializeAndStart(world);
         world.Update(1f / 60f);
-        AssertEqual(1, LifecycleTestSystem.UpdateCount, "Custom group system should run");
+        Assert.Equal(1, LifecycleTestSystem.UpdateCount);
         MetricLine($"  自定义组 Physics 上 OnUpdate 次数: {LifecycleTestSystem.UpdateCount}");
     }
 
@@ -286,10 +256,7 @@ public static class WorldTests
         InitializeAndStart(world);
 
         var query = world.Query<Position>();
-        AssertEqual(
-            QueryIterationMetrics.ExpectedEntityCount,
-            query.Count,
-            "直接 foreach 前 Query<Position> 实体数");
+        Assert.Equal(QueryIterationMetrics.ExpectedEntityCount, query.Count);
 
         float sumX = 0f;
         foreach (var row in query)
@@ -298,11 +265,9 @@ public static class WorldTests
             sumX += pos.Value.X;
         }
 
-        AssertFloatEqual(
-            QueryIterationMetrics.ExpectedSumX,
-            sumX,
-            QueryIterationMetrics.FloatTolerance,
-            "直接 foreach 累加 Position.X");
+        Assert.True(
+            Math.Abs(QueryIterationMetrics.ExpectedSumX - sumX) <= QueryIterationMetrics.FloatTolerance,
+            $"直接 foreach 累加 Position.X：期望 {QueryIterationMetrics.ExpectedSumX}，实际 {sumX}");
 
         MetricLine(
             $"  直接 foreach — 期望 Count={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 Count={query.Count}; " +
@@ -324,16 +289,11 @@ public static class WorldTests
 
         world.Update(1f / 60f);
 
-        AssertEqual(
-            QueryIterationMetrics.ExpectedEntityCount,
-            QueryIterationMetrics.MainThreadCount,
-            "主线程 ISystem 遍历到的带 Position 实体数");
+        Assert.Equal(QueryIterationMetrics.ExpectedEntityCount, QueryIterationMetrics.MainThreadCount);
 
-        AssertFloatEqual(
-            QueryIterationMetrics.ExpectedSumX,
-            QueryIterationMetrics.MainThreadSumX,
-            QueryIterationMetrics.FloatTolerance,
-            "主线程 ISystem 累加 Position.X");
+        Assert.True(
+            Math.Abs(QueryIterationMetrics.ExpectedSumX - QueryIterationMetrics.MainThreadSumX) <= QueryIterationMetrics.FloatTolerance,
+            $"主线程 ISystem 累加 Position.X：期望 {QueryIterationMetrics.ExpectedSumX}，实际 {QueryIterationMetrics.MainThreadSumX}");
 
         MetricLine(
             $"  主线程 ISystem — 期望 Count={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 Count={QueryIterationMetrics.MainThreadCount}; " +
@@ -355,16 +315,11 @@ public static class WorldTests
 
         world.Update(1f / 60f);
 
-        AssertEqual(
-            QueryIterationMetrics.ExpectedEntityCount,
-            QueryIterationMetrics.ParallelCount,
-            "IParallelSystem<Position> 遍历到的实体数（跨作业合计）");
+        Assert.Equal(QueryIterationMetrics.ExpectedEntityCount, QueryIterationMetrics.ParallelCount);
 
-        AssertFloatEqual(
-            QueryIterationMetrics.ExpectedSumX,
-            QueryIterationMetrics.ParallelSumX,
-            QueryIterationMetrics.FloatTolerance,
-            "IParallelSystem<Position> 累加 Position.X（原子缩放合计）");
+        Assert.True(
+            Math.Abs(QueryIterationMetrics.ExpectedSumX - QueryIterationMetrics.ParallelSumX) <= QueryIterationMetrics.FloatTolerance,
+            $"并行累加 Position.X：期望 {QueryIterationMetrics.ExpectedSumX}，实际 {QueryIterationMetrics.ParallelSumX}");
 
         MetricLine(
             $"  并行 IParallelSystem — 期望 Count={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 Count={QueryIterationMetrics.ParallelCount}; " +
@@ -382,7 +337,7 @@ public static class WorldTests
         InitializeAndStart(world);
 
         var query = world.Query<Position, Velocity, Health, Mana, Rotation>();
-        AssertEqual(n, query.Count, "Query<T1..T5> 实体数");
+        Assert.Equal(n, query.Count);
 
         double sum = 0d;
         foreach (var row in query)
@@ -392,11 +347,9 @@ public static class WorldTests
         }
 
         double expected = MultiComponentMetrics.ExpectedT5For(n);
-        AssertDoubleEqual(
-            expected,
-            sum,
-            MainThreadMultiComponentSumTolerance,
-            "五组件直接遍历组合标量之和");
+        Assert.True(
+            Math.Abs(expected - sum) <= MainThreadMultiComponentSumTolerance,
+            $"五组件直接遍历组合标量之和：期望 {expected}，实际 {sum}，容差 {MainThreadMultiComponentSumTolerance}");
 
         MetricLine(
             $"  五组件直接 Query — N={n}, Count={query.Count}, Sum={sum} (期望 {expected})");
@@ -424,12 +377,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T2MainCount, "T2 主线程实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT2For(n),
-            MultiComponentMetrics.T2MainSum,
-            MainThreadMultiComponentSumTolerance,
-            "T2 主线程组合和");
+        Assert.Equal(n, MultiComponentMetrics.T2MainCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT2For(n) - MultiComponentMetrics.T2MainSum) <= MainThreadMultiComponentSumTolerance,
+            $"T2 主线程组合和：期望 {MultiComponentMetrics.ExpectedT2For(n)}，实际 {MultiComponentMetrics.T2MainSum}");
         MetricLine($"  主线程 T2 — N={n}, Count={MultiComponentMetrics.T2MainCount}, Sum={MultiComponentMetrics.T2MainSum}");
     }
 
@@ -441,12 +392,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T3MainCount, "T3 主线程实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT3For(n),
-            MultiComponentMetrics.T3MainSum,
-            MainThreadMultiComponentSumTolerance,
-            "T3 主线程组合和");
+        Assert.Equal(n, MultiComponentMetrics.T3MainCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT3For(n) - MultiComponentMetrics.T3MainSum) <= MainThreadMultiComponentSumTolerance,
+            $"T3 主线程组合和：期望 {MultiComponentMetrics.ExpectedT3For(n)}，实际 {MultiComponentMetrics.T3MainSum}");
         MetricLine($"  主线程 T3 — N={n}, Count={MultiComponentMetrics.T3MainCount}, Sum={MultiComponentMetrics.T3MainSum}");
     }
 
@@ -458,12 +407,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T4MainCount, "T4 主线程实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT4For(n),
-            MultiComponentMetrics.T4MainSum,
-            MainThreadMultiComponentSumTolerance,
-            "T4 主线程组合和");
+        Assert.Equal(n, MultiComponentMetrics.T4MainCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT4For(n) - MultiComponentMetrics.T4MainSum) <= MainThreadMultiComponentSumTolerance,
+            $"T4 主线程组合和：期望 {MultiComponentMetrics.ExpectedT4For(n)}，实际 {MultiComponentMetrics.T4MainSum}");
         MetricLine($"  主线程 T4 — N={n}, Count={MultiComponentMetrics.T4MainCount}, Sum={MultiComponentMetrics.T4MainSum}");
     }
 
@@ -475,12 +422,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T5MainCount, "T5 主线程实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT5For(n),
-            MultiComponentMetrics.T5MainSum,
-            MainThreadMultiComponentSumTolerance,
-            "T5 主线程组合和");
+        Assert.Equal(n, MultiComponentMetrics.T5MainCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT5For(n) - MultiComponentMetrics.T5MainSum) <= MainThreadMultiComponentSumTolerance,
+            $"T5 主线程组合和：期望 {MultiComponentMetrics.ExpectedT5For(n)}，实际 {MultiComponentMetrics.T5MainSum}");
         MetricLine($"  主线程 T5 — N={n}, Count={MultiComponentMetrics.T5MainCount}, Sum={MultiComponentMetrics.T5MainSum}");
     }
 
@@ -507,12 +452,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T2ParallelCount, "T2 并行实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT2For(n),
-            MultiComponentMetrics.T2ParallelSum,
-            tol,
-            "T2 并行组合和");
+        Assert.Equal(n, MultiComponentMetrics.T2ParallelCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT2For(n) - MultiComponentMetrics.T2ParallelSum) <= tol,
+            $"T2 并行组合和：期望 {MultiComponentMetrics.ExpectedT2For(n)}，实际 {MultiComponentMetrics.T2ParallelSum}");
         MetricLine(
             $"  并行 T2 — N={n}, Count={MultiComponentMetrics.T2ParallelCount}, Sum={MultiComponentMetrics.T2ParallelSum}");
     }
@@ -525,12 +468,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T3ParallelCount, "T3 并行实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT3For(n),
-            MultiComponentMetrics.T3ParallelSum,
-            tol,
-            "T3 并行组合和");
+        Assert.Equal(n, MultiComponentMetrics.T3ParallelCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT3For(n) - MultiComponentMetrics.T3ParallelSum) <= tol,
+            $"T3 并行组合和：期望 {MultiComponentMetrics.ExpectedT3For(n)}，实际 {MultiComponentMetrics.T3ParallelSum}");
         MetricLine(
             $"  并行 T3 — N={n}, Count={MultiComponentMetrics.T3ParallelCount}, Sum={MultiComponentMetrics.T3ParallelSum}");
     }
@@ -543,12 +484,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T4ParallelCount, "T4 并行实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT4For(n),
-            MultiComponentMetrics.T4ParallelSum,
-            tol,
-            "T4 并行组合和");
+        Assert.Equal(n, MultiComponentMetrics.T4ParallelCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT4For(n) - MultiComponentMetrics.T4ParallelSum) <= tol,
+            $"T4 并行组合和：期望 {MultiComponentMetrics.ExpectedT4For(n)}，实际 {MultiComponentMetrics.T4ParallelSum}");
         MetricLine(
             $"  并行 T4 — N={n}, Count={MultiComponentMetrics.T4ParallelCount}, Sum={MultiComponentMetrics.T4ParallelSum}");
     }
@@ -561,12 +500,10 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
 
-        AssertEqual(n, MultiComponentMetrics.T5ParallelCount, "T5 并行实体数");
-        AssertDoubleEqual(
-            MultiComponentMetrics.ExpectedT5For(n),
-            MultiComponentMetrics.T5ParallelSum,
-            tol,
-            "T5 并行组合和");
+        Assert.Equal(n, MultiComponentMetrics.T5ParallelCount);
+        Assert.True(
+            Math.Abs(MultiComponentMetrics.ExpectedT5For(n) - MultiComponentMetrics.T5ParallelSum) <= tol,
+            $"T5 并行组合和：期望 {MultiComponentMetrics.ExpectedT5For(n)}，实际 {MultiComponentMetrics.T5ParallelSum}");
         MetricLine(
             $"  并行 T5 — N={n}, Count={MultiComponentMetrics.T5ParallelCount}, Sum={MultiComponentMetrics.T5ParallelSum}");
     }
@@ -613,23 +550,19 @@ public static class WorldTests
         swUpdates.Stop();
 
         var query = world.Query<Position>();
-        AssertEqual(n, query.Count, "高实体流水线结束后 Query<Position> 实体数");
+        Assert.Equal(n, query.Count);
 
-        AssertEqual(n, QueryIterationMetrics.MainThreadCount, "主线程聚合遍历实体数（末帧）");
+        Assert.Equal(n, QueryIterationMetrics.MainThreadCount);
 
-        AssertEqual(n, QueryIterationMetrics.ParallelCount, "并行聚合遍历实体数（末帧，跨作业合计）");
+        Assert.Equal(n, QueryIterationMetrics.ParallelCount);
 
-        AssertFloatEqual(
-            expectedSumAfterFrames,
-            QueryIterationMetrics.ParallelSumX,
-            parallelTolerance,
-            "并行聚合 SumX（缩放整数累加，应对齐闭式期望）");
+        Assert.True(
+            Math.Abs(expectedSumAfterFrames - QueryIterationMetrics.ParallelSumX) <= parallelTolerance,
+            $"并行聚合 SumX：期望 {expectedSumAfterFrames}，实际 {QueryIterationMetrics.ParallelSumX}，容差 {parallelTolerance}");
 
-        AssertFloatEqual(
-            QueryIterationMetrics.ParallelSumX,
-            QueryIterationMetrics.MainThreadSumX,
-            mainVsParallelTolerance,
-            "主线程 SumX 应与并行聚合一致（允许大范围 float 顺序累加误差）");
+        Assert.True(
+            Math.Abs(QueryIterationMetrics.ParallelSumX - QueryIterationMetrics.MainThreadSumX) <= mainVsParallelTolerance,
+            $"主线程与并行 SumX 一致：并行 {QueryIterationMetrics.ParallelSumX}，主线程 {QueryIterationMetrics.MainThreadSumX}，容差 {mainVsParallelTolerance}");
 
         MetricLine(
             $"  高实体流水线 — N={n}, 系统数=5（ResetParallel→Integrate→Heavy→MainThreadSum→ParallelSum）, " +

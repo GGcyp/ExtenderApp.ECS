@@ -39,7 +39,7 @@
 </ItemGroup>
 ```
 
-解决方案入口：`ExtenderApp.ECS.slnx`（或直接在 IDE 中打开 `src/ExtenderApp.ECS` 与 `test/ECSTest`）。
+解决方案入口：`ExtenderApp.ECS.slnx`（含库 `src/ExtenderApp.ECS`、测试库 `test/ECSTest`、控制台入口 `test/ECSTest.App`）。
 
 ---
 
@@ -148,8 +148,9 @@ world.DestroySystems();
 
 ## 测试与基准
 
-- 单元/集成测试：`test/ECSTest`
-- 基准与自定义跑法：`test/ECSTest/Benchmarks/CustomRunner.cs`
+- 自动化测试（xUnit）：`dotnet test test/ECSTest/ECSTest.csproj`
+- 交互式菜单与命令行（基准 / CustomRunner / WorldTests）：`dotnet run --project test/ECSTest.App/ECSTest.App.csproj`
+- 自定义跑法实现：`test/ECSTest/CustomRuns/`（partial `CustomRunner`）
 
 建议在 **Release** 配置下评估性能。
 

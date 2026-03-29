@@ -1,0 +1,88 @@
+using System.Diagnostics;
+using ECSTest.Components;
+using ExtenderApp.ECS;
+using ExtenderApp.ECS.Queries;
+
+namespace ECSTest.CustomRuns;
+
+/// <summary>
+/// 命令缓冲并发、CurrentWorld 直调、按查询销毁与共享组件。
+/// </summary>
+public static partial class CustomRunner
+{
+    /// <summary>
+    /// 多线程向同一 <see cref="World.CommandBuffer"/> 写入命令后的回放验证。
+    /// </summary>
+    public static void RunCommandBufferConcurrencyTest(int opsPerWriter)
+    {
+        Console.WriteLine($"=== CommandBuffer Concurrency Test: writers=8, opsPerWriter={opsPerWriter} ===");
+        var sw = Stopwatch.StartNew();
+        CustomRunnerCommandsVerification.VerifyCommandBufferConcurrency(opsPerWriter);
+        sw.Stop();
+        Console.WriteLine($"Verification OK, elapsed={sw.ElapsedMilliseconds} ms");
+        Console.WriteLine("========================================");
+    }
+
+    /// <summary>
+    /// 不经命令缓冲、直接在当前 World 上执行大量组件操作的冒烟测试。
+    /// </summary>
+    public static void RunWorldDirectExecutionTest(int opsPerWriter)
+    {
+        Console.WriteLine($"=== CurrentWorld Direct Execution opsPerWriter={opsPerWriter} ===");
+        var sw = Stopwatch.StartNew();
+        CustomRunnerCommandsVerification.VerifyWorldDirectExecution(opsPerWriter);
+        sw.Stop();
+        Console.WriteLine($"Verification OK, elapsed={sw.ElapsedMilliseconds} ms");
+        Console.WriteLine("========================================");
+    }
+
+    /// <summary>
+    /// <see cref="World.DestroyEntitiesForQuery"/> 与隐式 <see cref="EntityQuery"/> 转换。
+    /// </summary>
+    public static void RunDestroyEntitiesForQueryTest()
+    {
+        Console.WriteLine("=== CustomRunner: DestroyEntitiesForQuery Test ===");
+        CustomRunnerCommandsVerification.VerifyDestroyEntitiesForQuery();
+        Console.WriteLine("DestroyEntitiesForQuery: OK");
+        Console.WriteLine("========================================");
+    }
+
+    /// <summary>
+    /// 共享组件的增删改查路径。
+    /// </summary>
+    public static void RunSharedComponentCrudTest()
+    {
+        Console.WriteLine("=== CustomRunner: SharedComponent CRUD Test ===");
+        var sw = Stopwatch.StartNew();
+        CustomRunnerCommandsVerification.VerifySharedComponentCrud();
+        sw.Stop();
+        Console.WriteLine($"Elapsed: {sw.ElapsedMilliseconds} ms");
+        Console.WriteLine("========================================");
+    }
+
+    /// <summary>
+    /// 托管引用类型组件的创建与查询（性能由使用方评估）。
+    /// </summary>
+    public static void RunManagedUseDataTest()
+    {
+        Console.WriteLine("=== CustomRunner: Managed UseData Test ===");
+        var sw = Stopwatch.StartNew();
+        CustomRunnerCommandsVerification.VerifyManagedUseData();
+        sw.Stop();
+        Console.WriteLine($"OK, elapsed={sw.ElapsedMilliseconds} ms");
+        Console.WriteLine("========================================");
+    }
+
+    /// <summary>
+    /// 批量创建带掩码实体后逐条销毁的耗时输出。
+    /// </summary>
+    public static void RunDestroyEntitiesTest()
+    {
+        Console.WriteLine("=== CustomRunner: DestroyEntities batch ===");
+        var sw = Stopwatch.StartNew();
+        CustomRunnerCommandsVerification.VerifyDestroyEntitiesBatch();
+        sw.Stop();
+        Console.WriteLine($"OK, elapsed={sw.ElapsedMilliseconds} ms");
+        Console.WriteLine("========================================");
+    }
+}

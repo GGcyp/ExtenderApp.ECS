@@ -1,7 +1,13 @@
 using System;
 using System.Diagnostics;
-using ECSTest.WorldTests;
+using ECSTest.CustomRuns;
+using WorldSuite = ECSTest.WorldTests.WorldTests;
 
+namespace ECSTest.App;
+
+/// <summary>
+/// 交互式菜单与命令行入口（基准、CustomRunner、WorldTests）；xUnit 测试请使用 <c>dotnet test test/ECSTest</c>。
+/// </summary>
 public static class Program
 {
     public static void Main(string[] args)
@@ -17,11 +23,10 @@ public static class Program
             string.Equals(args[0], "worldtests", StringComparison.OrdinalIgnoreCase))
         {
             ApplyMultiComponentCountFromArgs(args, argIndex: 1);
-            WorldTests.RunAll();
+            WorldSuite.RunAll();
             return;
         }
 
-        // 支持通过环境变量或命令行参数选择要运行的基准或自定义运行 示例： dotnet run --project test/ECSTest CreateSetGet
         string filterArg = args != null && args.Length > 0 ? args[0] : Environment.GetEnvironmentVariable("ECSTEST_BENCHMARKS");
 
         if (!string.IsNullOrEmpty(filterArg))
@@ -117,7 +122,6 @@ public static class Program
                     break;
 
                 case "13":
-                    // 询问每个写线程的操作数量
                     Console.Write("输入每个写线程的操作次数（默认 1000）：");
                     var s = Console.ReadLine();
                     int n = 1000;
@@ -153,18 +157,18 @@ public static class Program
 
                 case "19":
                     Console.Write(
-                        $"多组件遍历实体数 N（回车保留当前 {WorldTests.MultiComponentStressEntityCount}，或读 ECSTEST_MULTI_COMPONENT_N；封顶 {WorldTests.MultiComponentEntityCountHardCap}）：");
+                        $"多组件遍历实体数 N（回车保留当前 {WorldSuite.MultiComponentStressEntityCount}，或读 ECSTEST_MULTI_COMPONENT_N；封顶 {WorldSuite.MultiComponentEntityCountHardCap}）：");
                     var s19 = Console.ReadLine();
                     if (!string.IsNullOrWhiteSpace(s19) && int.TryParse(s19.Trim(), out var p19) && p19 > 0)
-                        WorldTests.MultiComponentStressEntityCount = Math.Min(p19, WorldTests.MultiComponentEntityCountHardCap);
+                        WorldSuite.MultiComponentStressEntityCount = Math.Min(p19, WorldSuite.MultiComponentEntityCountHardCap);
                     else
                     {
                         var envN = Environment.GetEnvironmentVariable("ECSTEST_MULTI_COMPONENT_N");
                         if (!string.IsNullOrWhiteSpace(envN) && int.TryParse(envN.Trim(), out var e19) && e19 > 0)
-                            WorldTests.MultiComponentStressEntityCount = Math.Min(e19, WorldTests.MultiComponentEntityCountHardCap);
+                            WorldSuite.MultiComponentStressEntityCount = Math.Min(e19, WorldSuite.MultiComponentEntityCountHardCap);
                     }
 
-                    WorldTests.RunAll();
+                    WorldSuite.RunAll();
                     Console.WriteLine("WorldTests.RunAll 已完成。");
                     break;
 
@@ -180,19 +184,19 @@ public static class Program
     }
 
     /// <summary>
-    /// 解析多组件测试规模：优先 <paramref name="args"/>[argIndex]，否则环境变量 ECSTEST_MULTI_COMPONENT_N；写入 <see cref="WorldTests.MultiComponentStressEntityCount"/>。
+    /// 解析多组件测试规模：优先 <paramref name="args"/>[argIndex]，否则环境变量 ECSTEST_MULTI_COMPONENT_N；写入 <see cref="WorldSuite.MultiComponentStressEntityCount"/>。
     /// </summary>
     private static void ApplyMultiComponentCountFromArgs(string[] args, int argIndex)
     {
         if (args != null && args.Length > argIndex && int.TryParse(args[argIndex].Trim(), out var parsed) && parsed > 0)
         {
-            WorldTests.MultiComponentStressEntityCount = Math.Min(parsed, WorldTests.MultiComponentEntityCountHardCap);
+            WorldSuite.MultiComponentStressEntityCount = Math.Min(parsed, WorldSuite.MultiComponentEntityCountHardCap);
             return;
         }
 
         var env = Environment.GetEnvironmentVariable("ECSTEST_MULTI_COMPONENT_N");
         if (!string.IsNullOrWhiteSpace(env) && int.TryParse(env.Trim(), out var en) && en > 0)
-            WorldTests.MultiComponentStressEntityCount = Math.Min(en, WorldTests.MultiComponentEntityCountHardCap);
+            WorldSuite.MultiComponentStressEntityCount = Math.Min(en, WorldSuite.MultiComponentEntityCountHardCap);
     }
 
     private static void RunCustomWithPrompt(Action<int> action, int defaultN)
@@ -204,7 +208,6 @@ public static class Program
             n = parsed;
         else
         {
-            // 尝试读取环境变量
             var env = Environment.GetEnvironmentVariable("ECSTEST_PERF_N");
             if (!string.IsNullOrEmpty(env) && int.TryParse(env, out var envN) && envN > 0)
                 n = envN;
