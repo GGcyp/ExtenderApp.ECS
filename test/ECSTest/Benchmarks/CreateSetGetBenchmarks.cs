@@ -1,11 +1,10 @@
-using System;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
-using ExtenderApp.ECS;
 using ECSTest.Components;
-using System.Collections.Generic;
+using ExtenderApp.ECS;
 
 [Orderer(SummaryOrderPolicy.FastestToSlowest)]
+[MemoryDiagnoser]
 public class CreateSetGetBenchmarks
 {
     [Params(1000, 10000, 100000)]
@@ -227,7 +226,6 @@ public class CreateSetGetBenchmarks
     [Benchmark]
     public void DestroyEntities()
     {
-        // 倒序删除可避免尾部交换影响后续待删实体索引映射
         for (int i = 0; i < entities.Count; i++)
         {
             world.DestroyEntity(entities[i]);

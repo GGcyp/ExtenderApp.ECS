@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using ECSTest.Components;
 using ExtenderApp.ECS;
 using ExtenderApp.ECS.Abstract;
@@ -639,14 +639,14 @@ public static class CustomRunner
         {
             using var world = new World();
 
-            var entity = world.CreateEntity();
-            world.AddComponent(entity, new Position { X = 2, Y = 3 });
-            world.AddComponent(entity, new Velocity { Vx = 4, Vy = 5 });
-            world.AddComponent(entity, new Health { Value = 6 });
+            var entity = world.CreateEntity(
+                new Position { X = 2, Y = 3 },
+                new Velocity { Vx = 4, Vy = 5 },
+                new Health { Value = 6 });
 
-            var ignored = world.CreateEntity();
-            world.AddComponent(ignored, new Position { X = 100, Y = 200 });
-            world.AddComponent(ignored, new Velocity { Vx = 1, Vy = 1 });
+            var ignored = world.CreateEntity(
+                new Position { X = 100, Y = 200 },
+                new Velocity { Vx = 1, Vy = 1 });
 
             int count = 0;
             var query = world.Query<Health, Position, Velocity>();
@@ -672,14 +672,14 @@ public static class CustomRunner
         {
             using var world = new World();
 
-            var entity = world.CreateEntity();
-            world.AddComponent(entity, new Position { X = 2, Y = 3 });
-            world.AddComponent(entity, new Velocity { Vx = 4, Vy = 5 });
-            world.AddComponent(entity, new Health { Value = 6 });
+            var entity = world.CreateEntity(
+                new Position { X = 2, Y = 3 },
+                new Velocity { Vx = 4, Vy = 5 },
+                new Health { Value = 6 });
 
-            var ignored = world.CreateEntity();
-            world.AddComponent(ignored, new Position { X = 100, Y = 200 });
-            world.AddComponent(ignored, new Velocity { Vx = 1, Vy = 1 });
+            var ignored = world.CreateEntity(
+                new Position { X = 100, Y = 200 },
+                new Velocity { Vx = 1, Vy = 1 });
 
             var query = world.Query<Velocity, Health, Position>();
             var query1 = world.Query<Velocity, Position>();
@@ -699,14 +699,15 @@ public static class CustomRunner
             }
 
             int count2 = 0;
-            foreach ((RefRW<Velocity> velocity, Health health, Position position, Entity rowEntity) in query)
+            foreach (var row in query)
             {
+                row.DeconstructRefs(out RefRW<Velocity> velocity, out RefRW<Health> health, out RefRW<Position> position, out Entity rowEntity);
                 count2++;
                 if (rowEntity != entity) return false;
                 velocity.Value = new Velocity
                 {
-                    Vx = velocity.Value.Vx + health.Value,
-                    Vy = velocity.Value.Vy + position.X
+                    Vx = velocity.Value.Vx + health.Value.Value,
+                    Vy = velocity.Value.Vy + position.Value.X
                 };
             }
 
@@ -753,8 +754,7 @@ public static class CustomRunner
         Console.WriteLine($"RelationMask.Has(ChildOf) = {relationMask.On(childOf)}");
         Console.WriteLine($"RelationMask.Has(Target) = {relationMask.On(targetRel)}");
 
-        // 关系对与主体实体关联：主体实体 -> pair 列表
-        // 这是一种最直观的关联方式（演示用）
+        // 关系对与主体实体关联：主体实体 -> pair 列表 这是一种最直观的关联方式（演示用）
         var ownerRelations = new Dictionary<Entity, List<RelationPair>>();
         ownerRelations[child] = new List<RelationPair> { childOfA, targetPair };
 
@@ -903,13 +903,15 @@ public static class CustomRunner
             world.AddComponent(e, new Health { Value = i });
             world.AddComponent(e, new Rotation { Value = i });
             world.AddComponent(e, new Scale { Value = i });
+            world.AddComponent<PlayerTag>(e);
             world.RemoveComponent<Position>(e);
+            world.RemoveComponent<PlayerTag>(e);
             world.DestroyEntity(e);
         }
 
         sw.Stop();
 
-        long totalOps = (long)ops * 8 + 1;
+        long totalOps = (long)ops * 10 + 1;
         Console.WriteLine($"CurrentWorld direct execution finished: totalOps={totalOps}, elapsed={sw.ElapsedMilliseconds} ms");
 
         bool ok = true;
@@ -1025,6 +1027,7 @@ public static class CustomRunner
     {
         public int X;
         public int Y;
+
         public override string ToString() => $"SharedSample(X={X},Y={Y})";
     }
 
@@ -1057,5 +1060,31 @@ public static class CustomRunner
         public int Level { get; set; }
 
         public override string ToString() => $"ManagedData(Name={Name}, Level={Level})";
+    }
+
+    //测试删除空结构
+    public static void RunDestroyEntitiesTest()
+    {
+        const int count = 2048;
+
+        var sw = Stopwatch.StartNew();
+
+        World world = new();
+        List<Entity> entities = new(count);
+        ComponentMask mask = new() { ComponentType.Create<Position>(), ComponentType.Create<Velocity>(), ComponentType.Create<PlayerTag>() };
+
+        for (int i = 0; i < count; i++)
+        {
+            entities.Add(world.CreateEntity(mask));
+        }
+
+        foreach (var entity in entities)
+        {
+            world.DestroyEntity(entity);
+        }
+
+        sw.Stop();
+
+        Console.WriteLine($"Destroyed {entities.Count} entities in {sw.ElapsedMilliseconds} ms");
     }
 }

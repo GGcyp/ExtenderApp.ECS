@@ -95,7 +95,7 @@ namespace ExtenderApp.ECS.Archetypes
         public bool TryAdd(Entity entity, ComponentHandle? handle, out int index)
         {
             index = -1;
-            // 修复：应使用 '<'，避免当 Count == Entities.Length 时写入越界
+            // 修复：应使用 '<'，避免当 Count == EManager.Length 时写入越界
             if (Count < Entities.Length)
             {
                 index = Count++;
@@ -156,5 +156,7 @@ namespace ExtenderApp.ECS.Archetypes
             localIndex = globalIndex - StartIndex;
             return globalIndex >= StartIndex && globalIndex < StartIndex + Count;
         }
+
+        public override string ToString() => $"SegmentInfo (StartIndex: {StartIndex}, Count: {Count}, Capacity: {Entities.Length})";
     }
 }

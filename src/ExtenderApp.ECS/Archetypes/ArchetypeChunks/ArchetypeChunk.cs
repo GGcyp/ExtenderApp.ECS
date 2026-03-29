@@ -40,6 +40,11 @@ namespace ExtenderApp.ECS.Archetypes
         public int Count { get; protected set; }
 
         /// <summary>
+        /// 获取当前块是否在对象池中。 该属性由提供器在租用时设置为 true，在归还时设置为 false。未初始化的块也被视为不活跃。外部 API 可通过此属性判断当前块是否可用或已被回收。
+        /// </summary>
+        public bool IsActive { get; private set; }
+
+        /// <summary>
         /// 判断当前块是否已满（Count &gt;= Capacity）。
         /// </summary>
         public bool IsFull => Count >= Capacity;
@@ -63,6 +68,7 @@ namespace ExtenderApp.ECS.Archetypes
             Count = 0;
             Capacity = capacity;
             InitializeProtected();
+            IsActive = true;
         }
 
         /// <summary>
@@ -148,15 +154,11 @@ namespace ExtenderApp.ECS.Archetypes
             while (cur != null)
             {
                 var next = cur.Next;
+                cur.IsActive = false;
                 cur.Next = null;
-                try
-                {
-                    cur._provider.Return(cur);
-                }
-                catch
-                {
-                }
-                cur = next;
+                cur.ReturnChunkToPool();
+                cur._provider.Return(cur);
+                cur = next?.IsActive == true ? next : null;
             }
         }
 
@@ -180,7 +182,7 @@ namespace ExtenderApp.ECS.Archetypes
         #region Abstract Methods
 
         /// <summary>
-        /// 派生类在此方法中应对底层 chunk 执行类型相关的初始化（例如调用 chunk.Initialize&lt;T&gt;）。
+        /// 派生类在此方法中应对底层 chunk 执行类型相关的初始化（例如调用 chunk.Initialize&lt;T1&gt;）。
         /// </summary>
         protected abstract void InitializeProtected();
 
@@ -206,8 +208,7 @@ namespace ExtenderApp.ECS.Archetypes
         protected abstract void RemoveAtProtected(int localIndex);
 
         /// <summary>
-        /// 复制指定数量的数据从源指针到当前块的底层 chunk 内存。 注意：调用前应确保块已初始化且 soure 指向的数据大小不超过当前块剩余容量。
-        /// 该方法直接调用底层 chunk 的 CopiedUnsafe 实现，适用于在批量添加或迁移数据时执行高效的内存复制。
+        /// 复制指定数量的数据从源指针到当前块的底层 chunk 内存。 注意：调用前应确保块已初始化且 soure 指向的数据大小不超过当前块剩余容量。 该方法直接调用底层 chunk 的 CopiedUnsafe 实现，适用于在批量添加或迁移数据时执行高效的内存复制。
         /// </summary>
         /// <param name="localIndex">当前块内的局部索引，表示复制数据的起始位置。</param>
         /// <param name="soure">数据源。</param>
@@ -217,7 +218,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 将底层 chunk 归还到池中并清理状态（Count 重置）。
         /// </summary>
-        public abstract void ReturnChunkToPool();
+        protected abstract void ReturnChunkToPool();
 
         /// <summary>
         /// 抛出未初始化异常的辅助方法，供公有 API 在使用前调用检查。

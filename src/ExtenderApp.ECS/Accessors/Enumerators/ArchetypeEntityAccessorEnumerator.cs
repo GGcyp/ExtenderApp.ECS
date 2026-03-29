@@ -23,18 +23,16 @@ namespace ExtenderApp.ECS.Accessors
         }
 
         /// <summary>
-        /// 推进到下一个 Archetype 并设置 <see cref="Current"/>；无更多项时返回 false。
+        /// 推进到下一个 Archetype 并设置 <see cref="Current" />；无更多项时返回 false。
         /// </summary>
         public bool MoveNext()
         {
-            while (true)
-            {
-                if (nextSegment == null)
-                    return false;
+            if (nextSegment == null)
+                return false;
 
-                Current = new(nextSegment.Archetype);
-                nextSegment = nextSegment.Next;
-            }
+            Current = new(nextSegment.Archetype);
+            nextSegment = nextSegment.Next;
+            return true;
         }
     }
 }

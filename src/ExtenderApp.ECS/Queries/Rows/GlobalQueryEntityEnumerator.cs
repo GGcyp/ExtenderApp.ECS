@@ -1,6 +1,11 @@
-﻿namespace ExtenderApp.ECS.Accessors
+﻿using ExtenderApp.ECS.Accessors;
+
+namespace ExtenderApp.ECS.Queries
 {
-    internal struct ArchetypeEntityEnumerator
+    /// <summary>
+    /// 全局查询实体枚举器，用于在所有选中原型查询中枚举实体。
+    /// </summary>
+    internal struct GlobalQueryEntityEnumerator
     {
         private ArchetypeEntityAccessorEnumerator aEnumerator;
         private ChunkEntityAccessorEnumerator cEnumerator;
@@ -8,7 +13,7 @@
 
         public Entity Current => enumerator.Current;
 
-        public ArchetypeEntityEnumerator(ArchetypeEntityAccessorEnumerator aEnumerator)
+        public GlobalQueryEntityEnumerator(ArchetypeEntityAccessorEnumerator aEnumerator)
         {
             this.aEnumerator = aEnumerator;
             this.cEnumerator = default;

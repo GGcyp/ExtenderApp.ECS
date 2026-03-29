@@ -1,14 +1,12 @@
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using ExtenderApp.ECS.Accessors;
-using ExtenderApp.ECS.Queries.Rows;
 
 namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
-    /// EntityQuery 的委托执行器。
-    /// 用于根据委托参数类型，将当前查询中的组件列自动映射到值枚举、<see cref="RefRO{T}" /> 或 <see cref="RefRW{T}" /> 访问器，
-    /// 并通过表达式树生成一次性执行逻辑后缓存，避免重复反射开销。
+    /// EntityQuery 的委托执行器。 用于根据委托参数类型，将当前查询中的组件列自动映射到值枚举、 <see cref="RefRO{T}" /> 或 <see cref="RefRW{T}" /> 访问器， 并通过表达式树生成一次性执行逻辑后缓存，避免重复反射开销。
     /// </summary>
     internal static class EntityQueryDelegateInvoker
     {
@@ -39,7 +37,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         public static void Invoke<TDelegate, T1>(EntityQuery<T1> query, TDelegate @delegate)
             where TDelegate : Delegate
-            where T1 : struct
             => Cache<TDelegate, T1>.Invoker(query, @delegate);
 
         /// <summary>
@@ -85,25 +82,214 @@ namespace ExtenderApp.ECS.Queries
             => Cache<TDelegate, T1, T2, T3, T4, T5>.Invoker(query, @delegate);
 
         /// <summary>
-        /// 单组件查询的静态缓存。
-        /// 每种委托签名只会编译一次执行器。
+        /// 非泛型 EntityQuery 的调用器缓存入口。 延迟根据实际查询的组件类型构建并缓存执行器，避免在类型初始化时期就触发编译。
         /// </summary>
         private static class Cache<TDelegate>
             where TDelegate : Delegate
         {
-            internal static readonly Action<EntityQuery, TDelegate> Invoker = Build();
+            internal static readonly Action<EntityQuery, TDelegate> Invoker = (query, del) =>
+            {
+                var inv = CacheInvoker.GetOrAddInvoker(query.QueryDesc.Query);
+                inv(query, del);
+            };
 
-            private static Action<EntityQuery, TDelegate> Build()
-                => BuildInvoker<EntityQuery, TDelegate>(null);
+            private static class CacheInvoker
+            {
+                private static readonly ConcurrentDictionary<string, Action<EntityQuery, TDelegate>> _map = new();
+
+                public static Action<EntityQuery, TDelegate> GetOrAddInvoker(ComponentMask mask)
+                {
+                    string key = mask.IsEmpty
+                        ? "<empty>"
+                        : $"{typeof(TDelegate).AssemblyQualifiedName}\0{BuildCanonicalMaskKey(mask)}";
+
+                    return _map.GetOrAdd(key, _ =>
+                    {
+                        if (mask.IsEmpty)
+                            return BuildInvoker<EntityQuery, TDelegate>(null);
+
+                        Type[] types = ResolveEntityQueryRowComponentOrder(mask);
+
+                        // Build a thin wrapper that constructs a typed EntityQuery<TSystem...> from EntityQuery.Core
+                        // and forwards to the corresponding generic Cache<TDelegate, TSystem...>.Invoker delegate.
+                        var outer = typeof(EntityQueryDelegateInvoker);
+                        Type cacheTypeDef = outer.GetNestedType($"Cache`{1 + types.Length}", BindingFlags.NonPublic)!
+                            ?? throw new InvalidOperationException("Cannot find nested Cache type definition.");
+
+                        var genericArgs = new Type[1 + types.Length];
+                        genericArgs[0] = typeof(TDelegate);
+                        for (int i = 0; i < types.Length; i++) genericArgs[i + 1] = types[i];
+
+                        var closedCacheType = cacheTypeDef.MakeGenericType(genericArgs);
+                        var invokerField = closedCacheType.GetField("Invoker", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
+                            ?? throw new InvalidOperationException("Invoker field not found on cache type.");
+
+                        var invokerDelegate = (Delegate)invokerField.GetValue(null)!;
+
+                        // Build Expression: (EntityQuery q, TDelegate d) => invokerDelegate(new EntityQuery<TSystem...>(q.Core), d)
+                        var qParam = Expression.Parameter(typeof(EntityQuery), "q");
+                        var dParam = Expression.Parameter(typeof(TDelegate), "d");
+
+                        // Get EntityQueryCore property
+                        var coreProp = typeof(EntityQuery).GetProperty("Core", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)!;
+                        var coreExpr = Expression.Property(qParam, coreProp);
+
+                        // 构造 EntityQuery<T1,...>(core, skipUnchanged: false)。元数据上 ctor 为 (EntityQueryCore, bool)，无单独单参构造函数。
+                        Expression typedQueryExpr;
+                        var ctorParamTypes = new[] { typeof(EntityQueryCore), typeof(bool) };
+                        var skipUnchangedExpr = Expression.Constant(false);
+
+                        if (types.Length == 1)
+                        {
+                            var tq = typeof(EntityQuery<>).MakeGenericType(types[0]);
+                            var ctor = tq.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, ctorParamTypes, null)
+                                       ?? throw new InvalidOperationException($"Typed EntityQuery ctor not found: {tq.Name}.");
+                            typedQueryExpr = Expression.New(ctor, coreExpr, skipUnchangedExpr);
+                        }
+                        else if (types.Length == 2)
+                        {
+                            var tq = typeof(EntityQuery<,>).MakeGenericType(types[0], types[1]);
+                            var ctor = tq.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, ctorParamTypes, null)
+                                       ?? throw new InvalidOperationException($"Typed EntityQuery ctor not found: {tq.Name}.");
+                            typedQueryExpr = Expression.New(ctor, coreExpr, skipUnchangedExpr);
+                        }
+                        else if (types.Length == 3)
+                        {
+                            var tq = typeof(EntityQuery<,,>).MakeGenericType(types[0], types[1], types[2]);
+                            var ctor = tq.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, ctorParamTypes, null)
+                                       ?? throw new InvalidOperationException($"Typed EntityQuery ctor not found: {tq.Name}.");
+                            typedQueryExpr = Expression.New(ctor, coreExpr, skipUnchangedExpr);
+                        }
+                        else if (types.Length == 4)
+                        {
+                            var tq = typeof(EntityQuery<,,,>).MakeGenericType(types[0], types[1], types[2], types[3]);
+                            var ctor = tq.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, ctorParamTypes, null)
+                                       ?? throw new InvalidOperationException($"Typed EntityQuery ctor not found: {tq.Name}.");
+                            typedQueryExpr = Expression.New(ctor, coreExpr, skipUnchangedExpr);
+                        }
+                        else if (types.Length == 5)
+                        {
+                            var tq = typeof(EntityQuery<,,,,>).MakeGenericType(types[0], types[1], types[2], types[3], types[4]);
+                            var ctor = tq.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, ctorParamTypes, null)
+                                       ?? throw new InvalidOperationException($"Typed EntityQuery ctor not found: {tq.Name}.");
+                            typedQueryExpr = Expression.New(ctor, coreExpr, skipUnchangedExpr);
+                        }
+                        else
+                        {
+                            // fallback to building with BuildInvoker (less efficient)
+                            return BuildInvoker<EntityQuery, TDelegate>(types);
+                        }
+
+                        var invokeConst = Expression.Constant(invokerDelegate);
+                        var invokeCall = Expression.Invoke(invokeConst, typedQueryExpr, dParam);
+
+                        var lambda = Expression.Lambda<Action<EntityQuery, TDelegate>>(invokeCall, qParam, dParam).Compile();
+                        return lambda;
+                    });
+                }
+
+                /// <summary>
+                /// 将 Query 掩码中的组件类型排序后拼接，供缓存键区分不同查询（与委托类型组合使用）。
+                /// </summary>
+                private static string BuildCanonicalMaskKey(ComponentMask mask)
+                {
+                    var names = new List<string>();
+                    foreach (var ct in mask)
+                    {
+                        var t = ct.TypeInstance ?? throw new InvalidOperationException("组件掩码中存在无运行时类型的项。");
+                        names.Add(t.AssemblyQualifiedName ?? t.FullName ?? t.Name);
+                    }
+                    names.Sort(StringComparer.Ordinal);
+                    return string.Join(",", names);
+                }
+
+                /// <summary>
+                /// 按 <typeparamref name="TDelegate"/> 的 Invoke 参数顺序解析组件 CLR 类型，并与 Query 掩码做多重集校验；该顺序即 <c>EntityQuery&lt;T1,...&gt;</c> 行类型顺序。
+                /// </summary>
+                private static Type[] ResolveEntityQueryRowComponentOrder(ComponentMask mask)
+                {
+                    var invoke = typeof(TDelegate).GetMethod(nameof(Action.Invoke), BindingFlags.Instance | BindingFlags.Public)
+                        ?? throw new NotSupportedException($"无法找到委托 {typeof(TDelegate)} 的 Invoke 方法。");
+                    if (invoke.ReturnType != typeof(void))
+                        throw new NotSupportedException($"委托 {typeof(TDelegate)} 必须返回 void。");
+                    ParameterInfo[] parameters = invoke.GetParameters();
+                    if (parameters.Length != mask.ComponentCount)
+                        throw new NotSupportedException(
+                            $"非泛型 EntityQuery.Query：委托参数数量 ({parameters.Length}) 须等于 Query 掩码组件数 ({mask.ComponentCount})。");
+                    var types = new Type[parameters.Length];
+                    for (int i = 0; i < parameters.Length; i++)
+                        types[i] = ExtractComponentTypeFromQueryDelegateParameter(parameters[i]);
+                    if (!MaskHasSameComponentTypesAsOrderedList(mask, types))
+                        throw new NotSupportedException(
+                            "委托参数中的组件类型集合与当前查询的 Query 掩码不一致。");
+                    return types;
+                }
+
+                private static Type ExtractComponentTypeFromQueryDelegateParameter(ParameterInfo parameter)
+                {
+                    var parameterType = parameter.ParameterType;
+                    if (parameterType.IsByRef)
+                    {
+                        if (parameter.IsOut)
+                            throw new NotSupportedException($"参数 {parameter.Name} 不支持 out。");
+                        var elementType = parameterType.GetElementType()
+                            ?? throw new NotSupportedException($"无法解析参数 {parameter.Name} 的 ByRef 元素类型。");
+                        if (elementType.IsGenericType)
+                        {
+                            var def = elementType.GetGenericTypeDefinition();
+                            if (def == typeof(RefRO<>))
+                                return elementType.GenericTypeArguments[0];
+                            if (def == typeof(RefRW<>))
+                                return elementType.GenericTypeArguments[0];
+                        }
+                        if (!elementType.IsValueType)
+                            throw new NotSupportedException($"组件类型 {elementType} 必须是 struct。");
+                        return elementType;
+                    }
+                    if (parameterType.IsGenericType)
+                    {
+                        var def = parameterType.GetGenericTypeDefinition();
+                        if (def == typeof(RefRO<>))
+                            return parameterType.GenericTypeArguments[0];
+                        if (def == typeof(RefRW<>))
+                            return parameterType.GenericTypeArguments[0];
+                    }
+                    if (!parameterType.IsValueType)
+                        throw new NotSupportedException($"组件类型 {parameterType} 必须是 struct。");
+                    return parameterType;
+                }
+
+                private static bool MaskHasSameComponentTypesAsOrderedList(ComponentMask mask, Type[] ordered)
+                {
+                    var counts = new Dictionary<Type, int>();
+                    foreach (var ct in mask)
+                    {
+                        var t = ct.TypeInstance ?? throw new InvalidOperationException("组件掩码中存在无运行时类型的项。");
+                        counts.TryGetValue(t, out var n);
+                        counts[t] = n + 1;
+                    }
+                    var temp = new Dictionary<Type, int>(counts);
+                    foreach (var t in ordered)
+                    {
+                        if (!temp.TryGetValue(t, out var n) || n == 0)
+                            return false;
+                        temp[t] = n - 1;
+                    }
+                    foreach (var (_, n) in temp)
+                    {
+                        if (n != 0)
+                            return false;
+                    }
+                    return true;
+                }
+            }
         }
 
         /// <summary>
-        /// 单组件查询的静态缓存。
-        /// 每种委托签名只会编译一次执行器。
+        /// 单组件查询的静态缓存。 每种委托签名只会编译一次执行器。
         /// </summary>
         private static class Cache<TDelegate, T1>
             where TDelegate : Delegate
-            where T1 : struct
         {
             internal static readonly Action<EntityQuery<T1>, TDelegate> Invoker = Build();
 
@@ -179,13 +365,30 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据查询组件类型和委托签名构建执行器。
-        /// 生成后的执行器会：
+        /// 在行类型上查找唯一匹配的 <c>op_Implicit</c>（返回 <paramref name="returnType"/>）。
+        /// </summary>
+        private static MethodInfo FindUniqueRowImplicitOrThrow(Type rowType, Type returnType)
+        {
+            MethodInfo? found = null;
+            foreach (var m in rowType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (m.Name != "op_Implicit" || m.ReturnType != returnType || m.GetParameters().Length != 1 || m.GetParameters()[0].ParameterType != rowType)
+                    continue;
+                if (found != null)
+                    throw new NotSupportedException($"行类型 {rowType} 上存在多个指向 {returnType} 的 op_Implicit，无法消歧。");
+                found = m;
+            }
+
+            return found ?? throw new NotSupportedException($"未找到 {rowType} -> {returnType} 的 op_Implicit。");
+        }
+
+        /// <summary>
+        /// 根据查询组件类型和委托签名构建执行器。 生成后的执行器会：
         /// 1. 为每个委托参数选择正确的枚举器；
         /// 2. 同步推进所有枚举器；
         /// 3. 按参数顺序调用目标委托。
         /// </summary>
-        private static Action<TQuery, TDelegate> BuildInvoker<TQuery, TDelegate>(Type[] queryComponentTypes)
+        private static Action<TQuery, TDelegate> BuildInvoker<TQuery, TDelegate>(Type[]? queryComponentTypes)
             where TDelegate : Delegate
         {
             var invokeMethod = typeof(TDelegate).GetMethod(nameof(Action.Invoke))
@@ -215,123 +418,146 @@ namespace ExtenderApp.ECS.Queries
                 var enumeratorVar = Expression.Variable(getEnumMethod.ReturnType, "_list");
                 var assignEnum = Expression.Assign(enumeratorVar, Expression.Call(qp, getEnumMethod));
 
-                var moveNextMethod = getEnumMethod.ReturnType.GetMethod(nameof(ArchetypeRowEnumerator.MoveNext));
-                var currentProp = getEnumMethod.ReturnType.GetProperty(nameof(ArchetypeRowEnumerator.Current));
+                var moveNextMethod = getEnumMethod.ReturnType.GetMethod(nameof(GlobalRowEnumerator.MoveNext));
+                var currentProp = getEnumMethod.ReturnType.GetProperty(nameof(GlobalRowEnumerator.Current));
                 if (moveNextMethod == null || currentProp == null)
                     throw new NotSupportedException("枚举器缺少 MoveNext/Current 方法或属性。");
 
-                var breakLabel = Expression.Label("break_loop");
+                var breakLabel1 = Expression.Label("break_loop");
 
-                var loopBody = Expression.Block(
+                var loopBody1 = Expression.Block(
                     Expression.Call(ap, invokeMethod, Expression.Property(enumeratorVar, currentProp)),
                     Expression.Empty()
                 );
 
-                var loop = Expression.Loop(
+                var loop1 = Expression.Loop(
                     Expression.IfThenElse(
                         Expression.Call(enumeratorVar, moveNextMethod),
-                        loopBody,
-                        Expression.Break(breakLabel)
+                        loopBody1,
+                        Expression.Break(breakLabel1)
                     ),
-                    breakLabel
+                    breakLabel1
                 );
 
-                var body = Expression.Block(new[] { enumeratorVar }, assignEnum, loop);
+                var body1 = Expression.Block(new[] { enumeratorVar }, assignEnum, loop1);
 
-                return Expression.Lambda<Action<TQuery, TDelegate>>(body, qp, ap).Compile();
+                return Expression.Lambda<Action<TQuery, TDelegate>>(body1, qp, ap).Compile();
             }
 
             var descriptors = CreateDescriptors(parameters, queryComponentTypes);
             var queryParameter = Expression.Parameter(typeof(TQuery), "query");
             var actionParameter = Expression.Parameter(typeof(TDelegate), "action");
 
-            var variables = new List<ParameterExpression>(descriptors.Length * 2);
-            var setupExpressions = new List<Expression>(descriptors.Length);
+            // 使用 query.GetEnumerator() 返回的行枚举器（GlobalRowEnumerator或其泛型版本）作为单一枚举器。
+            var getEnumMethod2 = typeof(TQuery).GetMethod("GetEnumerator", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?? throw new NotSupportedException($"未找到方法 {typeof(TQuery)}.GetEnumerator()。");
+
+            var enumeratorVar2 = Expression.Variable(getEnumMethod2.ReturnType, "_enumerator2");
+            var assignEnum2 = Expression.Assign(enumeratorVar2, Expression.Call(queryParameter, getEnumMethod2));
+
+            var moveNextMethod2 = getEnumMethod2.ReturnType.GetMethod("MoveNext")
+                ?? throw new NotSupportedException("枚举器缺少 MoveNext 方法。");
+            var currentProp2 = getEnumMethod2.ReturnType.GetProperty("Current")
+                ?? throw new NotSupportedException("枚举器缺少 Current 属性。");
+
+            // 准备临时变量与表达式集合
+            var variables = new List<ParameterExpression> { enumeratorVar2 };
+            var setupExpressions = new List<Expression> { assignEnum2 };
+            var prepareExpressions = new List<Expression>();
+            var writeBackExpressions = new List<Expression>();
             var invokeArguments = new Expression[descriptors.Length];
-            var prepareExpressions = new List<Expression>(descriptors.Length);
-            var writeBackExpressions = new List<Expression>(descriptors.Length);
-            Expression? moveNextCondition = null;
+
+            // 当前行（EntityQueryRow<...>）表达式
+            var rowExpr = Expression.Property(enumeratorVar2, currentProp2);
+            var rowType = currentProp2.PropertyType;
 
             for (int i = 0; i < descriptors.Length; i++)
             {
-                var enumeratorMethod = GetEnumeratorMethod(typeof(TQuery), descriptors[i]);
-                var enumeratorVariable = Expression.Variable(enumeratorMethod.ReturnType, $"_list{i + 1}");
-                variables.Add(enumeratorVariable);
-                setupExpressions.Add(Expression.Assign(enumeratorVariable, Expression.Call(queryParameter, enumeratorMethod)));
+                var desc = descriptors[i];
+                var slotType = queryComponentTypes[desc.QueryIndex];
+                if (slotType != desc.ComponentType)
+                    throw new NotSupportedException($"内部错误：查询第 {desc.QueryIndex} 列类型为 {slotType}，与委托参数组件类型 {desc.ComponentType} 不一致。");
 
-                var moveNextExpression = Expression.Call(enumeratorVariable, enumeratorMethod.ReturnType.GetMethod(nameof(ArchetypeAccessorEnumerator<int>.MoveNext))!);
-                moveNextCondition = moveNextCondition == null
-                    ? moveNextExpression
-                    : Expression.AndAlso(moveNextCondition, moveNextExpression);
+                var refRwSlotType = typeof(RefRW<>).MakeGenericType(slotType);
+                var toRefRwFromRow = FindUniqueRowImplicitOrThrow(rowType, refRwSlotType);
+                Expression refRwExpr = Expression.Call(toRefRwFromRow, rowExpr);
 
-                var currentExpression = Expression.Property(enumeratorVariable, nameof(ArchetypeAccessorEnumerator<int>.Current));
-                var componentValueExpression = GetComponentValueExpression(currentExpression, descriptors[i].ComponentType);
-                switch (descriptors[i].PassKind)
+                Expression ComponentExprForInvoke()
+                {
+                    switch (desc.PassKind, desc.AccessorKind)
+                    {
+                        case (PassKind.ByValue, AccessorKind.Value):
+                            return Expression.Call(ReadRefRWValueMethod.MakeGenericMethod(desc.ComponentType), refRwExpr);
+                        case (PassKind.ByValue, AccessorKind.RefRO):
+                            {
+                                var refRoType = typeof(RefRO<>).MakeGenericType(desc.ComponentType);
+                                var toRefRo = FindUniqueRowImplicitOrThrow(rowType, refRoType);
+                                return Expression.Call(toRefRo, rowExpr);
+                            }
+                        case (PassKind.ByValue, AccessorKind.RefRW):
+                            return refRwExpr;
+                        case (PassKind.In, _):
+                            return Expression.Call(ReadRefRWValueMethod.MakeGenericMethod(desc.ComponentType), refRwExpr);
+                        case (PassKind.Ref, _):
+                            return Expression.Call(ReadRefRWValueMethod.MakeGenericMethod(desc.ComponentType), refRwExpr);
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+
+                Expression componentAccessExpr = ComponentExprForInvoke();
+
+                switch (desc.PassKind)
                 {
                     case PassKind.ByValue:
-                        // 若委托参数为值类型（非 RefRO/RefRW），则传递 componentValueExpression（即 T 的副本）。
-                        // 若委托参数为 RefRO/RefRW，这里需要传递包装类型。我们统一让底层返回 RefRW，并在需要只读包装时进行类型转换。
-                        if (descriptors[i].AccessorKind == AccessorKind.Value)
-                        {
-                            invokeArguments[i] = componentValueExpression;
-                        }
-                        else if (descriptors[i].AccessorKind == AccessorKind.RefRO)
-                        {
-                            // 将底层的 RefRW<T> 转换为 RefRO<T>（存在隐式转换），在表达式树中使用显式转换。
-                            var refROType = typeof(RefRO<>).MakeGenericType(descriptors[i].ComponentType);
-                            invokeArguments[i] = Expression.Convert(currentExpression, refROType);
-                        }
-                        else // RefRW
-                        {
-                            invokeArguments[i] = currentExpression;
-                        }
+                        invokeArguments[i] = componentAccessExpr;
                         break;
 
                     case PassKind.In:
                         {
-                            var tempVariable = Expression.Variable(descriptors[i].ComponentType, $"arg{i + 1}");
-                            variables.Add(tempVariable);
-                            prepareExpressions.Add(Expression.Assign(tempVariable, componentValueExpression));
-                            invokeArguments[i] = tempVariable;
+                            var tempVar = Expression.Variable(desc.ComponentType, $"arg{i + 1}");
+                            variables.Add(tempVar);
+                            prepareExpressions.Add(Expression.Assign(tempVar, componentAccessExpr));
+                            invokeArguments[i] = tempVar;
                             break;
                         }
+
                     case PassKind.Ref:
                         {
-                            var tempVariable = Expression.Variable(descriptors[i].ComponentType, $"arg{i + 1}");
-                            variables.Add(tempVariable);
-                            prepareExpressions.Add(Expression.Assign(tempVariable, componentValueExpression));
-                            invokeArguments[i] = tempVariable;
+                            var tempVar = Expression.Variable(desc.ComponentType, $"arg{i + 1}");
+                            variables.Add(tempVar);
+                            prepareExpressions.Add(Expression.Assign(tempVar, componentAccessExpr));
+                            invokeArguments[i] = tempVar;
                             writeBackExpressions.Add(Expression.Call(
-                                WriteRefRWValueMethod.MakeGenericMethod(descriptors[i].ComponentType),
-                                currentExpression,
-                                tempVariable));
+                                WriteRefRWValueMethod.MakeGenericMethod(desc.ComponentType),
+                                refRwExpr,
+                                tempVar));
                             break;
                         }
+
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
             }
 
-            var breakLabel2 = Expression.Label("break_loop");
-            var loopBodyExpressions = new List<Expression>(prepareExpressions.Count + 1 + writeBackExpressions.Count);
+            // 组装循环体
+            var breakLabel3 = Expression.Label("break_loop");
+            var loopBodyExpressions = new List<Expression>();
             loopBodyExpressions.AddRange(prepareExpressions);
             loopBodyExpressions.Add(Expression.Call(actionParameter, invokeMethod, invokeArguments));
             loopBodyExpressions.AddRange(writeBackExpressions);
 
-            var expressions = new List<Expression>(setupExpressions.Count + 1);
-            expressions.AddRange(setupExpressions);
-            expressions.Add(
-                Expression.Loop(
-                    Expression.IfThenElse(
-                        moveNextCondition!,
-                        Expression.Block(loopBodyExpressions),
-                        Expression.Break(breakLabel2)),
-                    breakLabel2));
+            var loop = Expression.Loop(
+                Expression.IfThenElse(
+                    Expression.Call(enumeratorVar2, moveNextMethod2),
+                    Expression.Block(loopBodyExpressions),
+                    Expression.Break(breakLabel3)
+                ),
+                breakLabel3);
 
-            return Expression.Lambda<Action<TQuery, TDelegate>>(
-                Expression.Block(variables, expressions),
-                queryParameter,
-                actionParameter).Compile();
+            var body = Expression.Block(variables, setupExpressions.Concat(new[] { loop }));
+
+            return Expression.Lambda<Action<TQuery, TDelegate>>(body, queryParameter, actionParameter).Compile();
         }
 
         /// <summary>
@@ -359,18 +585,17 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据参数描述选择当前查询类型上对应的枚举器方法。
-        /// 改动：统一使用可写枚举器（RefRW），当参数为 RefRO 时在表达式中做转换以避免额外的枚举器方法。
+        /// 根据参数描述选择当前查询类型上对应的枚举器方法。 改动：统一使用可写枚举器（RefRW），当参数为 RefRO 时在表达式中做转换以避免额外的枚举器方法。
         /// </summary>
         private static MethodInfo GetEnumeratorMethod(Type queryType, ParameterDescriptor descriptor)
         {
-            // 统一使用 EntityQuery 上的泛型方法 GetRefRWsFor<T>()，避免为不同组件位次暴露 GetRefRWsForT1..T5。
+            // 统一使用 EntityQuery 上的泛型方法 GetRefRWsFor<T1>()，避免为不同组件位次暴露 GetRefRWsForT1..T5。
             var genericMethod = queryType.GetMethod(
                 "GetRefRWsFor",
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
             if (genericMethod == null)
-                throw new NotSupportedException($"未找到方法 {queryType.FullName}.GetRefRWsFor<T>()。");
+                throw new NotSupportedException($"未找到方法 {queryType.FullName}.GetRefRWsFor<T1>()。");
 
             if (!genericMethod.IsGenericMethodDefinition)
                 throw new NotSupportedException($"方法 {queryType.FullName}.GetRefRWsFor 必须是泛型方法定义。");
@@ -405,8 +630,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 委托参数描述。
-        /// 记录组件类型、访问方式以及其在查询中的列索引。
+        /// 委托参数描述。 记录组件类型、访问方式以及其在查询中的列索引。
         /// </summary>
         private readonly record struct ParameterDescriptor(Type ComponentType, AccessorKind AccessorKind, PassKind PassKind, int QueryIndex)
         {

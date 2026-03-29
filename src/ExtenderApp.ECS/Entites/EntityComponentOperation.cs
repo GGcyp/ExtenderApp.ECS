@@ -7,15 +7,15 @@ namespace ExtenderApp.ECS.Entities
     /// <summary>
     /// 按实体访问组件的轻量封装。提供获取、设置、添加与移除组件的便捷方法。 该结构体为只读值类型，包含对所属 CurrentWorld 与 Entity 的引用；调用前会检查主线程。
     /// </summary>
-    public ref struct EntityComponentOperation
+    public struct EntityComponentOperation
     {
         /// <summary>
-        /// 当前 ComponentBuffer 所属的 CurrentWorld 实例，提供访问 Entities 与 ArchetypeManager 的入口。
+        /// 当前 ComponentBuffer 所属的 CurrentWorld 实例，提供访问 EManager 与 AManager 的入口。
         /// </summary>
         private readonly World _world;
 
         /// <summary>
-        /// 当前实体的 Entity 句柄，标识了该 ComponentBuffer 操作的目标实体。通过 Entities 获取或修改组件数据。
+        /// 当前实体的 Entity 句柄，标识了该 ComponentBuffer 操作的目标实体。通过 EManager 获取或修改组件数据。
         /// </summary>
         private readonly Entity _entity;
 
@@ -30,14 +30,14 @@ namespace ExtenderApp.ECS.Entities
         private int currentArchetypeIndex;
 
         /// <summary>
-        /// 当前 CurrentWorld 中的 Entities 实例，提供获取实体 Archetype、迁移实体等功能。
+        /// 当前 CurrentWorld 中的 EManager 实例，提供获取实体 Archetype、迁移实体等功能。
         /// </summary>
-        private EntityManager Entities => _world.Entities;
+        private EntityManager Entities => _world.EManager;
 
         /// <summary>
-        /// 当前 CurrentWorld 中的 ArchetypeManager 实例，提供获取或创建 Archetype 的功能。
+        /// 当前 CurrentWorld 中的 AManager 实例，提供获取或创建 Archetype 的功能。
         /// </summary>
-        private ArchetypeManager Components => _world.ArchetypeManager;
+        private ArchetypeManager Components => _world.AManager;
 
         /// <summary>
         /// 使用指定 CurrentWorld 与 Entity 构造一个 ComponentBuffer 实例（内部使用）。
@@ -310,19 +310,26 @@ namespace ExtenderApp.ECS.Entities
         }
 
         /// <summary>
-        /// 将实体切换到指定的 Archetype，并输出新 Archetype 中的索引。 该方法委托给 Entities 执行实际的迁移逻辑。
+        /// 将实体切换到指定的 Archetype，并输出新 Archetype 中的索引。 该方法委托给 EManager 执行实际的迁移逻辑。
         /// </summary>
         /// <param name="archetype">目标 Archetype。</param>
         /// <param name="archetypeIndex">输出迁移后实体在目标 Archetype 中的索引。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ChangedArchetype(Archetype? archetype, int archetypeIndex)
         {
-            if (archetype != null && archetypeIndex >= 0 && currentArchetype != null)
+            if (currentArchetype != null)
             {
-                if (currentArchetype.TryCopyToAndRemove(currentArchetypeIndex, archetype, archetypeIndex, out var changedEntity) &&
-                    !changedEntity.IsEmpty)
+                if (archetype != null &&
+                    archetypeIndex >= 0 &&
+                    currentArchetype.TryCopyToAndRemove(currentArchetypeIndex, archetype, archetypeIndex, out var changedEntity))
                 {
-                    Entities.TryChangedArchetypeIndex(changedEntity, currentArchetypeIndex);
+                    if (!changedEntity.IsEmpty)
+                        Entities.TryChangedArchetypeIndex(changedEntity, currentArchetypeIndex);
+                }
+                else if (currentArchetype.TryRemoveEntity(currentArchetypeIndex, out changedEntity))
+                {
+                    if (!changedEntity.IsEmpty)
+                        Entities.TryChangedArchetypeIndex(changedEntity, currentArchetypeIndex);
                 }
             }
 

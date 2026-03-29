@@ -1,17 +1,9 @@
 using System.Runtime.CompilerServices;
-using ExtenderApp.ECS.Accessors;
-using ExtenderApp.ECS.Queries.Rows;
 
 namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
     /// 实体查询（只返回实体句柄）的轻量包装。
-    ///
-    /// 用途：
-    /// - 适用于仅需要遍历实体句柄的场景（不访问任何组件数据）；
-    /// - 提供 foreach 语法的枚举支持（返回 Entity），以及通过委托对每个实体执行操作的能力。
-    ///
-    /// 语义与线程：该查询基于内部的 <see cref="QueryCore"/> 构建，枚举/回调应在主线程上执行以保证数据一致性。
     /// </summary>
     public readonly struct EntityQuery
     {
@@ -36,14 +28,12 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 获取按行输出的查询行枚举器（用于 foreach）。
-        /// 返回的枚举器会按 Archetype/chunk 顺序遍历所有匹配实体，并在每行中只包含实体句柄（Entity）。
+        /// 获取按行输出的查询行枚举器（用于 foreach）。 返回的枚举器会按 Archetype/chunk 顺序遍历所有匹配实体，并在每行中只包含实体句柄（Entity）。
         /// </summary>
-        public ArchetypeRowEnumerator GetEnumerator() => new(Core.GetArchetypeEntityEnumerator());
+        public GlobalRowEnumerator GetEnumerator() => new(Core.GetArchetypeEntityEnumerator());
 
         /// <summary>
-        /// 使用指定的委托对查询中的每一行执行操作。
-        /// 委托签名应为 <c>void (Entity)</c>；调用时会通过 <see cref="EntityQueryDelegateInvoker"/> 生成并缓存的调用器执行，避免反射开销。
+        /// 使用指定的委托对查询中的每一行执行操作。 委托签名应为 <c>void (Entity)</c>；调用时会通过 <see cref="EntityQueryDelegateInvoker" /> 生成并缓存的调用器执行，避免反射开销。
         /// </summary>
         /// <typeparam name="TDelegate">要执行的委托类型，必须返回 void 且接收单个 Entity 参数。</typeparam>
         /// <param name="delegate">要执行的委托实例。</param>
@@ -56,9 +46,8 @@ namespace ExtenderApp.ECS.Queries
     }
 
     /// <summary>
-    /// 单组件实体查询包装。
-    /// 负责基于 <see cref="EntityQueryCore" /> 创建指定组件类型的访问器与枚举器。
-    /// 可通过 <see cref="GetEnumerator"/> 与 foreach 语法遍历查询结果行，或使用 <see cref="Query{TDelegate}(TDelegate)"/> 传入委托进行批量处理。
+    /// 单组件实体查询包装。 负责基于 <see cref="EntityQueryCore" /> 创建指定组件类型的访问器与枚举器。 可通过 <see cref="GetEnumerator" /> 与 foreach 语法遍历查询结果行，或使用 <see
+    /// cref="Query{TDelegate}(TDelegate)" /> 传入委托进行批量处理。
     /// </summary>
     /// <typeparam name="T1">查询的组件类型。</typeparam>
     public readonly struct EntityQuery<T1>
@@ -67,7 +56,7 @@ namespace ExtenderApp.ECS.Queries
         private readonly bool _skipUnchanged;
 
         /// <summary>
-        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
         public int Count => _core.Count;
 
@@ -83,26 +72,24 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 返回一个新的查询副本并设置是否在遍历时跳过未变化的块。
-        /// 用于在对性能敏感的场景中排除未发生变更的数据块。
+        /// 返回一个新的查询副本并设置是否在遍历时跳过未变化的块。 用于在对性能敏感的场景中排除未发生变更的数据块。
         /// </summary>
         /// <param name="skip">是否跳过未变化块，默认 true。</param>
         /// <returns>返回配置后的查询对象。</returns>
         public EntityQuery<T1> SkipUnchanged(bool skip = true) => new(_core, skip);
 
         /// <summary>
-        /// 获取按行输出的查询行枚举器（用于 foreach）。
-        /// 返回的枚举器会按 Archetype/chunk 顺序遍历所有匹配实体，并在每行中包含组件访问器与实体信息。
+        /// 获取按行输出的查询行枚举器（用于 foreach）。 返回的枚举器会按 Archetype/chunk 顺序遍历所有匹配实体，并在每行中包含组件访问器与实体信息。
         /// </summary>
-        public ArchetypeRowEnumerator<T1> GetEnumerator()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public GlobalRowEnumerator<T1> GetEnumerator()
             => new(GetArchetypeAccessorFor<T1>(), _core.GetArchetypeEntityEnumerator());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ArchetypeEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
+        private GlobalQueryEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
 
         /// <summary>
-        /// 使用指定的委托对查询中的每一行执行操作。
-        /// 委托会被通过 <see cref="EntityQueryDelegateInvoker"/> 生成并缓存的调用器执行，避免反射开销。
+        /// 使用指定的委托对查询中的每一行执行操作。 委托会被通过 <see cref="EntityQueryDelegateInvoker" /> 生成并缓存的调用器执行，避免反射开销。
         /// </summary>
         /// <typeparam name="TDelegate">要执行的委托类型，必须返回 void。</typeparam>
         /// <param name="delegate">要执行的委托实例。</param>
@@ -117,8 +104,7 @@ namespace ExtenderApp.ECS.Queries
     }
 
     /// <summary>
-    /// 双组件实体查询包装。
-    /// 提供按行枚举与委托执行的能力，支持链式设置是否跳过未变化块。
+    /// 双组件实体查询包装。 提供按行枚举与委托执行的能力，支持链式设置是否跳过未变化块。
     /// </summary>
     /// <typeparam name="T1">第一个组件类型。</typeparam>
     /// <typeparam name="T2">第二个组件类型。</typeparam>
@@ -128,7 +114,7 @@ namespace ExtenderApp.ECS.Queries
         private readonly bool _skipUnchanged;
 
         /// <summary>
-        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
         public int Count => _core.Count;
 
@@ -151,11 +137,11 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 获取用于 foreach 的行枚举器，枚举每一行中的两个组件访问器及实体信息。
         /// </summary>
-        public ArchetypeRowEnumerator<T1, T2> GetEnumerator()
+        public GlobalRowEnumerator<T1, T2> GetEnumerator()
             => new(GetArchetypeAccessorFor<T1>(), GetArchetypeAccessorFor<T2>(), _core.GetArchetypeEntityEnumerator());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ArchetypeEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
+        private GlobalQueryEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
 
         /// <summary>
         /// 使用指定的委托对查询结果进行处理。
@@ -182,7 +168,7 @@ namespace ExtenderApp.ECS.Queries
         private readonly bool _skipUnchanged;
 
         /// <summary>
-        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
         public int Count => _core.Count;
 
@@ -205,11 +191,11 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 获取用于 foreach 的行枚举器，枚举每一行中的三个组件访问器及实体信息。
         /// </summary>
-        public ArchetypeRowEnumerator<T1, T2, T3> GetEnumerator()
+        public GlobalRowEnumerator<T1, T2, T3> GetEnumerator()
             => new(GetArchetypeAccessorFor<T1>(), GetArchetypeAccessorFor<T2>(), GetArchetypeAccessorFor<T3>(), _core.GetArchetypeEntityEnumerator());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ArchetypeEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
+        private GlobalQueryEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
 
         /// <summary>
         /// 使用指定的委托对查询结果进行处理。
@@ -237,7 +223,7 @@ namespace ExtenderApp.ECS.Queries
         private readonly bool _skipUnchanged;
 
         /// <summary>
-        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
         public int Count => _core.Count;
 
@@ -260,11 +246,11 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 获取用于 foreach 的行枚举器，枚举每一行中的四个组件访问器及实体信息。
         /// </summary>
-        public ArchetypeRowEnumerator<T1, T2, T3, T4> GetEnumerator()
+        public GlobalRowEnumerator<T1, T2, T3, T4> GetEnumerator()
             => new(GetArchetypeAccessorFor<T1>(), GetArchetypeAccessorFor<T2>(), GetArchetypeAccessorFor<T3>(), GetArchetypeAccessorFor<T4>(), _core.GetArchetypeEntityEnumerator());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ArchetypeEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
+        private GlobalQueryEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
 
         /// <summary>
         /// 使用指定的委托对查询结果进行处理。
@@ -280,8 +266,7 @@ namespace ExtenderApp.ECS.Queries
     }
 
     /// <summary>
-    /// <typeparam name="T2">第二个组件类型。</typeparam>
-    /// 五组件实体查询包装。
+    /// <typeparam name="T2">第二个组件类型。</typeparam> 五组件实体查询包装。
     /// </summary>
     /// <typeparam name="T1">第一个组件类型。</typeparam>
     /// <typeparam name="T2">第二个组件类型。</typeparam>
@@ -294,7 +279,7 @@ namespace ExtenderApp.ECS.Queries
         private readonly bool _skipUnchanged;
 
         /// <summary>
-        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore"/> 维护，反映当前查询条件下的实体总数。
+        /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
         public int Count => _core.Count;
 
@@ -317,14 +302,14 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 获取用于 foreach 的行枚举器，枚举每一行中的五个组件访问器及实体信息。
         /// </summary>
-        public ArchetypeRowEnumerator<T1, T2, T3, T4, T5> GetEnumerator()
+        public GlobalRowEnumerator<T1, T2, T3, T4, T5> GetEnumerator()
             => new(GetArchetypeAccessorFor<T1>(), GetArchetypeAccessorFor<T2>(), GetArchetypeAccessorFor<T3>(), GetArchetypeAccessorFor<T4>(), GetArchetypeAccessorFor<T5>(), _core.GetArchetypeEntityEnumerator());
 
         /// <summary>
-        /// 内部辅助：根据类型 T 获取对应的 GlobalArchetypeAccessor。
+        /// 内部辅助：根据类型 T1 获取对应的 GlobalArchetypeAccessor。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ArchetypeEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
+        private GlobalQueryEnumerator<T> GetArchetypeAccessorFor<T>() => _core.GetArchetypeEnumerator<T>(_skipUnchanged);
 
         /// <summary>
         /// 使用指定的委托对查询结果进行处理。

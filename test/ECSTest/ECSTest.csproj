@@ -15,4 +15,8 @@
     <ProjectReference Include="..\..\src\ExtenderApp.ECS\ExtenderApp.ECS.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Systems\" />
+  </ItemGroup>
+
 </Project>

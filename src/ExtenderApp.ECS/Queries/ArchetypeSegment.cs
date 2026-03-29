@@ -1,4 +1,4 @@
-﻿namespace ExtenderApp.ECS.Queries
+namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
     /// 表示查询匹配结果中的一个节点（链表单元）。
@@ -33,22 +33,25 @@
 
         public struct ArchetypeSegmentEnumerator
         {
-            private ArchetypeSegment? nextSegment;
+            private ArchetypeSegment? _current;
+            private ArchetypeSegment? _remaining;
 
-            public ArchetypeSegment Current => nextSegment!;
+            public ArchetypeSegment Current => _current!;
 
             public ArchetypeSegmentEnumerator(ArchetypeSegment? head)
             {
-                nextSegment = head;
+                _current = null;
+                _remaining = head;
             }
 
             public bool MoveNext()
             {
-                if (nextSegment == null)
+                if (_remaining == null)
                     return false;
 
-                nextSegment = nextSegment.Next;
-                return nextSegment != null;
+                _current = _remaining;
+                _remaining = _remaining.Next;
+                return true;
             }
         }
 

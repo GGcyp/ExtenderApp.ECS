@@ -274,8 +274,8 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         private void CreateSegment()
         {
-            var capacity = ArchetypeChunkManager.GetNextSize(Count);
-            var startIndex = Count == 0 ? 0 : Span[Count - 1].StartIndex + ArchetypeChunkManager.GetPreviousSize(Count - 1);
+            var capacity = Settings.GetNextArchetypeChunkSize(Count);
+            var startIndex = Count == 0 ? 0 : Span[Count - 1].StartIndex + Settings.GetPreviousArchetypeChunkSize(Count - 1);
             var array = ArrayPool<Entity>.Shared.Rent(capacity);
             var componentHandles = ArrayPool<ComponentHandle?>.Shared.Rent(capacity);
             Add(new(array, componentHandles, startIndex));

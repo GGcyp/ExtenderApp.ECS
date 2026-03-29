@@ -55,7 +55,7 @@ namespace ExtenderApp.ECS.Components
         public void Add(SharedComponentType type) => SetBit(type.TypeIndex);
 
         /// <summary>
-        /// 泛型快捷添加共享类型（T 必须为结构体类型）。
+        /// 泛型快捷添加共享类型（T1 必须为结构体类型）。
         /// </summary>
         public void Add<T>() => Add(SharedComponentType.Create<T>());
 
@@ -65,7 +65,7 @@ namespace ExtenderApp.ECS.Components
         public void Remove(SharedComponentType type) => ClearBit(type.TypeIndex);
 
         /// <summary>
-        /// 泛型快捷移除共享类型（T 必须为结构体类型）。
+        /// 泛型快捷移除共享类型（T1 必须为结构体类型）。
         /// </summary>
         public void Remove<T>() => Remove(SharedComponentType.Create<T>());
 
@@ -113,7 +113,7 @@ namespace ExtenderApp.ECS.Components
         }
 
         /// <summary>
-        /// 泛型快捷检查（T 必须为值类型）。
+        /// 泛型快捷检查（T1 必须为值类型）。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool On<T>() => On(SharedComponentType.Create<T>());

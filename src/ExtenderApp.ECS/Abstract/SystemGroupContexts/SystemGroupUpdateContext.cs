@@ -18,7 +18,7 @@
         /// <summary>
         /// 当前帧索引（从 0 开始递增）。用于跨帧唯一标识或基于帧的采样/统计。
         /// </summary>
-        public readonly long FrameIndex;
+        public readonly ulong FrameIndex;
 
         /// <summary>
         /// 创建新的更新上下文快照实例。该构造函数用于框架在每帧开始时填充时间相关字段并传入系统。
@@ -27,7 +27,7 @@
         /// <param name="time">全局运行时间（秒）。</param>
         /// <param name="frameIndex">当前帧索引。</param>
         /// <param name="cancellationToken">可选取消令牌，默认 <see cref="CancellationToken.None"/>。</param>
-        public SystemGroupUpdateContext(float deltaTime, double time, long frameIndex)
+        public SystemGroupUpdateContext(float deltaTime, double time, ulong frameIndex)
         {
             DeltaTime = deltaTime;
             Time = time;

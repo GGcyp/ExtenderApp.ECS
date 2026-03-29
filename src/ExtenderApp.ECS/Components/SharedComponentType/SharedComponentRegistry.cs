@@ -24,7 +24,7 @@ namespace ExtenderApp.ECS.Components
         private static readonly List<SharedTypeCache> _sharedTypes = new();
 
         /// <summary>
-        /// 获取或创建对应于类型 T 的 <see cref="SharedComponentType"/> 标识。
+        /// 获取或创建对应于类型 T1 的 <see cref="SharedComponentType"/> 标识。
         /// 首次访问时会在内部缓存列表中注册并分配唯一索引。
         /// </summary>
         /// <typeparam name="T">共享组件的类型（具体为值类型或引用类型由上层约定）。</typeparam>
@@ -60,7 +60,7 @@ namespace ExtenderApp.ECS.Components
         }
 
         /// <summary>
-        /// 泛型缓存实现：针对每个类型 T 分配唯一索引并缓存元数据。
+        /// 泛型缓存实现：针对每个类型 T1 分配唯一索引并缓存元数据。
         /// 在构造时会将自身加入到 <see cref="_sharedTypes"/> 列表，从而完成索引分配。
         /// </summary>
         /// <typeparam name="T">共享组件的具体类型。</typeparam>

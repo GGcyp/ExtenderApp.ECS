@@ -9,7 +9,7 @@ namespace ExtenderApp.ECS.Queries
     /// 实体查询管理器（Query 缓存与工厂）。
     ///
     /// 职责：
-    /// - 根据给定的 <see cref="EntityQueryDesc"/> 创建或复用查询核心 <see cref="EntityQueryCore"/>；
+    /// - 根据给定的 <see cref="EntityQueryDesc" /> 创建或复用查询核心 <see cref="EntityQueryCore" />；
     /// - 将查询核心按描述缓存以避免重复匹配扫描，提高重复查询的性能；
     /// - 为不同的泛型 EntityQuery 结构体返回共享的查询核心，以减小内存占用与匹配开销。
     ///
@@ -48,15 +48,13 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 获取或创建非泛型的实体查询包装（仅返回实体句柄的查询）。
-        /// 返回值包装了共享的查询核心，可用于 foreach 或转换为具体泛型查询。
+        /// 获取或创建非泛型的实体查询包装（仅返回实体句柄的查询）。 返回值包装了共享的查询核心，可用于 foreach 或转换为具体泛型查询。
         /// </summary>
         public EntityQuery GetOrCreateQuery(EntityQueryDesc desc)
             => new(GetOrCreateCore(desc));
 
         /// <summary>
-        /// 获取或创建单组件查询包装。
-        /// 返回的 <see cref="EntityQuery{T}"/> 会共享同一个 <see cref="EntityQueryCore"/> 实例。
+        /// 获取或创建单组件查询包装。 返回的 <see cref="EntityQuery{T}" /> 会共享同一个 <see cref="EntityQueryCore" /> 实例。
         /// </summary>
         public EntityQuery<T> GetOrCreateQuery<T>(EntityQueryDesc desc)
             => new(GetOrCreateCore(desc));
@@ -86,10 +84,9 @@ namespace ExtenderApp.ECS.Queries
             => new(GetOrCreateCore(desc));
 
         /// <summary>
-        /// 获取或创建查询核心（QueryCore）。
-        /// 若缓存中已存在对应描述的核心则直接返回，否则创建新核心并缓存。
+        /// 获取或创建查询核心（QueryCore）。 若缓存中已存在对应描述的核心则直接返回，否则创建新核心并缓存。
         /// </summary>
-        private EntityQueryCore GetOrCreateCore(EntityQueryDesc desc)
+        public EntityQueryCore GetOrCreateCore(EntityQueryDesc desc)
         {
             if (_queries.TryGetValue(desc, out var core))
                 return core;

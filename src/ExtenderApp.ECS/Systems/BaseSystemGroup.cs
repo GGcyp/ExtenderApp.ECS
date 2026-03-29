@@ -47,8 +47,7 @@ namespace ExtenderApp.ECS.Systems
         }
 
         /// <summary>
-        /// 每帧更新回调。默认实现为空，派生类可覆盖并在其中遍历并更新子系统。
-        /// 注意：此方法为热路径，应避免在实现中进行大量托管分配与昂贵的同步操作。
+        /// 每帧更新回调。默认实现为空，派生类可覆盖并在其中遍历并更新子系统。 注意：此方法为热路径，应避免在实现中进行大量托管分配与昂贵的同步操作。
         /// </summary>
         /// <param name="updateContext">更新上下文，包含本次更新的时间与调度信息。</param>
         public virtual void OnUpdate(ref SystemGroupUpdateContext updateContext)

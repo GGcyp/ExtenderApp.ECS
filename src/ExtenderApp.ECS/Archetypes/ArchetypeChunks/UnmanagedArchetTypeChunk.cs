@@ -19,16 +19,16 @@ namespace ExtenderApp.ECS.Archetypes
         private readonly ChunkPool _chunkPool;
 
         /// <summary>
-        /// 底层非托管内存块（aChunk）实例。派生类在 InitializeProtected 中应对其调用 Initialize&lt;T&gt;。
+        /// 底层非托管内存块（aChunk）实例。派生类在 InitializeProtected 中应对其调用 Initialize&lt;T1&gt;。
         /// 注意：未初始化时为 null（或默认），访问时需先调用 Initialize。
         /// </summary>
         internal Chunk chunk;
 
         /// <summary>
-        /// 返回当前块内组件的连续内存视图（Span&lt;T&gt;）。
+        /// 返回当前块内组件的连续内存视图（Span&lt;T1&gt;）。
         /// 实现依赖底层 <see cref="Chunk"/> 的实现，当前方法尚未实现。
         /// </summary>
-        public override Span<T> Span => throw new NotImplementedException();
+        public override Span<T> Span => chunk.GetSpan<T>();
 
         /// <summary>
         /// 使用默认共享池构造实例。
@@ -65,13 +65,13 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 受保护的初始化实现：从池中租用底层 aChunk 并对其调用 Initialize&lt;T&gt;。
+        /// 受保护的初始化实现：从池中租用底层 aChunk 并对其调用 Initialize&lt;T1&gt;。
         /// 如果已初始化则直接返回。
         /// </summary>
         protected override void InitializeProtected()
         {
             if (chunk != null)
-                return;
+                throw new InvalidOperationException("当前原型块已初始化,无需重复初始化。");
 
             chunk = _chunkPool.Rent(Capacity);
             chunk.Initialize<T>();
@@ -96,7 +96,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 将底层 aChunk 归还到池中并清理本对象状态（将 aChunk 置为 null 并重置 Count）。
         /// </summary>
-        public override void ReturnChunkToPool()
+        protected override void ReturnChunkToPool()
         {
             if (chunk != null)
             {

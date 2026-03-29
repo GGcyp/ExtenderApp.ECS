@@ -41,7 +41,7 @@ namespace ExtenderApp.ECS.Components
         }
 
         /// <summary>
-        /// 初始化块以容纳指定数量的 T 型元素。 注意：T 不需要是 unmanaged 编译时限定，但应保证其实际布局大小等于 ElementSize 的期望。 Initialize 仅检查并设置 ElementSize/Capacity，不会清理或重新分配内存。
+        /// 初始化块以容纳指定数量的 T1 型元素。 注意：T1 不需要是 unmanaged 编译时限定，但应保证其实际布局大小等于 ElementSize 的期望。 Initialize 仅检查并设置 ElementSize/Capacity，不会清理或重新分配内存。
         /// </summary>
         /// <typeparam name="T">元素类型（建议为值类型、大小确定的 struct）。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -56,7 +56,7 @@ namespace ExtenderApp.ECS.Components
         #region Operations
 
         /// <summary>
-        /// 将值按类型写入指定索引位置（包含边界与初始化检查）。 上层应确保传入的 T 实例大小与初始化时的 ElementSize 匹配（否则可能导致语义错误）。
+        /// 将值按类型写入指定索引位置（包含边界与初始化检查）。 上层应确保传入的 T1 实例大小与初始化时的 ElementSize 匹配（否则可能导致语义错误）。
         /// </summary>
         /// <typeparam name="T">要写入的类型（值类型）。</typeparam>
         /// <param name="index">元素索引（0 基）。</param>
@@ -112,7 +112,7 @@ namespace ExtenderApp.ECS.Components
         /// </summary>
         /// <typeparam name="T">元素类型。</typeparam>
         /// <param name="index">元素索引（0-based）。</param>
-        /// <returns>指向元素的引用（ref T）。</returns>
+        /// <returns>指向元素的引用（ref T1）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetElementRef<T>(int index)
         {
@@ -121,11 +121,11 @@ namespace ExtenderApp.ECS.Components
         }
 
         /// <summary>
-        /// 在不进行边界和初始化检查的情况下返回指定索引处元素的引用（用于内部热路径以提高性能）。 该方法直接将底层字节视为目标类型并返回其引用，调用方必须确保 `chunkIndex` 在有效范围内且 `ElementSize` 与目标类型匹配。 严格禁止在持有此引用期间对 chunk 进行释放、归还或任何可能移动/重分配底层内存的操作。
+        /// 在不进行边界和初始化检查的情况下返回指定索引处元素的引用（用于内部热路径以提高性能）。 该方法直接将底层字节视为目标类型并返回其引用，调用方必须确保 `index` 在有效范围内且 `ElementSize` 与目标类型匹配。 严格禁止在持有此引用期间对 chunk 进行释放、归还或任何可能移动/重分配底层内存的操作。
         /// </summary>
         /// <typeparam name="T">元素类型。</typeparam>
         /// <param name="index">元素索引（0-based）。</param>
-        /// <returns>指向元素的引用（ref T），基于未检查的内存视图。</returns>
+        /// <returns>指向元素的引用（ref T1），基于未检查的内存视图。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T ReadUnsafeRef<T>(int index)
         {
@@ -299,10 +299,10 @@ namespace ExtenderApp.ECS.Components
         #region Get
 
         /// <summary>
-        /// 获取指定类型的 Span&lt;T&gt; 覆盖整个已初始化容量。 返回的 Span 长度为 Capacity。
+        /// 获取指定类型的 Span&lt;T1&gt; 覆盖整个已初始化容量。 返回的 Span 长度为 Capacity。
         /// </summary>
         /// <typeparam name="T">目标类型。</typeparam>
-        /// <returns>覆盖整个块的 Span&lt;T&gt;。</returns>
+        /// <returns>覆盖整个块的 Span&lt;T1&gt;。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<T> GetSpan<T>()
         {
@@ -312,10 +312,10 @@ namespace ExtenderApp.ECS.Components
         }
 
         /// <summary>
-        /// 获取指定类型的 Span&lt;T&gt; 的非检查版本，适合在已知安全的内部路径使用以获得更少的检查开销。
+        /// 获取指定类型的 Span&lt;T1&gt; 的非检查版本，适合在已知安全的内部路径使用以获得更少的检查开销。
         /// </summary>
         /// <typeparam name="T">目标类型。</typeparam>
-        /// <returns>覆盖整个块的 Span&lt;T&gt;（不做初始化检查）。</returns>
+        /// <returns>覆盖整个块的 Span&lt;T1&gt;（不做初始化检查）。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<T> GetSpanUnsafe<T>()
         {

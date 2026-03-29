@@ -1,4 +1,4 @@
-﻿using ExtenderApp.ECS.Entities;
+using ExtenderApp.ECS.Entities;
 
 namespace ExtenderApp.ECS.Queries
 {
@@ -70,6 +70,22 @@ namespace ExtenderApp.ECS.Queries
         public bool IsEmpty => Query.IsEmpty;
 
         /// <summary>
+        /// 使用指定的 componentType 类型创建一个新的查询描述符实例。
+        /// </summary>
+        /// <param name="componentType">表示查询条件的组件类型（不可为空类型）。</param>
+        internal EntityQueryDesc(ComponentType componentType) : this(new(componentType), ComponentMask.Empty, ComponentMask.Empty, ComponentMask.Empty, RelationMask.Empty)
+        {
+        }
+
+        /// <summary>
+        /// 使用指定的 query 掩码创建一个新的查询描述符实例。
+        /// </summary>
+        /// <param name="query">表示查询条件的组件掩码（不可为空掩码）。</param>
+        internal EntityQueryDesc(in ComponentMask query) : this(query, ComponentMask.Empty, ComponentMask.Empty, ComponentMask.Empty, RelationMask.Empty)
+        {
+        }
+
+        /// <summary>
         /// 使用指定的 All/Any/None 掩码创建一个新的查询描述符实例。
         /// </summary>
         /// <param name="query">表示查询条件的组件掩码（不可为空掩码）。</param>
@@ -77,7 +93,7 @@ namespace ExtenderApp.ECS.Queries
         /// <param name="any">表示至少包含其一的组件掩码（可为空掩码）。</param>
         /// <param name="none">表示必须不包含的组件掩码（可为空掩码）。</param>
         /// <param name="relations">表示查询条件的关系掩码（可为空掩码）。</param>
-        public EntityQueryDesc(ComponentMask query, ComponentMask all, ComponentMask any, ComponentMask none, RelationMask relations)
+        internal EntityQueryDesc(ComponentMask query, ComponentMask all, ComponentMask any, ComponentMask none, RelationMask relations)
         {
             if (query.IsEmpty)
                 throw new ArgumentException("查询掩码不能为空。", nameof(query));

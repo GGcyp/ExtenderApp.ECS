@@ -1,6 +1,12 @@
-﻿namespace ExtenderApp.ECS.Accessors
+﻿using ExtenderApp.ECS.Accessors;
+
+namespace ExtenderApp.ECS.Queries
 {
-    internal struct ArchetypeEnumerator<T>
+    /// <summary>
+    /// 全局查询组件枚举器，用于在所有选中原型查询中枚举组件数据。
+    /// </summary>
+    /// <typeparam name="T">组件类型。</typeparam>
+    internal struct GlobalQueryEnumerator<T>
     {
         private ArchetypeAccessorEnumerator<T> aEnumerator;
         private ChunkAccessorEnumerator<T> cEnumerator;
@@ -8,7 +14,7 @@
 
         public RefRW<T> Current => enumerator.Current;
 
-        public ArchetypeEnumerator(ArchetypeAccessorEnumerator<T> aEnumerator)
+        public GlobalQueryEnumerator(ArchetypeAccessorEnumerator<T> aEnumerator)
         {
             this.aEnumerator = aEnumerator;
             this.cEnumerator = default;

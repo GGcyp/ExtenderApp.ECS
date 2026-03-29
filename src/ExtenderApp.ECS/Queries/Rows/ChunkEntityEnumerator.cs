@@ -1,5 +1,8 @@
 ﻿namespace ExtenderApp.ECS.Accessors
 {
+    /// <summary>
+    /// 对 <see cref="ChunkEntityAccessorEnumerator" /> 的包装，提供了一个扁平化的实体枚举器，允许直接枚举所有实体，而不需要关心它们所在的Chunk。
+    /// </summary>
     internal struct ChunkEntityEnumerator
     {
         private ChunkEntityAccessorEnumerator cEnumerator;

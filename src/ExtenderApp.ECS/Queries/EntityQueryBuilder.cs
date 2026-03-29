@@ -1,19 +1,10 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Entities;
 
 namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
-    /// 实体查询构建器：用于以流式接口构造实体查询描述符。
-    ///
-    /// 功能：
-    /// - 通过 `With` 系列方法指定要查询的组件集合（最多支持 5 个组件）。
-    /// - 通过 `WithAll` 指定必须全部存在的组件掩码。
-    /// - 通过 `WithAny` 指定任意匹配的组件掩码（满足任一即可）。
-    /// - 通过 `WithNone` 指定必须不包含的组件掩码。
-    /// - 最终调用 `Build` 通过 `QueryManager` 获取或创建对应的 `EntityQuery` 实例。
-    ///
-    /// 限制：内部对每个掩码的组件数量进行了上限检查（由 `MaxCount` 控制），超过将抛出 <see cref="ArgumentOutOfRangeException" />。
+    /// 实体查询构建器：用于以流式接口构造实体查询描述符， 提供 `WithAll`、`WithAny`、`WithNone`、`WithRelation` 等方法来指定查询条件， 最终通过 `Build` 生成或获取对应的 `EntityQuery` 实例。
     /// </summary>
     public struct EntityQueryBuilder
     {
@@ -362,7 +353,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2, T3> Build<T1, T2, T3>()
-
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -378,7 +368,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2, T3, T4> Build<T1, T2, T3, T4>()
-
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -395,7 +384,6 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1, T2, T3, T4, T5> Build<T1, T2, T3, T4, T5>()
-
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(CheckAndGetComponent<T1>());
@@ -409,11 +397,85 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 检查指定的泛型组件类型是否有效，并返回对应的组件类型实例。
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore<T1>()
+        {
+            ComponentMask buildQuery = new();
+            buildQuery.SetComponent(CheckAndGetComponent<T1>());
+
+            EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
+            return _queryManager.GetOrCreateCore(desc);
+        }
+
+        /// <summary>
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore<T1, T2>()
+        {
+            ComponentMask buildQuery = new();
+            buildQuery.SetComponent(CheckAndGetComponent<T1>());
+            buildQuery.SetComponent(CheckAndGetComponent<T2>());
+
+            EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
+            return _queryManager.GetOrCreateCore(desc);
+        }
+
+        /// <summary>
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore<T1, T2, T3>()
+        {
+            ComponentMask buildQuery = new();
+            buildQuery.SetComponent(CheckAndGetComponent<T1>());
+            buildQuery.SetComponent(CheckAndGetComponent<T2>());
+            buildQuery.SetComponent(CheckAndGetComponent<T3>());
+
+            EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
+            return _queryManager.GetOrCreateCore(desc);
+        }
+
+        /// <summary>
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore<T1, T2, T3, T4>()
+        {
+            ComponentMask buildQuery = new();
+            buildQuery.SetComponent(CheckAndGetComponent<T1>());
+            buildQuery.SetComponent(CheckAndGetComponent<T2>());
+            buildQuery.SetComponent(CheckAndGetComponent<T3>());
+            buildQuery.SetComponent(CheckAndGetComponent<T4>());
+
+            EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
+            return _queryManager.GetOrCreateCore(desc);
+        }
+
+        /// <summary>
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore<T1, T2, T3, T4, T5>()
+        {
+            ComponentMask buildQuery = new();
+            buildQuery.SetComponent(CheckAndGetComponent<T1>());
+            buildQuery.SetComponent(CheckAndGetComponent<T2>());
+            buildQuery.SetComponent(CheckAndGetComponent<T3>());
+            buildQuery.SetComponent(CheckAndGetComponent<T4>());
+            buildQuery.SetComponent(CheckAndGetComponent<T5>());
+
+            EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
+            return _queryManager.GetOrCreateCore(desc);
+        }
+
+        /// <summary>
+        /// 检查并返回指定泛型组件类型对应的 `ComponentType` 实例。
         /// </summary>
         /// <typeparam name="T">要检查的组件类型。</typeparam>
-        /// <returns>有效的组件类型实例。</returns>
-        /// <exception cref="ArgumentOutOfRangeException">当组件类型无效时抛出。</exception>
+        /// <returns>对应的 `ComponentType` 实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ComponentType CheckAndGetComponent<T>()
         {
@@ -751,17 +813,25 @@ namespace ExtenderApp.ECS.Queries
         #endregion WithRelation
 
         /// <summary>
-        /// 生成一个新的实体查询实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。如果查询管理器中已经存在一个具有相同条件的查询实例，则返回该实例；否则创建一个新的查询实例并返回。
+        /// 生成一个新的实体查询实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。
         /// </summary>
         /// <returns>新的实体查询实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1> Build()
+            => new(BuildEntityQueryCore());
+
+        /// <summary>
+        /// 生成一个新的实体查询核心实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。
+        /// </summary>
+        /// <returns>新的实体查询核心实例。</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore()
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ1>());
 
             EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
-            return _queryManager.GetOrCreateQuery<TQ1>(desc);
+            return _queryManager.GetOrCreateCore(desc);
         }
     }
 
@@ -1096,13 +1166,17 @@ namespace ExtenderApp.ECS.Queries
         /// <returns>新的实体查询实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2> Build()
+            => new(BuildEntityQueryCore());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore()
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ1>());
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ2>());
 
             EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
-            return _queryManager.GetOrCreateQuery<TQ1, TQ2>(desc);
+            return _queryManager.GetOrCreateCore(desc);
         }
     }
 
@@ -1437,6 +1511,10 @@ namespace ExtenderApp.ECS.Queries
         /// <returns>新的实体查询实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2, TQ3> Build()
+            => new(BuildEntityQueryCore());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore()
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ1>());
@@ -1444,7 +1522,7 @@ namespace ExtenderApp.ECS.Queries
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ3>());
 
             EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
-            return _queryManager.GetOrCreateQuery<TQ1, TQ2, TQ3>(desc);
+            return _queryManager.GetOrCreateCore(desc);
         }
     }
 
@@ -1779,6 +1857,10 @@ namespace ExtenderApp.ECS.Queries
         /// <returns>新的实体查询实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2, TQ3, TQ4> Build()
+            => new(BuildEntityQueryCore());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore()
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ1>());
@@ -1787,7 +1869,7 @@ namespace ExtenderApp.ECS.Queries
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ4>());
 
             EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
-            return _queryManager.GetOrCreateQuery<TQ1, TQ2, TQ3, TQ4>(desc);
+            return _queryManager.GetOrCreateCore(desc);
         }
     }
 
@@ -2122,6 +2204,10 @@ namespace ExtenderApp.ECS.Queries
         /// <returns>新的实体查询实例。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2, TQ3, TQ4, TQ5> Build()
+            => new(BuildEntityQueryCore());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal EntityQueryCore BuildEntityQueryCore()
         {
             ComponentMask buildQuery = new();
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ1>());
@@ -2131,7 +2217,7 @@ namespace ExtenderApp.ECS.Queries
             buildQuery.SetComponent(EntityQueryBuilder.CheckAndGetComponent<TQ5>());
 
             EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
-            return _queryManager.GetOrCreateQuery<TQ1, TQ2, TQ3, TQ4, TQ5>(desc);
+            return _queryManager.GetOrCreateCore(desc);
         }
     }
 }

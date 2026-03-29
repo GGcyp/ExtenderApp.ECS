@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ExtenderApp.ECS.Archetypes;
 using ExtenderApp.ECS.Entities;
@@ -407,7 +407,7 @@ namespace ExtenderApp.ECS.Commands
         }
 
         /// <summary>
-        /// 回放：根据查询描述删除匹配的实体。 方法体留空，由调用者实现具体删除逻辑。
+        /// 回放：根据查询描述删除匹配的实体。
         /// </summary>
         private void ApplyDestroyEntitiesForQuery(EntityQueryDesc desc)
         {

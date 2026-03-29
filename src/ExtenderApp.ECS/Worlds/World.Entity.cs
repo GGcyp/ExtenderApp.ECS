@@ -22,8 +22,8 @@ namespace ExtenderApp.ECS
             if (mask.IsEmpty)
                 throw new ArgumentNullException(nameof(mask));
 
-            Archetype archetype = ArchetypeManager.GetOrCreateArchetype(mask);
-            return Entities.CreateEntity(archetype);
+            Archetype archetype = AManager.GetOrCreateArchetype(mask);
+            return EManager.CreateEntity(archetype);
         }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Entity CreateEntityPrivate(Archetype archetype)
         {
-            return Entities.CreateEntity(archetype);
+            return EManager.CreateEntity(archetype);
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace ExtenderApp.ECS
         public Entity CreateEntity()
         {
             ThrowIfNotMainThread();
-            return Entities.CreateEntity();
+            return EManager.CreateEntity();
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace ExtenderApp.ECS
             ThrowIfNotMainThread();
             if (entities.IsEmpty)
                 return;
-            Entities.CreateEntity(entities);
+            EManager.CreateEntity(entities);
         }
 
         /// <summary>
@@ -86,7 +86,7 @@ namespace ExtenderApp.ECS
         {
             ThrowIfNotMainThread();
 
-            Archetype archetype = ArchetypeManager.GetOrCreateArchetype(ComponentType.Create<T>());
+            Archetype archetype = AManager.GetOrCreateArchetype(ComponentType.Create<T>());
             var entity = CreateEntityPrivate(archetype);
             SetComponent(entity, component);
             return entity;
@@ -110,7 +110,7 @@ namespace ExtenderApp.ECS
                 ComponentType.Create<T2>()
             };
 
-            Archetype archetype = ArchetypeManager.GetOrCreateArchetype(mask);
+            Archetype archetype = AManager.GetOrCreateArchetype(mask);
             var entity = CreateEntityPrivate(archetype);
             SetComponent(entity, component1)
                 .SetComponent(component2);
@@ -138,7 +138,7 @@ namespace ExtenderApp.ECS
                 ComponentType.Create<T3>(),
             };
 
-            Archetype archetype = ArchetypeManager.GetOrCreateArchetype(mask);
+            Archetype archetype = AManager.GetOrCreateArchetype(mask);
             var entity = CreateEntityPrivate(archetype);
             SetComponent(entity, component1)
                 .SetComponent(component2)
@@ -170,7 +170,7 @@ namespace ExtenderApp.ECS
                 ComponentType.Create<T4>(),
             };
 
-            Archetype archetype = ArchetypeManager.GetOrCreateArchetype(mask);
+            Archetype archetype = AManager.GetOrCreateArchetype(mask);
             var entity = CreateEntityPrivate(archetype);
             SetComponent(entity, component1)
                 .SetComponent(component2)
@@ -206,7 +206,7 @@ namespace ExtenderApp.ECS
                 ComponentType.Create<T5>(),
             };
 
-            Archetype archetype = ArchetypeManager.GetOrCreateArchetype(mask);
+            Archetype archetype = AManager.GetOrCreateArchetype(mask);
             var entity = CreateEntityPrivate(archetype);
             SetComponent(entity, component1)
                 .SetComponent(component2)
@@ -228,7 +228,7 @@ namespace ExtenderApp.ECS
         public void DestroyEntity(Entity entity)
         {
             ThrowIfNotMainThread();
-            Entities.DestroyEntity(entity);
+            EManager.DestroyEntity(entity);
         }
 
         /// <summary>
@@ -239,7 +239,7 @@ namespace ExtenderApp.ECS
         public void DestroyEntity(ReadOnlySpan<Entity> entities)
         {
             ThrowIfNotMainThread();
-            Entities.DestroyEntity(entities);
+            EManager.DestroyEntity(entities);
         }
 
         #endregion Destroy
@@ -253,7 +253,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentLookup GetEntityComponentLookup(Entity entity)
         {
-            if (Entities.TryGetArchetype(entity, out var archetype, out int archetypeIndex) &&
+            if (EManager.TryGetArchetype(entity, out var archetype, out int archetypeIndex) &&
                (archetype?.TryGetComponentHandle(archetypeIndex, out var handle) ?? false))
             {
                 return new(handle);

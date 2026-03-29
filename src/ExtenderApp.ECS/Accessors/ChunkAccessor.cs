@@ -3,7 +3,7 @@
 namespace ExtenderApp.ECS.Accessors
 {
     /// <summary>
-    /// 在单个 Archetype 的指定组件列上按块索引遍历，提供获取单块的 `ComponentAccessor&lt;T&gt;` 与块级枚举能力。
+    /// 在单个 Archetype 的指定组件列上按块索引遍历，提供获取单块的 `ComponentAccessor&lt;T1&gt;` 与块级枚举能力。
     /// </summary>
     /// <typeparam name="T">组件类型。</typeparam>
     internal struct ChunkAccessor<T>
@@ -28,7 +28,7 @@ namespace ExtenderApp.ECS.Accessors
         public int Count => _chunks.Count;
 
         /// <summary>
-        /// 按块序号（0 基）尝试获取对应块的 `ComponentAccessor{T}`。
+        /// 按块序号（0 基）尝试获取对应块的 `ComponentAccessor{T1}`。
         /// </summary>
         /// <param name="chunkIndex">目标块的序号（0 表示列表第一个块）。</param>
         /// <param name="accessor">当返回 true 时，输出的单块访问器，可用于在该块内按局部索引访问组件。</param>

@@ -3,7 +3,7 @@
 namespace ExtenderApp.ECS.Accessors
 {
     /// <summary>
-    /// 在单个块（chunk）内按局部索引枚举可写引用（RefRW&lt;T&gt;），用于在遍历中就地修改组件数据。
+    /// 在单个块（chunk）内按局部索引枚举可写引用（RefRW&lt;T1&gt;），用于在遍历中就地修改组件数据。
     /// </summary>
     /// <typeparam name="T">组件类型。</typeparam>
     internal struct ComponentEnumerator<T>

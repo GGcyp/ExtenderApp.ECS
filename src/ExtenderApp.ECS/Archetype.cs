@@ -13,7 +13,7 @@ namespace ExtenderApp.ECS
     /// <summary>
     /// 表示具有相同组件签名的一组实体集合（原型）。 一个 <see cref="Archetype" /> 通过 <see cref="ArchetypeChunkManager" /> 管理各组件列对应的块数据。
     /// </summary>
-    [DebuggerDisplay("Archetype( _componentTypes = {_componentTypes} )")]
+    [DebuggerDisplay("{ToString()}")]
     public sealed class Archetype : DisposableObject, IEquatable<Archetype>
     {
         /// <summary>
@@ -24,7 +24,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 当前 Archetype 的组件掩码。
         /// </summary>
-        private readonly ComponentMask _componentTypes;
+        private readonly ComponentMask componentMask;
 
         /// <summary>
         /// 组件列块管理器。
@@ -49,7 +49,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 获取当前 Archetype 的组件掩码只读引用。
         /// </summary>
-        public ref readonly ComponentMask ComponentMask => ref _componentTypes;
+        public ref readonly ComponentMask ComponentMask => ref componentMask;
 
         /// <summary>
         /// 当前 Archetype 的关系掩码只读引用。
@@ -67,6 +67,11 @@ namespace ExtenderApp.ECS
         public int ComponentCount => _chunkManager.ChunkHeadCount;
 
         /// <summary>
+        /// 当前原型的分段数量。每个分段对应一个实体数组和全局索引范围，用于快速定位和访问 Archetype 中的实体数据。
+        /// </summary>
+        public int ChunkCount => Entities.Count;
+
+        /// <summary>
         /// 当前 Archetype 的关系对只读视图。
         /// </summary>
         public IReadOnlyList<RelationPair>? Relations => _relations;
@@ -82,7 +87,7 @@ namespace ExtenderApp.ECS
         {
             _wvManager = worldVersionManager;
             _chunkManager = new(providers);
-            _componentTypes = componentTypes;
+            componentMask = componentTypes;
             relationMask = relationTypes;
 
             if (!relationTypes.IsEmpty)
@@ -301,7 +306,7 @@ namespace ExtenderApp.ECS
         /// <param name="chunks">输出对应类型的块列表。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetChunkList<T>(int cloumn, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks) 
+        internal bool TryGetChunkList<T>(int cloumn, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks)
         {
             chunks = default!;
             if (_chunkManager.TryGetChunkListForColumn(cloumn, out var chunkList))
@@ -319,7 +324,7 @@ namespace ExtenderApp.ECS
         /// <param name="component">输出头块。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component) 
+        internal bool TryGetHeadChunk<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component)
         {
             component = default!;
             if (TryGetHeadChunk(index, out ArchetypeChunk chunk) && chunk is ArchetypeChunk<T> typedChunk)
@@ -357,7 +362,7 @@ namespace ExtenderApp.ECS
         internal bool TryGetHeadChunk(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk component)
         {
             component = default!;
-            if (!_componentTypes.TryGetEncodedPosition(componentType, out int index))
+            if (!componentMask.TryGetEncodedPosition(componentType, out int index))
                 return false;
 
             if (index < 0 || index >= _chunkManager.ChunkHeadCount)
@@ -375,7 +380,7 @@ namespace ExtenderApp.ECS
         /// <param name="component">输出头块。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk<T> component) 
+        internal bool TryGetHeadChunk<T>(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk<T> component)
         {
             return TryGetHeadChunk(componentType, out ArchetypeChunk chunk) && chunk is ArchetypeChunk<T> typedChunk ? (component = typedChunk) != null : (component = default!) != null;
         }
@@ -387,7 +392,7 @@ namespace ExtenderApp.ECS
         /// <param name="component">输出头块。</param>
         /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetHeadChunk<T>([NotNullWhen(true)] out ArchetypeChunk<T> component) 
+        internal bool TryGetHeadChunk<T>([NotNullWhen(true)] out ArchetypeChunk<T> component)
         {
             return TryGetHeadChunk(ComponentType.Create<T>(), out component);
         }
@@ -403,7 +408,7 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <param name="component">组件值。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void SetComponent<T>(int globalIndex, T component) 
+        internal void SetComponent<T>(int globalIndex, T component)
         {
             if (!TrySetComponent(globalIndex, component))
                 throw new InvalidOperationException($"未找到指定类型的块更新 {globalIndex} : {typeof(T)}");
@@ -416,9 +421,9 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <param name="component">组件值。</param>
         /// <returns>设置成功返回 true；否则返回 false。</returns>
-        internal bool TrySetComponent<T>(int globalIndex, T component) 
+        internal bool TrySetComponent<T>(int globalIndex, T component)
         {
-            if (!_componentTypes.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
+            if (!componentMask.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
                 !_chunkManager.TryFindChunkForGlobalIndex(columnIndex, globalIndex, out var chuck, out int localIndex) ||
                 chuck is not ArchetypeChunk<T> c)
                 return false;
@@ -439,7 +444,7 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <returns>组件值。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal T GetComponent<T>(int globalIndex) 
+        internal T GetComponent<T>(int globalIndex)
         {
             if (TryGetComponent(globalIndex, out T component))
                 return component;
@@ -454,10 +459,10 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">实体全局索引。</param>
         /// <param name="component">输出组件值。</param>
         /// <returns>读取成功返回 true；否则返回 false。</returns>
-        internal bool TryGetComponent<T>(int globalIndex, out T component) 
+        internal bool TryGetComponent<T>(int globalIndex, out T component)
         {
             component = default;
-            if (!_componentTypes.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
+            if (!componentMask.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
                 !_chunkManager.TryFindChunkForGlobalIndex(columnIndex, globalIndex, out var chuck, out int localIndex) ||
                 chuck is not ArchetypeChunk<T> c)
                 return false;
@@ -494,24 +499,20 @@ namespace ExtenderApp.ECS
 
             if (sameTypeCount <= CopyThreshold)
             {
-                Span<int> oldIndexSpant = stackalloc int[sameTypeCount];
                 Span<int> newIndexSpant = stackalloc int[sameTypeCount];
-                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpant, newIndexSpant);
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, newIndexSpant);
             }
 
-            var oldIndexArray = ArrayPool<int>.Shared.Rent(sameTypeCount);
             var newIndexArray = ArrayPool<int>.Shared.Rent(sameTypeCount);
 
-            Span<int> oldIndexSpan = oldIndexArray.AsSpan(0, sameTypeCount);
             Span<int> newIndexSpan = newIndexArray.AsSpan(0, sameTypeCount);
 
             try
             {
-                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpan, newIndexSpan);
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, newIndexSpan);
             }
             finally
             {
-                ArrayPool<int>.Shared.Return(oldIndexArray);
                 ArrayPool<int>.Shared.Return(newIndexArray);
             }
         }
@@ -522,33 +523,25 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
         /// <param name="newArchetype">目标 Archetype。</param>
         /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
-        /// <param name="oldIndexSpan">当前 Archetype 的列索引缓存。</param>
         /// <param name="newIndexSpan">目标 Archetype 的列索引缓存。</param>
         /// <returns>复制成功返回 true；否则返回 false。</returns>
-        private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan)
+        private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> newIndexSpan)
         {
             int copiedCount = 0;
-            int oldColumnIndex = 0;
 
             foreach (var componentType in ComponentMask)
             {
                 if (!newArchetype.ComponentMask.TryGetEncodedPosition(componentType, out var newColumnIndex))
-                {
-                    oldColumnIndex++;
                     continue;
-                }
 
-                oldIndexSpan[copiedCount] = oldColumnIndex;
                 newIndexSpan[copiedCount] = newColumnIndex;
                 copiedCount++;
-                oldColumnIndex++;
             }
 
             if (_chunkManager.TryCopyToAndRemove(
                 globalIndex,
                 newArchetype._chunkManager,
                 newGlobalIndex,
-                oldIndexSpan[..copiedCount],
                 newIndexSpan[..copiedCount],
                 newArchetype.ComponentMask))
             {
@@ -596,7 +589,7 @@ namespace ExtenderApp.ECS
         {
             if (ReferenceEquals(this, other)) return true;
             if (other is null) return false;
-            return _componentTypes.Equals(other._componentTypes);
+            return componentMask.Equals(other.componentMask);
         }
 
         /// <summary>
@@ -610,13 +603,13 @@ namespace ExtenderApp.ECS
         /// 获取当前 Archetype 的哈希码。
         /// </summary>
         /// <returns>哈希码值。</returns>
-        public override int GetHashCode() => _componentTypes.GetHashCode();
+        public override int GetHashCode() => componentMask.GetHashCode();
 
         /// <summary>
         /// 返回当前 Archetype 的可读字符串。
         /// </summary>
         /// <returns>字符串表示。</returns>
-        public override string ToString() => $"Archetype( _componentTypes = {_componentTypes} )";
+        public override string ToString() => $"Archetype(EntityCount = {EntityCount}, RelationMask = {relationMask}, ComponentMask = {componentMask})";
 
         /// <summary>
         /// 比较两个 Archetype 是否相等。
@@ -632,7 +625,7 @@ namespace ExtenderApp.ECS
         /// 将 Archetype 隐式转换为其组件掩码。
         /// </summary>
         /// <param name="archetype">源 Archetype。</param>
-        public static implicit operator ComponentMask(Archetype archetype) => archetype._componentTypes;
+        public static implicit operator ComponentMask(Archetype archetype) => archetype.componentMask;
 
         #endregion Object Overrides & Equality
     }

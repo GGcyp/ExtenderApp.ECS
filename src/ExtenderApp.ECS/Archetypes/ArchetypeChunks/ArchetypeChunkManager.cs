@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Components;
 
@@ -10,19 +11,16 @@ namespace ExtenderApp.ECS.Archetypes
     internal sealed class ArchetypeChunkManager
     {
         /// <summary>
-        /// 列块列表的默认初始容量。
+        /// 默认组件列块列表初始容量。 该值会根据增长表递增，超过预设后固定为 2048。
         /// </summary>
-        private const int DefaultListSize = 16;
+        private const int DefaultListSize = Settings.DefaultArchetypeChunkListSize;
 
         /// <summary>
-        /// 超出预设增长表后的固定段容量。
+        /// 获取下一块容量。 该值会根据增长表递增，超过预设后固定为 2048。
         /// </summary>
-        private const int FixedSegmentSize = 2048;
-
-        /// <summary>
-        /// 预设段容量增长表。 在索引范围内按该数组递增，超出后使用 <see cref="FixedSegmentSize" />。
-        /// </summary>
-        private static readonly int[] SizeArray = { 16, 32, 64, 128, 256, 512, 1024 };
+        /// <param name="currentCount">当前块数量。</param>
+        /// <returns>下一块的容量。</returns>
+        private static int GetNextSize(int currentCount) => Settings.GetNextArchetypeChunkSize(currentCount);
 
         /// <summary>
         /// 每个组件列对应的块提供器数组。
@@ -76,20 +74,6 @@ namespace ExtenderApp.ECS.Archetypes
         /// <returns>存在头块则返回对应块，否则返回 null。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ArchetypeChunk? GetHead(int columnIndex) => _columns[columnIndex]?.Count > 0 ? _columns[columnIndex]?[0] : null;
-
-        /// <summary>
-        /// 按段序号获取下一段容量。
-        /// </summary>
-        /// <param name="index">段序号。</param>
-        /// <returns>预设容量或固定容量。</returns>
-        internal static int GetNextSize(int index) => index < SizeArray.Length ? SizeArray[index] : FixedSegmentSize;
-
-        /// <summary>
-        /// 按段序号获取上一段容量。
-        /// </summary>
-        /// <param name="index">段序号。</param>
-        /// <returns>上一段的预设容量或固定容量。</returns>
-        internal static int GetPreviousSize(int index) => index < SizeArray.Length ? SizeArray[index] : FixedSegmentSize;
 
         #region Add
 
@@ -367,7 +351,9 @@ namespace ExtenderApp.ECS.Archetypes
                 lastIndex--;
             }
 
-            if (chunkList.Count == 0) return;
+            if (chunkList.Count == 0)
+                return;
+
             chunkList[lastIndex].Next = null;
         }
 
@@ -462,7 +448,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="chunkList">输出块列表。</param>
         /// <returns>该列存在块时返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetChunkListForColumn(int columnIndex, out ArchetypeChunkList chunkList)
+        public bool TryGetChunkListForColumn(int columnIndex, [NotNullWhen(true)] out ArchetypeChunkList chunkList)
         {
             chunkList = _columns[columnIndex]!;
             return chunkList != null;
@@ -508,35 +494,45 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="globalIndex">源全局索引。</param>
         /// <param name="newManager">目标管理器。</param>
         /// <param name="newGlobalIndex">目标全局索引。</param>
-        /// <param name="oldIndexSpan">源组件列索引映射。</param>
         /// <param name="newIndexSpan">目标组件列索引映射。</param>
         /// <param name="componentTypes">迁移后组件掩码。</param>
         /// <returns>复制并移除成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryCopyToAndRemove(int globalIndex, ArchetypeChunkManager newManager, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan, ComponentMask componentTypes)
+        public bool TryCopyToAndRemove(int globalIndex, ArchetypeChunkManager newManager, int newGlobalIndex, scoped Span<int> newIndexSpan, ComponentMask componentTypes)
         {
             if (!Entities.TryFindLocalIndexForGlobalIndex(globalIndex, out int localIndex, out int chunkIndex) ||
                 !newManager.Entities.TryFindLocalIndexForGlobalIndex(newGlobalIndex, out int newLocalIndex, out int newChunkIndex))
                 return false;
 
-            for (int i = 0; i < oldIndexSpan.Length; i++)
+            int newColumnSpanIndex = 0;
+            int newColumnIndex = newIndexSpan[0];
+            int newLength = newIndexSpan.Length;
+            int oldColumnIndex = 0;
+            foreach (var oldChunkList in _columns!)
             {
-                int oldColumnIndex = oldIndexSpan[i];
-                int newColumnIndex = newIndexSpan[i];
-
-                if (!TryGetChunkListForColumn(oldColumnIndex, out var chunkList) ||
-                   !newManager.TryGetChunkListForColumn(newColumnIndex, out var newChunkList))
+                if (oldChunkList == null)
                 {
+                    oldColumnIndex++;
                     continue;
                 }
 
-                var oldChunk = chunkList[chunkIndex];
-                var newChunk = newChunkList[newChunkIndex];
+                var oldChunk = oldChunkList[chunkIndex];
 
-                if (!oldChunk.TryCopyTo(globalIndex, newChunk, newGlobalIndex))
-                    return false;
+                if (newColumnIndex == oldColumnIndex &&
+                    newManager.TryGetChunkListForColumn(newColumnIndex, out var newChunkList))
+                {
+                    var newChunk = newChunkList[newChunkIndex];
+
+                    if (!oldChunk.TryCopyTo(globalIndex, newChunk, newGlobalIndex))
+                        return false;
+
+                    if (++newColumnSpanIndex > newLength)
+                        newColumnIndex = newIndexSpan[newColumnSpanIndex];
+                }
 
                 oldChunk.RemoveAt(localIndex);
+                RemoveEmptyChunks(oldColumnIndex);
+                oldColumnIndex++;
             }
 
             ref var info = ref Entities.Span[chunkIndex];

@@ -1,13 +1,27 @@
-﻿using System;
+using System;
 using System.Diagnostics;
-using ExtenderApp.ECS;
+using ECSTest.WorldTests;
 
 public static class Program
 {
     public static void Main(string[] args)
     {
-        // 支持通过环境变量或命令行参数选择要运行的基准或自定义运行
-        // 示例： dotnet run --project test/ECSTest CreateSetGet
+        if (args != null && args.Length > 0 &&
+            string.Equals(args[0], "querytest", StringComparison.OrdinalIgnoreCase))
+        {
+            CustomRunner.RunEntityQueryBuildTest();
+            return;
+        }
+
+        if (args != null && args.Length > 0 &&
+            string.Equals(args[0], "worldtests", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyMultiComponentCountFromArgs(args, argIndex: 1);
+            WorldTests.RunAll();
+            return;
+        }
+
+        // 支持通过环境变量或命令行参数选择要运行的基准或自定义运行 示例： dotnet run --project test/ECSTest CreateSetGet
         string filterArg = args != null && args.Length > 0 ? args[0] : Environment.GetEnvironmentVariable("ECSTEST_BENCHMARKS");
 
         if (!string.IsNullOrEmpty(filterArg))
@@ -41,9 +55,11 @@ public static class Program
             Console.WriteLine("  15. DestroyEntitiesForQuery 测试 (CustomRunner)");
             Console.WriteLine("  16. 共享组件增删改查测试 (CustomRunner)");
             Console.WriteLine("  17. 托管对象 UseData 存取测试 (CustomRunner)");
+            Console.WriteLine("  18. DestroyEntities 测试 (CustomRunner)");
+            Console.WriteLine("  19. World 全量测试 (WorldTests.RunAll，可输入多组件实体数 N，并行段会打印入队作业数)");
             Console.WriteLine("  q. 退出");
             Console.WriteLine();
-            Console.Write("请输入选项 (1-17 或 q): ");
+            Console.Write("请输入选项 (1-19 或 q): ");
 
             var choice = Console.ReadLine()?.Trim();
             if (string.IsNullOrEmpty(choice)) continue;
@@ -131,6 +147,27 @@ public static class Program
                     CustomRunner.RunManagedUseDataTest();
                     break;
 
+                case "18":
+                    CustomRunner.RunDestroyEntitiesTest();
+                    break;
+
+                case "19":
+                    Console.Write(
+                        $"多组件遍历实体数 N（回车保留当前 {WorldTests.MultiComponentStressEntityCount}，或读 ECSTEST_MULTI_COMPONENT_N；封顶 {WorldTests.MultiComponentEntityCountHardCap}）：");
+                    var s19 = Console.ReadLine();
+                    if (!string.IsNullOrWhiteSpace(s19) && int.TryParse(s19.Trim(), out var p19) && p19 > 0)
+                        WorldTests.MultiComponentStressEntityCount = Math.Min(p19, WorldTests.MultiComponentEntityCountHardCap);
+                    else
+                    {
+                        var envN = Environment.GetEnvironmentVariable("ECSTEST_MULTI_COMPONENT_N");
+                        if (!string.IsNullOrWhiteSpace(envN) && int.TryParse(envN.Trim(), out var e19) && e19 > 0)
+                            WorldTests.MultiComponentStressEntityCount = Math.Min(e19, WorldTests.MultiComponentEntityCountHardCap);
+                    }
+
+                    WorldTests.RunAll();
+                    Console.WriteLine("WorldTests.RunAll 已完成。");
+                    break;
+
                 default:
                     Console.WriteLine("无效选项。");
                     break;
@@ -140,6 +177,22 @@ public static class Program
             Console.WriteLine("按回车返回菜单...");
             Console.ReadLine();
         }
+    }
+
+    /// <summary>
+    /// 解析多组件测试规模：优先 <paramref name="args"/>[argIndex]，否则环境变量 ECSTEST_MULTI_COMPONENT_N；写入 <see cref="WorldTests.MultiComponentStressEntityCount"/>。
+    /// </summary>
+    private static void ApplyMultiComponentCountFromArgs(string[] args, int argIndex)
+    {
+        if (args != null && args.Length > argIndex && int.TryParse(args[argIndex].Trim(), out var parsed) && parsed > 0)
+        {
+            WorldTests.MultiComponentStressEntityCount = Math.Min(parsed, WorldTests.MultiComponentEntityCountHardCap);
+            return;
+        }
+
+        var env = Environment.GetEnvironmentVariable("ECSTEST_MULTI_COMPONENT_N");
+        if (!string.IsNullOrWhiteSpace(env) && int.TryParse(env.Trim(), out var en) && en > 0)
+            WorldTests.MultiComponentStressEntityCount = Math.Min(en, WorldTests.MultiComponentEntityCountHardCap);
     }
 
     private static void RunCustomWithPrompt(Action<int> action, int defaultN)

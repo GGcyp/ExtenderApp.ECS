@@ -88,13 +88,13 @@ namespace ExtenderApp.ECS
         #region ArchetypeChunBuilder
 
         /// <summary>
-        /// 获取一个新的 ArchetypeBuilder 实例，用于构建 ArchetypeChunk。 该 Builder 内部持有对当前 CurrentWorld 的 ArchetypeManager 的引用，允许用户通过链式调用添加或移除组件和关系来定义 ArchetypeChunk 的结构。
+        /// 获取一个新的 ArchetypeBuilder 实例，用于构建 ArchetypeChunk。 该 Builder 内部持有对当前 CurrentWorld 的 AManager 的引用，允许用户通过链式调用添加或移除组件和关系来定义 ArchetypeChunk 的结构。
         /// 生成的 ArchetypeChunk 可用于批量创建实体或迁移实体到新结构。 该方法在主线程执行并内联以最大化性能。
         /// </summary>
         /// <returns>返回一个 <see cref="ArchetypeBuilder" /> 实例</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ArchetypeBuilder CreateArchetypeChunkBuilder()
-            => new(ArchetypeManager);
+            => new(AManager);
 
         #endregion ArchetypeChunBuilder
 
@@ -113,7 +113,7 @@ namespace ExtenderApp.ECS
         public void SetSharedComponent<T>(in T value)
         {
             ThrowIfNotMainThread();
-            SharedComponentManager.Set(value);
+            SCManager.Set(value);
         }
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace ExtenderApp.ECS
         /// <returns>若存在则返回 true；否则返回 false。</returns>
         /// <remarks>读取为线程安全的只读操作，可在任意线程调用（前提是写入仅在主线程）。</remarks>
         public bool TryGetSharedComponent<T>(out T value)
-        => SharedComponentManager.TryGet(out value);
+        => SCManager.TryGet(out value);
 
         /// <summary>
         /// 获取指定类型的共享组件值（若不存在则抛出异常）。
@@ -133,7 +133,7 @@ namespace ExtenderApp.ECS
         /// <returns>存在的共享组件值。</returns>
         /// <exception cref="KeyNotFoundException">当指定类型的共享组件不存在时抛出。</exception>
         public T GetSharedComponent<T>()
-            => SharedComponentManager.Get<T>();
+            => SCManager.Get<T>();
 
         /// <summary>
         /// 判断世界中是否存在指定类型的共享组件。
@@ -141,7 +141,7 @@ namespace ExtenderApp.ECS
         /// <typeparam name="T">共享组件的值类型（struct）。</typeparam>
         /// <returns>存在则返回 true；否则返回 false。</returns>
         public bool HasSharedComponent<T>()
-            => SharedComponentManager.Has<T>();
+            => SCManager.Has<T>();
 
         /// <summary>
         /// 从世界中移除指定类型的共享组件（仅主线程允许）。
@@ -152,7 +152,7 @@ namespace ExtenderApp.ECS
         public bool RemoveSharedComponent<T>()
         {
             ThrowIfNotMainThread();
-            return SharedComponentManager.Remove<T>();
+            return SCManager.Remove<T>();
         }
 
         /// <summary>
@@ -162,7 +162,7 @@ namespace ExtenderApp.ECS
         public bool TryAddSharedComponent<T>(in T value)
         {
             ThrowIfNotMainThread();
-            return SharedComponentManager.TryAddComponent(value);
+            return SCManager.TryAddComponent(value);
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace ExtenderApp.ECS
         public void AddSharedComponent<T>(in T value)
         {
             ThrowIfNotMainThread();
-            if (!SharedComponentManager.TryAddComponent(value))
+            if (!SCManager.TryAddComponent(value))
                 throw new InvalidOperationException($"Shared component of type {typeof(T)} already exists.");
         }
 
@@ -183,7 +183,7 @@ namespace ExtenderApp.ECS
         public bool TryUpdateSharedComponent<T>(in T value)
         {
             ThrowIfNotMainThread();
-            return SharedComponentManager.TrySetComponent(value);
+            return SCManager.TrySetComponent(value);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace ExtenderApp.ECS
         public void UpdateSharedComponent<T>(in T value)
         {
             ThrowIfNotMainThread();
-            if (!SharedComponentManager.TrySetComponent(value))
+            if (!SCManager.TrySetComponent(value))
                 throw new KeyNotFoundException($"Shared component of type {typeof(T)} does not exist.");
         }
 

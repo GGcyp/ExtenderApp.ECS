@@ -29,12 +29,12 @@ namespace ExtenderApp.ECS
         private const int MaxComponentCount = SegmentCount * SegmentBits;
 
         /// <summary>
-        /// 段内位掩码（用于计算 chunkIndex % 64）。
+        /// 段内位掩码（用于计算 index % 64）。
         /// </summary>
         private const int SegmentMask = SegmentBits - 1;
 
         /// <summary>
-        /// 将索引右移以获得段序号（等价于 chunkIndex / 64）。
+        /// 将索引右移以获得段序号（等价于 index / 64）。
         /// </summary>
         private const int IndexShift = 6;
 
@@ -205,8 +205,8 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetBit(int index)
         {
-            int ulongIndex = index >> IndexShift; // chunkIndex / 64
-            int bitOffset = index & SegmentMask; // chunkIndex % 64
+            int ulongIndex = index >> IndexShift; // index / 64
+            int bitOffset = index & SegmentMask; // index % 64
 
             ref ulong segment = ref GetMaskUlongRef(ulongIndex);
             segment |= 1UL << bitOffset;
@@ -246,8 +246,8 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearBit(int index)
         {
-            int ulongIndex = index >> IndexShift; // chunkIndex / 64
-            int bitOffset = index & SegmentMask; // chunkIndex % 64
+            int ulongIndex = index >> IndexShift; // index / 64
+            int bitOffset = index & SegmentMask; // index % 64
 
             ref ulong segment = ref GetMaskUlongRef(ulongIndex);
             segment &= ~(1UL << bitOffset);
@@ -485,6 +485,7 @@ namespace ExtenderApp.ECS
                 stringBuilder.Append(item.ToString());
                 stringBuilder.Append(", ");
             }
+            stringBuilder.Remove(stringBuilder.Length - 2, 2); // 移除最后的 ", "
             stringBuilder.Append("]");
             return stringBuilder.ToString();
         }
