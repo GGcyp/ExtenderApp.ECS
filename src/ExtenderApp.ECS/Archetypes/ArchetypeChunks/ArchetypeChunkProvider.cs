@@ -39,16 +39,20 @@ namespace ExtenderApp.ECS.Archetypes
             return _providers.GetOrAdd(componentType, static t =>
             {
                 var providerType = typeof(ArchetypeChunkProvider<>).MakeGenericType(t);
-                return (ArchetypeChunkProvider)Activator.CreateInstance(providerType)!;
+                var provider = (ArchetypeChunkProvider)Activator.CreateInstance(providerType)!;
+                provider.InitCreateFunc(false);
+                return provider;
             });
         }
 
         /// <summary>
         /// 类型安全的泛型获取方法（适用于 T1 为 struct）。
         /// </summary>
-        public static ArchetypeChunkProvider<T> GetOrCreate<T>()
+        public static ArchetypeChunkProvider<T> GetOrCreate<T>(bool isSingle)
         {
-            return (ArchetypeChunkProvider<T>)_providers.GetOrAdd(typeof(T), static t => new ArchetypeChunkProvider<T>());
+            var provider = (ArchetypeChunkProvider<T>)_providers.GetOrAdd(typeof(T), t => new ArchetypeChunkProvider<T>());
+            provider.InitCreateFunc(isSingle);
+            return provider;
         }
 
         /// <summary>
@@ -66,6 +70,12 @@ namespace ExtenderApp.ECS.Archetypes
         /// 将不再使用的 <see cref="ArchetypeChunk" /> 实例归还到提供器（允许为 null）。
         /// </summary>
         public abstract void Return(ArchetypeChunk? chunk);
+
+        /// <summary>
+        /// 必须调用的初始化块生成函数。
+        /// </summary>
+        /// <param name="isSingle">指示是否为单例组件块。</param>
+        public abstract void InitCreateFunc(bool isSingle);
 
         /// <summary>
         /// 创建一个新的空的 <see cref="ArchetypeChunkList" /> 实例（容量可预设）。
@@ -118,10 +128,37 @@ namespace ExtenderApp.ECS.Archetypes
         {
             IsEmptyComponent = ComponentType.Create<T>().IsEmptyComponent;
             _poolLazy = IsEmptyComponent ? default! : new(() => new());
-            _createChunkFunc = IsEmptyComponent ? default! :
-                typeof(T).IsClass ?
-                static (p) => new ManagedArchetTypeChunk<T>(p)
-                : static (p) => new UnmanagedArchetTypeChunk<T>(p);
+            _createChunkFunc = default!;
+        }
+
+        ///<inheritdoc/>
+        public override void InitCreateFunc(bool isSingle)
+        {
+            if (_createChunkFunc != null)
+                return;
+
+            _createChunkFunc = IsEmptyComponent ? default! : CreateFunc(isSingle);
+        }
+
+        /// <summary>
+        /// 创建新的 <see cref="ArchetypeChunk{T}" /> 实例的工厂方法，根据 T1 的类型选择托管或非托管实现。
+        /// </summary>
+        /// <param name="isSingle">指示是否为单例组件块。</param>
+        /// <returns>返回一个用于创建 <see cref="ArchetypeChunk{T}" /> 实例的委托。</returns>
+        private static Func<ArchetypeChunkProvider<T>, ArchetypeChunk<T>> CreateFunc(bool isSingle)
+        {
+            if (isSingle)
+            {
+                return static (p) => new SingleManagerArchetTypeChunk<T>(p);
+            }
+            else if (typeof(T).IsClass)
+            {
+                return static (p) => new ManagedArchetTypeChunk<T>(p);
+            }
+            else
+            {
+                return static (p) => new UnmanagedArchetTypeChunk<T>(p);
+            }
         }
 
         /// <summary>

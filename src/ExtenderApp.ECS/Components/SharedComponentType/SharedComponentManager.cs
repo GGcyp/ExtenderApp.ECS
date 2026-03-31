@@ -29,7 +29,7 @@ namespace ExtenderApp.ECS.Components
             if (_mask.On(type))
                 return TrySetComponent(value);
 
-            var chunk = ArchetypeChunkProvider.GetOrCreate<T>().Rent();
+            var chunk = ArchetypeChunkProvider.GetOrCreate<T>(true).Rent();
             chunk.Initialize(1);
             chunk.SetComponent(0, value);
             _chunks[GetArrayIndex(type)] = chunk;

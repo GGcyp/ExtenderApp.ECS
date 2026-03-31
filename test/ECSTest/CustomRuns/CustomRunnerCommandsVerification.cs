@@ -1,4 +1,3 @@
-using System.Threading;
 using ECSTest.Components;
 using ExtenderApp.ECS;
 using ExtenderApp.ECS.Queries;
@@ -168,6 +167,12 @@ public static class CustomRunnerCommandsVerification
         Assert.True(world.RemoveSharedComponent<SharedSample>());
 
         Assert.False(world.TryGetSharedComponent<SharedSample>(out _));
+
+        Assert.True(world.TryAddSharedComponent(new ManagedData() { Level = 1, Name = "s" }));
+
+        Assert.True(world.TryGetSharedComponent<ManagedData>(out var d));
+
+        Console.WriteLine($"ManagedData: Level = {d.Level}, Name = {d.Name}");
     }
 
     private struct SharedSample
