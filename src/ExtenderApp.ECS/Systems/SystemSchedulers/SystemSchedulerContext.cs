@@ -59,7 +59,7 @@ namespace ExtenderApp.ECS.Systems
     /// </summary>
     internal sealed class SystemSchedulerContext<TSystem> : SystemSchedulerContext where TSystem : ISystem
     {
-        private readonly TSystem _system;
+        private TSystem _system;
 
         public SystemSchedulerContext(TSystem system) : this(system, typeof(TSystem).Name, null)
         {
