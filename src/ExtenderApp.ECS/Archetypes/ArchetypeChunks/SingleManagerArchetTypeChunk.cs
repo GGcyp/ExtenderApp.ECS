@@ -5,7 +5,7 @@ namespace ExtenderApp.ECS.Archetypes
     /// <summary>
     /// 单例托管堆块。用于存储单例托管组件（即每个组件类型仅有一个实例）的数据。 由于单例托管组件的特殊性（全局唯一、频繁访问），该块采用专门设计以优化性能和内存使用。 约束：单例托管组件类型必须为 class。 线程模型：写入（Set/Remove）仅允许主线程；读取（TryGet/Has）可在任意线程调用。
     /// </summary>
-    internal class SingleManagerArchetTypeChunk<T> : ArchetypeChunk<T>
+    internal sealed class SingleManagerArchetTypeChunk<T> : ArchetypeChunk<T>
     {
         private T component;
 
