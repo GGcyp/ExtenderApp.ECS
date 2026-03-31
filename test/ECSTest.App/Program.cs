@@ -37,7 +37,15 @@ public static class Program
 
         while (true)
         {
-            Console.Clear();
+            try
+            {
+                Console.Clear();
+            }
+            catch (IOException)
+            {
+                // 当标准输入/输出被重定向（例如通过管道运行）时，Console.Clear 可能抛出 IOException。
+                // 交互菜单不依赖 Clear 的语义，忽略即可。
+            }
             Console.WriteLine("========================================");
             Console.WriteLine("  ExtenderApp.ECS 测试套件");
             Console.WriteLine("========================================");
