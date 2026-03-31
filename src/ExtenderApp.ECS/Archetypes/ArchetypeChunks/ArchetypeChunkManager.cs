@@ -526,7 +526,8 @@ namespace ExtenderApp.ECS.Archetypes
                     if (!oldChunk.TryCopyTo(globalIndex, newChunk, newGlobalIndex))
                         return false;
 
-                    if (++newColumnSpanIndex > newLength)
+                    newColumnSpanIndex++;
+                    if (newColumnSpanIndex < newLength)
                         newColumnIndex = newIndexSpan[newColumnSpanIndex];
                 }
 
