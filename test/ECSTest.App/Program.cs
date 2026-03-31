@@ -62,9 +62,10 @@ public static class Program
             Console.WriteLine("  17. 托管对象 UseData 存取测试 (CustomRunner)");
             Console.WriteLine("  18. DestroyEntities 测试 (CustomRunner)");
             Console.WriteLine("  19. World 全量测试 (WorldTests.RunAll，可输入多组件实体数 N，并行段会打印入队作业数)");
+            Console.WriteLine("  20. 托管堆 class 组件测试 (CustomRunner，执行测试工程中的 ManagedHeapClassComponentTests)");
             Console.WriteLine("  q. 退出");
             Console.WriteLine();
-            Console.Write("请输入选项 (1-19 或 q): ");
+            Console.Write("请输入选项 (1-20 或 q): ");
 
             var choice = Console.ReadLine()?.Trim();
             if (string.IsNullOrEmpty(choice)) continue;
@@ -170,6 +171,10 @@ public static class Program
 
                     WorldSuite.RunAll();
                     Console.WriteLine("WorldTests.RunAll 已完成。");
+                    break;
+
+                case "20":
+                    CustomRunner.RunManagedHeapClassComponentTests();
                     break;
 
                 default:

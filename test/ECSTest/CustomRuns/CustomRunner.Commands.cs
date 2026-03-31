@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using ECSTest.Components;
+using ECSTest.Tests;
 using ExtenderApp.ECS;
 using ExtenderApp.ECS.Queries;
 
@@ -84,5 +85,53 @@ public static partial class CustomRunner
         sw.Stop();
         Console.WriteLine($"OK, elapsed={sw.ElapsedMilliseconds} ms");
         Console.WriteLine("========================================");
+    }
+
+    /// <summary>
+    /// 在 ECSTest.App 中执行托管堆（class 引用类型）组件测试。
+    /// 说明：ECSTest.App 不会自动枚举 xUnit，用该入口可在菜单里直跑并打印每个用例的通过/失败与异常信息。
+    /// </summary>
+    public static void RunManagedHeapClassComponentTests()
+    {
+        Console.WriteLine("=== CustomRunner: ManagedHeap Class Component Tests ===");
+
+        var suite = new ManagedHeapClassComponentTests();
+
+        int passed = 0;
+        int failed = 0;
+
+        Run(nameof(ManagedHeapClassComponentTests.ManagedClassComponentCreateAndGetKeepsSameReference),
+            suite.ManagedClassComponentCreateAndGetKeepsSameReference);
+
+        Run(nameof(ManagedHeapClassComponentTests.ManagedClassComponentSetComponentReplacesReference),
+            suite.ManagedClassComponentSetComponentReplacesReference);
+
+        Run(nameof(ManagedHeapClassComponentTests.ManagedClassComponentQueryAllowsReplacingReference),
+            suite.ManagedClassComponentQueryAllowsReplacingReference);
+
+        Run(nameof(ManagedHeapClassComponentTests.ManagedClassComponentWithStructArchetypeWorksCorrectly),
+            suite.ManagedClassComponentWithStructArchetypeWorksCorrectly);
+
+        Console.WriteLine($"Summary: passed={passed}, failed={failed}");
+        Console.WriteLine("========================================");
+        return;
+
+        void Run(string name, Action test)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"--- {name} ---");
+            try
+            {
+                test();
+                passed++;
+                Console.WriteLine($"Result: PASS ({name})");
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Console.WriteLine($"Result: FAIL ({name})");
+                Console.WriteLine(ex);
+            }
+        }
     }
 }
