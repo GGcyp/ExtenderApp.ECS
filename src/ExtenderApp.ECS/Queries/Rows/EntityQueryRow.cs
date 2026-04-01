@@ -3,7 +3,7 @@ using ExtenderApp.ECS.Accessors;
 namespace ExtenderApp.ECS.Queries
 {
     /// <summary>
-    /// 单行查询结果：一列实体与一列 T1 组件；foreach 按值解构请用 <see cref="Deconstruct" />，需要 <see cref="RefRW{T}" /> 请用 <see cref="DeconstructRefs" />。
+    /// 单行查询结果：一列实体与一列 T1 组件；foreach 按值解构请用 <see cref="Deconstruct" />，需要 <see cref="RefRW{T}" /> 请用 <see cref="Deconstruct" />。
     /// </summary>
     public readonly struct EntityQueryRow<T1>
     {
@@ -20,28 +20,14 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 按值解构出 T1（经 <see cref="RefRW{T}" /> 隐式转为组件值）。
-        /// </summary>
-        public void Deconstruct(out T1 item1) => item1 = _item1;
-
-        /// <summary>
-        /// 按值解构出 T1 与当前实体。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out Entity entity)
-        {
-            item1 = _item1;
-            entity = _entity;
-        }
-
-        /// <summary>
         /// 解构出 T1 列的 <see cref="RefRW{T}" />。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1) => item1 = _item1;
+        public readonly void Deconstruct(out RefRW<T1> item1) => item1 = _item1;
 
         /// <summary>
         /// 解构出 T1 列的 <see cref="RefRW{T}" /> 与当前实体。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out Entity entity)
+        public readonly void Deconstruct(out RefRW<T1> item1, out Entity entity)
         {
             item1 = _item1;
             entity = _entity;
@@ -78,28 +64,9 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 按值解构出 T1、T2。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2)
-        {
-            item1 = _item1;
-            item2 = _item2;
-        }
-
-        /// <summary>
-        /// 按值解构出 T1、T2 与当前实体。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2, out Entity entity)
-        {
-            item1 = _item1;
-            item2 = _item2;
-            entity = _entity;
-        }
-
-        /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" />。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2)
         {
             item1 = _item1;
             item2 = _item2;
@@ -108,7 +75,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" /> 与当前实体。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2, out Entity entity)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2, out Entity entity)
         {
             item1 = _item1;
             item2 = _item2;
@@ -156,30 +123,9 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 按值解构出 T1、T2、T3。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2, out T3 item3)
-        {
-            item1 = _item1;
-            item2 = _item2;
-            item3 = _item3;
-        }
-
-        /// <summary>
-        /// 按值解构出 T1、T2、T3 与当前实体。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2, out T3 item3, out Entity entity)
-        {
-            item1 = _item1;
-            item2 = _item2;
-            item3 = _item3;
-            entity = _entity;
-        }
-
-        /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" />。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3)
         {
             item1 = _item1;
             item2 = _item2;
@@ -189,7 +135,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" /> 与当前实体。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out Entity entity)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out Entity entity)
         {
             item1 = _item1;
             item2 = _item2;
@@ -250,32 +196,9 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 按值解构出 T1～T4。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2, out T3 item3, out T4 item4)
-        {
-            item1 = _item1;
-            item2 = _item2;
-            item3 = _item3;
-            item4 = _item4;
-        }
-
-        /// <summary>
-        /// 按值解构出 T1～T4 与当前实体。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2, out T3 item3, out T4 item4, out Entity entity)
-        {
-            item1 = _item1;
-            item2 = _item2;
-            item3 = _item3;
-            item4 = _item4;
-            entity = _entity;
-        }
-
-        /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" />。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4)
         {
             item1 = _item1;
             item2 = _item2;
@@ -286,7 +209,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" /> 与当前实体。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4, out Entity entity)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4, out Entity entity)
         {
             item1 = _item1;
             item2 = _item2;
@@ -356,34 +279,9 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 按值解构出 T1～T5。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2, out T3 item3, out T4 item4, out T5 item5)
-        {
-            item1 = _item1;
-            item2 = _item2;
-            item3 = _item3;
-            item4 = _item4;
-            item5 = _item5;
-        }
-
-        /// <summary>
-        /// 按值解构出 T1～T5 与当前实体。
-        /// </summary>
-        public void Deconstruct(out T1 item1, out T2 item2, out T3 item3, out T4 item4, out T5 item5, out Entity entity)
-        {
-            item1 = _item1;
-            item2 = _item2;
-            item3 = _item3;
-            item4 = _item4;
-            item5 = _item5;
-            entity = _entity;
-        }
-
-        /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" />。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4, out RefRW<T5> item5)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4, out RefRW<T5> item5)
         {
             item1 = _item1;
             item2 = _item2;
@@ -395,7 +293,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 解构出各列的 <see cref="RefRW{T}" /> 与当前实体。
         /// </summary>
-        public void DeconstructRefs(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4, out RefRW<T5> item5, out Entity entity)
+        public readonly void Deconstruct(out RefRW<T1> item1, out RefRW<T2> item2, out RefRW<T3> item3, out RefRW<T4> item4, out RefRW<T5> item5, out Entity entity)
         {
             item1 = _item1;
             item2 = _item2;
