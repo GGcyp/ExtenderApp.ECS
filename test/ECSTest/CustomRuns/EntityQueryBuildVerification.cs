@@ -133,7 +133,7 @@ public static class EntityQueryBuildVerification
         int count2 = 0;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Velocity> velocity, out RefRW<Health> health, out RefRW<Position> position, out Entity rowEntity);
+            row.Deconstruct(out RefRW<Velocity> velocity, out RefRW<Health> health, out RefRW<Position> position, out Entity rowEntity);
             count2++;
             Assert.Equal(entity, rowEntity);
             velocity.Value = new Velocity

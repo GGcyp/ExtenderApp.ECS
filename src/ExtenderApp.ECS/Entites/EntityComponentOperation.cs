@@ -141,13 +141,13 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加一个新组件（可能导致实体迁移到新的 Archetype）。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
+        /// <typeparam name="T1">组件类型。</typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityComponentOperation AddComponent<T>()
+        public EntityComponentOperation AddComponent<T1>()
         {
             ThrowIfNotMainThread();
 
-            var compType = ComponentType.Create<T>();
+            var compType = ComponentType.Create<T1>();
             if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
                 archetype == null)
             {
@@ -163,6 +163,202 @@ namespace ExtenderApp.ECS.Entities
 
             var newIndex = archetype.AddEntity(_entity);
             ChangedArchetype(archetype, newIndex);
+            return this;
+        }
+
+        /// <summary>
+        /// 向实体添加二个新组件（可能导致实体迁移到新的 Archetype）。
+        /// </summary>
+        /// <typeparam name="T1">组件类型。</typeparam>
+        /// <typeparam name="T2">组件类型。</typeparam>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityComponentOperation AddComponent<T1, T2>()
+        {
+            ThrowIfNotMainThread();
+
+            var compType1 = ComponentType.Create<T1>();
+            var compType2 = ComponentType.Create<T2>();
+            if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
+                archetype == null)
+            {
+                ComponentMask componentMask = new()
+                {
+                    compType1,
+                    compType2
+                };
+                archetype = BuildArchetype(componentMask);
+            }
+            else
+            {
+                var newMask = archetype.ComponentMask;
+                newMask.Add(compType1);
+                newMask.Add(compType2);
+                archetype = BuildArchetype(newMask, archetype.RelationTypes);
+            }
+
+            var newIndex = archetype.AddEntity(_entity);
+            ChangedArchetype(archetype, newIndex);
+            return this;
+        }
+
+        /// <summary>
+        /// 向实体添加三个新组件（可能导致实体迁移到新的 Archetype）。
+        /// </summary>
+        /// <typeparam name="T1">组件类型。</typeparam>
+        /// <typeparam name="T2">组件类型。</typeparam>
+        /// <typeparam name="T3">组件类型。</typeparam>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityComponentOperation AddComponent<T1, T2, T3>()
+        {
+            ThrowIfNotMainThread();
+
+            var compType1 = ComponentType.Create<T1>();
+            var compType2 = ComponentType.Create<T2>();
+            var compType3 = ComponentType.Create<T3>();
+            if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
+                archetype == null)
+            {
+                ComponentMask componentMask = new()
+                {
+                    compType1,
+                    compType2,
+                    compType3
+                };
+                archetype = BuildArchetype(componentMask);
+            }
+            else
+            {
+                var newMask = archetype.ComponentMask;
+                newMask.Add(compType1);
+                newMask.Add(compType2);
+                newMask.Add(compType3);
+                archetype = BuildArchetype(newMask, archetype.RelationTypes);
+            }
+
+            var newIndex = archetype.AddEntity(_entity);
+            ChangedArchetype(archetype, newIndex);
+            return this;
+        }
+
+
+        /// <summary>
+        /// 向实体添加四个新组件（可能导致实体迁移到新的 Archetype）。
+        /// </summary>
+        /// <typeparam name="T1">组件类型。</typeparam>
+        /// <typeparam name="T2">组件类型。</typeparam>
+        /// <typeparam name="T3">组件类型。</typeparam>
+        /// <typeparam name="T4">组件类型。</typeparam>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityComponentOperation AddComponent<T1, T2, T3, T4>()
+        {
+            ThrowIfNotMainThread();
+
+            var compType1 = ComponentType.Create<T1>();
+            var compType2 = ComponentType.Create<T2>();
+            var compType3 = ComponentType.Create<T3>();
+            var compType4 = ComponentType.Create<T4>();
+            if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
+                archetype == null)
+            {
+                ComponentMask componentMask = new()
+                {
+                    compType1,
+                    compType2,
+                    compType3,
+                    compType4
+                };
+                archetype = BuildArchetype(componentMask);
+            }
+            else
+            {
+                var newMask = archetype.ComponentMask;
+                newMask.Add(compType1);
+                newMask.Add(compType2);
+                newMask.Add(compType3);
+                newMask.Add(compType4);
+                archetype = BuildArchetype(newMask, archetype.RelationTypes);
+            }
+
+            var newIndex = archetype.AddEntity(_entity);
+            ChangedArchetype(archetype, newIndex);
+            return this;
+        }
+
+
+        /// <summary>
+        /// 向实体添加五个新组件（可能导致实体迁移到新的 Archetype）。
+        /// </summary>
+        /// <typeparam name="T1">组件类型。</typeparam>
+        /// <typeparam name="T2">组件类型。</typeparam>
+        /// <typeparam name="T3">组件类型。</typeparam>
+        /// <typeparam name="T4">组件类型。</typeparam>
+        /// <typeparam name="T5">组件类型。</typeparam>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityComponentOperation AddComponent<T1, T2, T3, T4, T5>()
+        {
+            ThrowIfNotMainThread();
+
+            var compType1 = ComponentType.Create<T1>();
+            var compType2 = ComponentType.Create<T2>();
+            var compType3 = ComponentType.Create<T3>();
+            var compType4 = ComponentType.Create<T4>();
+            var compType5 = ComponentType.Create<T5>();
+            if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
+                archetype == null)
+            {
+                ComponentMask componentMask = new()
+                {
+                    compType1,
+                    compType2,
+                    compType3,
+                    compType4,
+                    compType5
+                };
+                archetype = BuildArchetype(componentMask);
+            }
+            else
+            {
+                var newMask = archetype.ComponentMask;
+                newMask.Add(compType1);
+                newMask.Add(compType2);
+                newMask.Add(compType3);
+                newMask.Add(compType4);
+                newMask.Add(compType5);
+                archetype = BuildArchetype(newMask, archetype.RelationTypes);
+            }
+
+            var newIndex = archetype.AddEntity(_entity);
+            ChangedArchetype(archetype, newIndex);
+            return this;
+        }
+
+        /// <summary>
+        /// 变更实体的组件掩码（可能导致实体迁移到新的 Archetype）。 该方法适用于需要一次性修改多个组件的场景，避免多次调用 AddComponent/RemoveComponent 导致的重复迁移。
+        /// </summary>
+        /// <param name="newMask">需要被迁移到的掩码。</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityComponentOperation ChangedMask(in ComponentMask newMask)
+        {
+            ThrowIfNotMainThread();
+
+            Archetype? newArchetype = default;
+            int newIndex = 0;
+
+            if (!TryGetArchetype(out var archetype, out var archetypeIndex) ||
+                archetype == null)
+            {
+                newArchetype = BuildArchetype(newMask);
+                newIndex = newArchetype.AddEntity(_entity);
+                ChangedArchetype(newArchetype, newIndex);
+                return this;
+            }
+
+            if (archetype.ComponentMask == newMask)
+                return this;
+
+            newArchetype = BuildArchetype(newMask, archetype.RelationTypes);
+            newIndex = newArchetype.AddEntity(_entity);
+            ChangedArchetype(newArchetype, newIndex);
             return this;
         }
 

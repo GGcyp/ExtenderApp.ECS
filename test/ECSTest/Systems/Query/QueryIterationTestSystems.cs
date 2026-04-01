@@ -100,7 +100,7 @@ public struct MainThreadPositionQuerySystem : ISystem
         float sumX = 0f;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos);
+            row.Deconstruct(out RefRW<Position> pos);
             count++;
             sumX += pos.Value.X;
         }
@@ -154,7 +154,7 @@ public struct PositionParallelAccumulator : IParallelSystem<Position>
     {
         foreach (var row in queryResult)
         {
-            row.DeconstructRefs(out RefRW<Position> pos);
+            row.Deconstruct(out RefRW<Position> pos);
             QueryIterationMetrics.AddParallelRow(pos.Value.X);
         }
     }

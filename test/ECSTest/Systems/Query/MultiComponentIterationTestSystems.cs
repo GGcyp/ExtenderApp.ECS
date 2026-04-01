@@ -202,7 +202,7 @@ public struct MainThreadMultiT2System : ISystem
         double s = 0d;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel);
             c++;
             s += pos.Value.X + vel.Value.Vx;
         }
@@ -226,7 +226,7 @@ public struct MainThreadMultiT3System : ISystem
         double s = 0d;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp);
             c++;
             s += pos.Value.X + vel.Value.Vx + hp.Value.Value;
         }
@@ -250,7 +250,7 @@ public struct MainThreadMultiT4System : ISystem
         double s = 0d;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana);
             c++;
             s += pos.Value.X + vel.Value.Vx + hp.Value.Value + mana.Value.Value;
         }
@@ -274,7 +274,7 @@ public struct MainThreadMultiT5System : ISystem
         double s = 0d;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana, out RefRW<Rotation> rot);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana, out RefRW<Rotation> rot);
             c++;
             s += pos.Value.X + vel.Value.Vx + hp.Value.Value + mana.Value.Value + rot.Value.Value;
         }
@@ -307,7 +307,7 @@ public struct MultiT2ParallelAccumulator : IParallelSystem<Position, Velocity>
     {
         foreach (var row in queryResult)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel);
             MultiComponentMetrics.AddParallelT2(pos.Value.X + vel.Value.Vx);
         }
     }
@@ -329,7 +329,7 @@ public struct MultiT3ParallelAccumulator : IParallelSystem<Position, Velocity, H
     {
         foreach (var row in queryResult)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp);
             MultiComponentMetrics.AddParallelT3(pos.Value.X + vel.Value.Vx + hp.Value.Value);
         }
     }
@@ -351,7 +351,7 @@ public struct MultiT4ParallelAccumulator : IParallelSystem<Position, Velocity, H
     {
         foreach (var row in queryResult)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana);
             MultiComponentMetrics.AddParallelT4(pos.Value.X + vel.Value.Vx + hp.Value.Value + mana.Value.Value);
         }
     }
@@ -373,7 +373,7 @@ public struct MultiT5ParallelAccumulator : IParallelSystem<Position, Velocity, H
     {
         foreach (var row in queryResult)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana, out RefRW<Rotation> rot);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana, out RefRW<Rotation> rot);
             MultiComponentMetrics.AddParallelT5(pos.Value.X + vel.Value.Vx + hp.Value.Value + mana.Value.Value + rot.Value.Value);
         }
     }

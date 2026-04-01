@@ -74,7 +74,7 @@ public sealed class ManagedHeapClassComponentTests : EcsTestContext
         int replaced = 0;
         foreach (var row in world.Query<ManagedRefComponent>())
         {
-            row.DeconstructRefs(out RefRW<ManagedRefComponent> comp);
+            row.Deconstruct(out RefRW<ManagedRefComponent> comp);
             Console.WriteLine($"[ManagedClassComponentQueryAllowsReplacingReference] Before replace: Id={comp.Value.Id}, Tag={comp.Value.Tag}");
             comp.Value = new ManagedRefComponent { Id = 100 + comp.Value.Id, Tag = "replaced" };
             Console.WriteLine($"[ManagedClassComponentQueryAllowsReplacingReference] After replace: Id={comp.Value.Id}, Tag={comp.Value.Tag}");
@@ -119,7 +119,7 @@ public sealed class ManagedHeapClassComponentTests : EcsTestContext
 
         foreach (var row in world.Query<Position, ManagedRefComponent>())
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<ManagedRefComponent> managed);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<ManagedRefComponent> managed);
             Console.WriteLine($"[ManagedClassComponentWithStructArchetypeWorksCorrectly] Row before: Position=({pos.Value.X},{pos.Value.Y}), Id={managed.Value.Id}, Tag={managed.Value.Tag}");
 
             sumX += pos.Value.X;

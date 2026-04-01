@@ -261,7 +261,7 @@ public static class WorldTests
         float sumX = 0f;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos);
+            row.Deconstruct(out RefRW<Position> pos);
             sumX += pos.Value.X;
         }
 
@@ -342,7 +342,7 @@ public static class WorldTests
         double sum = 0d;
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana, out RefRW<Rotation> rot);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel, out RefRW<Health> hp, out RefRW<Mana> mana, out RefRW<Rotation> rot);
             sum += pos.Value.X + vel.Value.Vx + hp.Value.Value + mana.Value.Value + rot.Value.Value;
         }
 

@@ -80,7 +80,7 @@ namespace ExtenderApp.ECS
         /// <param name="entity">目标实体句柄。</param>
         /// <returns>初始化的 <see cref="EntityComponentOperation" />。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private EntityComponentOperation GetEntityComponentOperation(Entity entity)
+        public EntityComponentOperation GetEntityComponentOperation(Entity entity)
             => new EntityComponentOperation(this, entity);
 
         #endregion EntityComponentOperation

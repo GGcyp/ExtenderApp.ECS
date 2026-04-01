@@ -49,7 +49,7 @@ namespace ExtenderApp.ECS.Archetypes
         public ArchetypeChunkManager(ArchetypeChunkProvider[] providers)
         {
             _archetypeChunkProviders = providers;
-            _columns = new ArchetypeChunkList[providers.Length];
+            _columns = new ArchetypeChunkList?[providers.Length];
             for (int i = 0; i < providers.Length; i++)
             {
                 var provider = providers[i];
@@ -394,6 +394,7 @@ namespace ExtenderApp.ECS.Archetypes
             {
                 var chunkIndex = chunkIndexSpan[i];
                 var localIndex = localIndexSpan[i];
+
                 var chunk = chunkList[chunkIndex];
                 chunk.RemoveAt(localIndex);
                 chunk.Version = worldVersion;
@@ -507,18 +508,18 @@ namespace ExtenderApp.ECS.Archetypes
             int newColumnSpanIndex = 0;
             int newColumnIndex = newIndexSpan[0];
             int newLength = newIndexSpan.Length;
-            int oldColumnIndex = 0;
-            foreach (var oldChunkList in _columns!)
+            int lastColumnIndex = 0;
+            foreach (var oldChunkList in _columns)
             {
                 if (oldChunkList == null)
                 {
-                    oldColumnIndex++;
+                    lastColumnIndex++;
                     continue;
                 }
 
                 var oldChunk = oldChunkList[chunkIndex];
 
-                if (newColumnIndex == oldColumnIndex &&
+                if (newColumnIndex == lastColumnIndex &&
                     newManager.TryGetChunkListForColumn(newColumnIndex, out var newChunkList))
                 {
                     var newChunk = newChunkList[newChunkIndex];
@@ -526,14 +527,15 @@ namespace ExtenderApp.ECS.Archetypes
                     if (!oldChunk.TryCopyTo(globalIndex, newChunk, newGlobalIndex))
                         return false;
 
-                    newColumnSpanIndex++;
                     if (newColumnSpanIndex < newLength)
                         newColumnIndex = newIndexSpan[newColumnSpanIndex];
+
+                    newColumnSpanIndex++;
                 }
 
                 oldChunk.RemoveAt(localIndex);
-                RemoveEmptyChunks(oldColumnIndex);
-                oldColumnIndex++;
+                RemoveEmptyChunks(lastColumnIndex);
+                lastColumnIndex++;
             }
 
             ref var info = ref Entities.Span[chunkIndex];

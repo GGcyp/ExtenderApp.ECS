@@ -1,5 +1,3 @@
-using System;
-using System.Diagnostics;
 using ECSTest.CustomRuns;
 using WorldSuite = ECSTest.WorldTests.WorldTests;
 
@@ -71,9 +69,10 @@ public static class Program
             Console.WriteLine("  18. DestroyEntities 测试 (CustomRunner)");
             Console.WriteLine("  19. World 全量测试 (WorldTests.RunAll，可输入多组件实体数 N，并行段会打印入队作业数)");
             Console.WriteLine("  20. 托管堆 class 组件测试 (CustomRunner，执行测试工程中的 ManagedHeapClassComponentTests)");
+            Console.WriteLine("  21. 组件增删写入影响验证 (CustomRunner，执行测试工程中的 ComponentMutationTests)");
             Console.WriteLine("  q. 退出");
             Console.WriteLine();
-            Console.Write("请输入选项 (1-20 或 q): ");
+            Console.Write("请输入选项 (1-21 或 q): ");
 
             var choice = Console.ReadLine()?.Trim();
             if (string.IsNullOrEmpty(choice)) continue;
@@ -183,6 +182,10 @@ public static class Program
 
                 case "20":
                     CustomRunner.RunManagedHeapClassComponentTests();
+                    break;
+
+                case "21":
+                    CustomRunner.RunComponentMutationTests();
                     break;
 
                 default:

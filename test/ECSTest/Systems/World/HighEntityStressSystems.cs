@@ -25,7 +25,7 @@ public struct IntegrateVelocitySystem : ISystem
         var query = updateContext.Query<Position, Velocity>();
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos, out RefRW<Velocity> vel);
+            row.Deconstruct(out RefRW<Position> pos, out RefRW<Velocity> vel);
             pos.Value.X += vel.Value.Vx * dt;
             pos.Value.Y += vel.Value.Vy * dt;
         }
@@ -63,7 +63,7 @@ public struct HeavyPositionTouchSystem : ISystem
         var query = updateContext.Query<Position>();
         foreach (var row in query)
         {
-            row.DeconstructRefs(out RefRW<Position> pos);
+            row.Deconstruct(out RefRW<Position> pos);
             float x = pos.Value.X;
             for (int k = 0; k < InnerIterations; k++)
                 x = MathF.Sqrt(MathF.Max(x * x, 0f));

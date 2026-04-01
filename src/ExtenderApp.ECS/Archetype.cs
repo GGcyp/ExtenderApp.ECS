@@ -495,6 +495,7 @@ namespace ExtenderApp.ECS
             {
                 // 没有共同组件也需要从旧 Archetype 移除，否则会残留
                 TryRemoveEntity(globalIndex, out changedEntity);
+                return true;
             }
 
             if (sameTypeCount <= CopyThreshold)

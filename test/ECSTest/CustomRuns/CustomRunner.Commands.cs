@@ -134,4 +134,49 @@ public static partial class CustomRunner
             }
         }
     }
+
+    /// <summary>
+    /// 在 ECSTest.App 中执行组件增删写入影响验证测试。
+    /// 说明：ECSTest.App 不会自动枚举 xUnit，用该入口可在菜单里直跑并打印每个用例的通过/失败与异常信息。
+    /// </summary>
+    public static void RunComponentMutationTests()
+    {
+        Console.WriteLine("=== CustomRunner: Component Mutation Tests ===");
+
+        // 组件增删测试用例实例。
+        var suite = new ComponentMutationTests();
+
+        // 通过用例计数。
+        int passed = 0;
+        // 失败用例计数。
+        int failed = 0;
+
+        RunTest(nameof(ComponentMutationTests.World_AddRemoveComponent_DoesNotAffectExistingValues),
+            suite.World_AddRemoveComponent_DoesNotAffectExistingValues);
+
+        Console.WriteLine($"Summary: passed={passed}, failed={failed}");
+        Console.WriteLine("========================================");
+        return;
+
+        /// <summary>
+        /// 执行测试并输出结果。
+        /// </summary>
+        void RunTest(string name, Action test)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"--- {name} ---");
+            try
+            {
+                test();
+                passed++;
+                Console.WriteLine($"Result: PASS ({name})");
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Console.WriteLine($"Result: FAIL ({name})");
+                Console.WriteLine(ex);
+            }
+        }
+    }
 }
