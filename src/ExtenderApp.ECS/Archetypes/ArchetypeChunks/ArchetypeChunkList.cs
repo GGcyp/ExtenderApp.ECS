@@ -46,6 +46,6 @@ namespace ExtenderApp.ECS.Archetypes
             return chunk != null;
         }
 
-        public override string ToString() => $"ArchetypeChunkList<{typeof(T).Name}> (Count: {Count})";
+        public override string ToString() => $"ArchetypeChunkList<{typeof(T).Name}> (EntityCount: {Count})";
     }
 }

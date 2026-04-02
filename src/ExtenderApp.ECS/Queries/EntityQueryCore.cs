@@ -50,7 +50,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 获取当前查询匹配的实体总数。该属性会遍历匹配的 Archetype 链表并累加每个 Archetype 中的实体数量。
         /// </summary>
-        public int Count
+        public int EntityCount
         {
             get
             {

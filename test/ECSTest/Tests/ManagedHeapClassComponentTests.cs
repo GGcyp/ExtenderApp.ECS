@@ -102,13 +102,12 @@ public sealed class ManagedHeapClassComponentTests : EcsTestContext
     {
         using var world = new World("TestWorld_ManagedClass_MixedArchetype");
 
-        var e1 = world.CreateEntity(
-            new Position { X = 1f, Y = 2f },
-            new ManagedRefComponent { Id = 10, Tag = "p1" });
+        var e1 = world.CreateEntity(new ManagedRefComponent { Id = 10, Tag = "p1" });
+        world.AddComponent(e1, new Position { X = 1f, Y = 2f });
 
-        var e2 = world.CreateEntity(
-            new Position { X = 3f, Y = 4f },
-            new ManagedRefComponent { Id = 20, Tag = "p2" });
+        var e2 = world.CreateEntity(new ManagedRefComponent { Id = 20, Tag = "p2" });
+        world.AddComponent(e2, new Position { X = 3f, Y = 4f });
+        world.AddComponent(e2, new Health { Value = 100 });
 
         Console.WriteLine("[ManagedClassComponentWithStructArchetypeWorksCorrectly] Created 2 entities with Position + ManagedRefComponent.");
 
@@ -117,13 +116,13 @@ public sealed class ManagedHeapClassComponentTests : EcsTestContext
         int sumId = 0;
         int count = 0;
 
-        foreach (var row in world.Query<Position, ManagedRefComponent>())
+        var query = world.Query<Position, ManagedRefComponent>();
+        foreach ((Position pos, ManagedRefComponent managed) in query)
         {
-            row.Deconstruct(out RefRW<Position> pos, out RefRW<ManagedRefComponent> managed);
-            Console.WriteLine($"[ManagedClassComponentWithStructArchetypeWorksCorrectly] Row before: Position=({pos.Value.X},{pos.Value.Y}), Id={managed.Value.Id}, Tag={managed.Value.Tag}");
+            Console.WriteLine($"[ManagedClassComponentWithStructArchetypeWorksCorrectly] Row before: Position=({pos.X},{pos.Y}), Id={managed.Id}, Tag={managed.Tag}");
 
-            sumX += pos.Value.X;
-            sumId += managed.Value.Id;
+            sumX += pos.X;
+            sumId += managed.Id;
             count++;
         }
 
@@ -135,4 +134,3 @@ public sealed class ManagedHeapClassComponentTests : EcsTestContext
         Console.WriteLine("[ManagedClassComponentWithStructArchetypeWorksCorrectly] Assertion passed: struct+class mixed archetype values are correct.");
     }
 }
-

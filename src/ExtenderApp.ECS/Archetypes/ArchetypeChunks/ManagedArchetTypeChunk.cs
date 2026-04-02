@@ -87,7 +87,7 @@ namespace ExtenderApp.ECS.Archetypes
                 !chunk.TryWithinChunk(newGlobalIndex, out var newLocalIndex))
                 return false;
 
-            T value = GetComponentRef(localIndex);
+            T value = GetComponent(localIndex);
             chunk.SetComponent(newLocalIndex, value);
             return true;
         }
@@ -116,7 +116,7 @@ namespace ExtenderApp.ECS.Archetypes
         protected override void RemoveAtProtected(int localIndex)
         {
             int last = Count - 1;
-            ref T lastValue = ref Span[last];
+            ref T lastValue = ref GetComponentRef(last);
             if (localIndex != last)
             {
                 Span[localIndex] = lastValue;

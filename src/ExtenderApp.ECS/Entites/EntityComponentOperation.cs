@@ -240,7 +240,6 @@ namespace ExtenderApp.ECS.Entities
             return this;
         }
 
-
         /// <summary>
         /// 向实体添加四个新组件（可能导致实体迁移到新的 Archetype）。
         /// </summary>
@@ -283,7 +282,6 @@ namespace ExtenderApp.ECS.Entities
             ChangedArchetype(archetype, newIndex);
             return this;
         }
-
 
         /// <summary>
         /// 向实体添加五个新组件（可能导致实体迁移到新的 Archetype）。

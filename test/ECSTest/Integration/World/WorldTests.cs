@@ -270,7 +270,7 @@ public static class WorldTests
             $"直接 foreach 累加 Position.X：期望 {QueryIterationMetrics.ExpectedSumX}，实际 {sumX}");
 
         MetricLine(
-            $"  直接 foreach — 期望 Count={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 Count={query.Count}; " +
+            $"  直接 foreach — 期望 EntityCount={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 EntityCount={query.Count}; " +
             $"期望 SumX={QueryIterationMetrics.ExpectedSumX}, 遍历得到 SumX={sumX}");
     }
 
@@ -296,7 +296,7 @@ public static class WorldTests
             $"主线程 ISystem 累加 Position.X：期望 {QueryIterationMetrics.ExpectedSumX}，实际 {QueryIterationMetrics.MainThreadSumX}");
 
         MetricLine(
-            $"  主线程 ISystem — 期望 Count={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 Count={QueryIterationMetrics.MainThreadCount}; " +
+            $"  主线程 ISystem — 期望 EntityCount={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 EntityCount={QueryIterationMetrics.MainThreadCount}; " +
             $"期望 SumX={QueryIterationMetrics.ExpectedSumX}, 遍历得到 SumX={QueryIterationMetrics.MainThreadSumX}");
     }
 
@@ -322,7 +322,7 @@ public static class WorldTests
             $"并行累加 Position.X：期望 {QueryIterationMetrics.ExpectedSumX}，实际 {QueryIterationMetrics.ParallelSumX}");
 
         MetricLine(
-            $"  并行 IParallelSystem — 期望 Count={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 Count={QueryIterationMetrics.ParallelCount}; " +
+            $"  并行 IParallelSystem — 期望 EntityCount={QueryIterationMetrics.ExpectedEntityCount}, 遍历得到 EntityCount={QueryIterationMetrics.ParallelCount}; " +
             $"期望 SumX={QueryIterationMetrics.ExpectedSumX}, 遍历得到 SumX={QueryIterationMetrics.ParallelSumX}");
     }
 
@@ -352,7 +352,7 @@ public static class WorldTests
             $"五组件直接遍历组合标量之和：期望 {expected}，实际 {sum}，容差 {MainThreadMultiComponentSumTolerance}");
 
         MetricLine(
-            $"  五组件直接 Query — N={n}, Count={query.Count}, Sum={sum} (期望 {expected})");
+            $"  五组件直接 Query — N={n}, EntityCount={query.Count}, Sum={sum} (期望 {expected})");
     }
 
     /// <summary>
@@ -381,7 +381,7 @@ public static class WorldTests
         Assert.True(
             Math.Abs(MultiComponentMetrics.ExpectedT2For(n) - MultiComponentMetrics.T2MainSum) <= MainThreadMultiComponentSumTolerance,
             $"T2 主线程组合和：期望 {MultiComponentMetrics.ExpectedT2For(n)}，实际 {MultiComponentMetrics.T2MainSum}");
-        MetricLine($"  主线程 T2 — N={n}, Count={MultiComponentMetrics.T2MainCount}, Sum={MultiComponentMetrics.T2MainSum}");
+        MetricLine($"  主线程 T2 — N={n}, EntityCount={MultiComponentMetrics.T2MainCount}, Sum={MultiComponentMetrics.T2MainSum}");
     }
 
     private static void RunMainThreadArityT3(int n)
@@ -396,7 +396,7 @@ public static class WorldTests
         Assert.True(
             Math.Abs(MultiComponentMetrics.ExpectedT3For(n) - MultiComponentMetrics.T3MainSum) <= MainThreadMultiComponentSumTolerance,
             $"T3 主线程组合和：期望 {MultiComponentMetrics.ExpectedT3For(n)}，实际 {MultiComponentMetrics.T3MainSum}");
-        MetricLine($"  主线程 T3 — N={n}, Count={MultiComponentMetrics.T3MainCount}, Sum={MultiComponentMetrics.T3MainSum}");
+        MetricLine($"  主线程 T3 — N={n}, EntityCount={MultiComponentMetrics.T3MainCount}, Sum={MultiComponentMetrics.T3MainSum}");
     }
 
     private static void RunMainThreadArityT4(int n)
@@ -411,7 +411,7 @@ public static class WorldTests
         Assert.True(
             Math.Abs(MultiComponentMetrics.ExpectedT4For(n) - MultiComponentMetrics.T4MainSum) <= MainThreadMultiComponentSumTolerance,
             $"T4 主线程组合和：期望 {MultiComponentMetrics.ExpectedT4For(n)}，实际 {MultiComponentMetrics.T4MainSum}");
-        MetricLine($"  主线程 T4 — N={n}, Count={MultiComponentMetrics.T4MainCount}, Sum={MultiComponentMetrics.T4MainSum}");
+        MetricLine($"  主线程 T4 — N={n}, EntityCount={MultiComponentMetrics.T4MainCount}, Sum={MultiComponentMetrics.T4MainSum}");
     }
 
     private static void RunMainThreadArityT5(int n)
@@ -426,7 +426,7 @@ public static class WorldTests
         Assert.True(
             Math.Abs(MultiComponentMetrics.ExpectedT5For(n) - MultiComponentMetrics.T5MainSum) <= MainThreadMultiComponentSumTolerance,
             $"T5 主线程组合和：期望 {MultiComponentMetrics.ExpectedT5For(n)}，实际 {MultiComponentMetrics.T5MainSum}");
-        MetricLine($"  主线程 T5 — N={n}, Count={MultiComponentMetrics.T5MainCount}, Sum={MultiComponentMetrics.T5MainSum}");
+        MetricLine($"  主线程 T5 — N={n}, EntityCount={MultiComponentMetrics.T5MainCount}, Sum={MultiComponentMetrics.T5MainSum}");
     }
 
     /// <summary>
@@ -457,7 +457,7 @@ public static class WorldTests
             Math.Abs(MultiComponentMetrics.ExpectedT2For(n) - MultiComponentMetrics.T2ParallelSum) <= tol,
             $"T2 并行组合和：期望 {MultiComponentMetrics.ExpectedT2For(n)}，实际 {MultiComponentMetrics.T2ParallelSum}");
         MetricLine(
-            $"  并行 T2 — N={n}, Count={MultiComponentMetrics.T2ParallelCount}, Sum={MultiComponentMetrics.T2ParallelSum}");
+            $"  并行 T2 — N={n}, EntityCount={MultiComponentMetrics.T2ParallelCount}, Sum={MultiComponentMetrics.T2ParallelSum}");
     }
 
     private static void RunParallelArityT3(int n, double tol)
@@ -473,7 +473,7 @@ public static class WorldTests
             Math.Abs(MultiComponentMetrics.ExpectedT3For(n) - MultiComponentMetrics.T3ParallelSum) <= tol,
             $"T3 并行组合和：期望 {MultiComponentMetrics.ExpectedT3For(n)}，实际 {MultiComponentMetrics.T3ParallelSum}");
         MetricLine(
-            $"  并行 T3 — N={n}, Count={MultiComponentMetrics.T3ParallelCount}, Sum={MultiComponentMetrics.T3ParallelSum}");
+            $"  并行 T3 — N={n}, EntityCount={MultiComponentMetrics.T3ParallelCount}, Sum={MultiComponentMetrics.T3ParallelSum}");
     }
 
     private static void RunParallelArityT4(int n, double tol)
@@ -489,7 +489,7 @@ public static class WorldTests
             Math.Abs(MultiComponentMetrics.ExpectedT4For(n) - MultiComponentMetrics.T4ParallelSum) <= tol,
             $"T4 并行组合和：期望 {MultiComponentMetrics.ExpectedT4For(n)}，实际 {MultiComponentMetrics.T4ParallelSum}");
         MetricLine(
-            $"  并行 T4 — N={n}, Count={MultiComponentMetrics.T4ParallelCount}, Sum={MultiComponentMetrics.T4ParallelSum}");
+            $"  并行 T4 — N={n}, EntityCount={MultiComponentMetrics.T4ParallelCount}, Sum={MultiComponentMetrics.T4ParallelSum}");
     }
 
     private static void RunParallelArityT5(int n, double tol)
@@ -505,7 +505,7 @@ public static class WorldTests
             Math.Abs(MultiComponentMetrics.ExpectedT5For(n) - MultiComponentMetrics.T5ParallelSum) <= tol,
             $"T5 并行组合和：期望 {MultiComponentMetrics.ExpectedT5For(n)}，实际 {MultiComponentMetrics.T5ParallelSum}");
         MetricLine(
-            $"  并行 T5 — N={n}, Count={MultiComponentMetrics.T5ParallelCount}, Sum={MultiComponentMetrics.T5ParallelSum}");
+            $"  并行 T5 — N={n}, EntityCount={MultiComponentMetrics.T5ParallelCount}, Sum={MultiComponentMetrics.T5ParallelSum}");
     }
 
     /// <summary>
@@ -571,7 +571,7 @@ public static class WorldTests
             $"  创建实体: {swSpawn.Elapsed.TotalMilliseconds:F3} ms; {stressFrames} 帧 Update 合计: {swUpdates.Elapsed.TotalMilliseconds:F3} ms; " +
             $"平均每帧: {swUpdates.Elapsed.TotalMilliseconds / stressFrames:F3} ms");
         MetricLine(
-            $"  期望 Count={n}, 主线程/并行 Count={QueryIterationMetrics.MainThreadCount}/{QueryIterationMetrics.ParallelCount}; " +
+            $"  期望 EntityCount={n}, 主线程/并行 EntityCount={QueryIterationMetrics.MainThreadCount}/{QueryIterationMetrics.ParallelCount}; " +
             $"期望 SumX={expectedSumAfterFrames:G9}, 主线程 SumX={QueryIterationMetrics.MainThreadSumX:G9}, 并行 SumX={QueryIterationMetrics.ParallelSumX:G9}");
     }
 }

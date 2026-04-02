@@ -58,7 +58,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
-        public int Count => _core.Count;
+        public int Count => _core.EntityCount;
 
         /// <summary>
         /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
@@ -116,7 +116,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
-        public int Count => _core.Count;
+        public int Count => _core.EntityCount;
 
         /// <summary>
         /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
@@ -170,7 +170,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
-        public int Count => _core.Count;
+        public int Count => _core.EntityCount;
 
         /// <summary>
         /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
@@ -225,7 +225,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
-        public int Count => _core.Count;
+        public int Count => _core.EntityCount;
 
         /// <summary>
         /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。
@@ -281,7 +281,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 当前查询结果中匹配的实体数量。该值由内部的 <see cref="EntityQueryCore" /> 维护，反映当前查询条件下的实体总数。
         /// </summary>
-        public int Count => _core.Count;
+        public int Count => _core.EntityCount;
 
         /// <summary>
         /// 获取当前实体查询是否为空（即未正确构建或已被销毁）。如果查询核心为 null 则表示查询无效或未初始化。

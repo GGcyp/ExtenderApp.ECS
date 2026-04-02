@@ -506,21 +506,21 @@ namespace ExtenderApp.ECS.Archetypes
                 return false;
 
             int newColumnSpanIndex = 0;
-            int newColumnIndex = newIndexSpan[0];
-            int newLength = newIndexSpan.Length;
-            int lastColumnIndex = 0;
+            int nextNewColumnIndex = newIndexSpan[0];
+            int newLength = newIndexSpan.Length - 1;
+            int columnIndex = 0;
             foreach (var oldChunkList in _columns)
             {
                 if (oldChunkList == null)
                 {
-                    lastColumnIndex++;
+                    columnIndex++;
                     continue;
                 }
 
                 var oldChunk = oldChunkList[chunkIndex];
 
-                if (newColumnIndex == lastColumnIndex &&
-                    newManager.TryGetChunkListForColumn(newColumnIndex, out var newChunkList))
+                if (columnIndex == nextNewColumnIndex &&
+                    newManager.TryGetChunkListForColumn(nextNewColumnIndex, out var newChunkList))
                 {
                     var newChunk = newChunkList[newChunkIndex];
 
@@ -528,14 +528,15 @@ namespace ExtenderApp.ECS.Archetypes
                         return false;
 
                     if (newColumnSpanIndex < newLength)
-                        newColumnIndex = newIndexSpan[newColumnSpanIndex];
-
-                    newColumnSpanIndex++;
+                    {
+                        newColumnSpanIndex++;
+                        nextNewColumnIndex = newIndexSpan[newColumnSpanIndex];
+                    }
                 }
 
                 oldChunk.RemoveAt(localIndex);
-                RemoveEmptyChunks(lastColumnIndex);
-                lastColumnIndex++;
+                RemoveEmptyChunks(columnIndex);
+                columnIndex++;
             }
 
             ref var info = ref Entities.Span[chunkIndex];

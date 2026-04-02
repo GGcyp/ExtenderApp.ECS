@@ -169,7 +169,7 @@ namespace ExtenderApp.ECS.Components
         public override string ToString()
         {
             if (IsEmpty) return "SharedComponentMask: [Empty]";
-            return $"SharedComponentMask: Count={ComponentCount}";
+            return $"SharedComponentMask: EntityCount={ComponentCount}";
         }
     }
 }

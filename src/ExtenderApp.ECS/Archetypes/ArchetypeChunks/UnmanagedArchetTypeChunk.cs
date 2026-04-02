@@ -7,19 +7,19 @@ namespace ExtenderApp.ECS.Archetypes
     ///
     /// 特点：
     /// - 使用底层非托管内存以获得更高性能和更小的内存开销；
-    /// - 在 InitializeProtected 中从池中租用并初始化底层 aChunk；
-    /// - 在 ReturnChunkToPool 中将底层 aChunk 归还给池并清理状态；
+    /// - 在 InitializeProtected 中从池中租用并初始化底层 Chunk；
+    /// - 在 ReturnChunkToPool 中将底层 Chunk 归还给池并清理状态；
     /// - 提供读写、交换和不安全拷贝等操作。
     /// </summary>
     internal sealed class UnmanagedArchetTypeChunk<T> : ArchetypeChunk<T>
     {
         /// <summary>
-        /// 用于租用与归还底层 aChunk 的池引用。
+        /// 用于租用与归还底层 Chunk 的池引用。
         /// </summary>
         private readonly ChunkPool _chunkPool;
 
         /// <summary>
-        /// 底层非托管内存块（aChunk）实例。派生类在 InitializeProtected 中应对其调用 Initialize&lt;T1&gt;。
+        /// 底层非托管内存块（Chunk）实例。派生类在 InitializeProtected 中应对其调用 Initialize&lt;T1&gt;。
         /// 注意：未初始化时为 null（或默认），访问时需先调用 Initialize。
         /// </summary>
         internal Chunk chunk;
@@ -54,18 +54,18 @@ namespace ExtenderApp.ECS.Archetypes
         /// </summary>
         public override bool TryCopyTo(int globalIndex, ArchetypeChunk newArchetypeChunk, int newGlobalIndex)
         {
-            if (newArchetypeChunk is not ArchetypeChunk<T> aChunk ||
+            if (newArchetypeChunk is not ArchetypeChunk<T> Chunk ||
                 !TryWithinChunk(globalIndex, out var localIndex) ||
-                !aChunk.TryWithinChunk(newGlobalIndex, out var newLocalIndex))
+                !Chunk.TryWithinChunk(newGlobalIndex, out var newLocalIndex))
                 return false;
 
-            ref T value = ref GetComponentRef(localIndex);
-            aChunk.SetComponent(newLocalIndex, value);
+            T value = GetComponent(localIndex);
+            Chunk.SetComponent(newLocalIndex, value);
             return true;
         }
 
         /// <summary>
-        /// 受保护的初始化实现：从池中租用底层 aChunk 并对其调用 Initialize&lt;T1&gt;。
+        /// 受保护的初始化实现：从池中租用底层 Chunk 并对其调用 Initialize&lt;T1&gt;。
         /// 如果已初始化则直接返回。
         /// </summary>
         protected override void InitializeProtected()
@@ -78,7 +78,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 交换块内两个本地索引处的元素（委托给底层 aChunk 实现）。
+        /// 交换块内两个本地索引处的元素（委托给底层 Chunk 实现）。
         /// </summary>
         public override void Swap(int localIndexA, int localIndexB)
         {
@@ -86,7 +86,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 将不安全来源内存拷贝到块内（高性能内存拷贝），委托到底层 aChunk 实现。
+        /// 将不安全来源内存拷贝到块内（高性能内存拷贝），委托到底层 Chunk 实现。
         /// </summary>
         public override void CopiedUnsafe(int localIndex, nint soure, int count)
         {
@@ -94,7 +94,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 将底层 aChunk 归还到池中并清理本对象状态（将 aChunk 置为 null 并重置 Count）。
+        /// 将底层 Chunk 归还到池中并清理本对象状态（将 Chunk 置为 null 并重置 EntityCount）。
         /// </summary>
         protected override void ReturnChunkToPool()
         {
@@ -118,17 +118,17 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 设置指定索引处的组件值（委托给底层 aChunk 的写入方法）。
+        /// 设置指定索引处的组件值（委托给底层 Chunk 的写入方法）。
         /// </summary>
         public override void SetComponent(int index, T value) => chunk.Write(index, value);
 
         /// <summary>
-        /// 获取指定索引处的组件副本（委托给底层 aChunk 的读取方法）。
+        /// 获取指定索引处的组件副本（委托给底层 Chunk 的读取方法）。
         /// </summary>
         public override T GetComponent(int index) => chunk.ReadUnsafe<T>(index);
 
         /// <summary>
-        /// 以引用形式返回指定索引处的组件，允许直接修改底层数据（委托给 aChunk 的引用获取方法）。
+        /// 以引用形式返回指定索引处的组件，允许直接修改底层数据（委托给 Chunk 的引用获取方法）。
         /// </summary>
         public override ref T GetComponentRef(int index) => ref chunk.GetElementRef<T>(index);
 
@@ -139,8 +139,7 @@ namespace ExtenderApp.ECS.Archetypes
             ref T lastElement = ref chunk.GetElementRef<T>(last);
             if (localIndex != last)
             {
-                ref T element = ref chunk.GetElementRef<T>(localIndex);
-                element = lastElement;
+                SetComponent(localIndex, lastElement);
             }
             lastElement = default!;
         }

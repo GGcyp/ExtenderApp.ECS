@@ -45,7 +45,7 @@ namespace ExtenderApp.ECS.Archetypes
         public bool IsActive { get; private set; }
 
         /// <summary>
-        /// 判断当前块是否已满（Count &gt;= Capacity）。
+        /// 判断当前块是否已满（EntityCount &gt;= Capacity）。
         /// </summary>
         public bool IsFull => Count >= Capacity;
 
@@ -119,11 +119,11 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 尝试获取指定全局索引是否在当前块的有效范围内（基于 StartIndex 与 Count）。
+        /// 尝试获取指定全局索引是否在当前块的有效范围内（基于 StartIndex 与 EntityCount）。
         /// </summary>
         /// <param name="globalIndex">指定全局索引。</param>
         /// <param name="localIndex">获取当前块内的局部索引（若返回 true）。</param>
-        /// <returns>若索引位于 [StartIndex, StartIndex + Count) 范围内则返回 true，否则返回 false。</returns>
+        /// <returns>若索引位于 [StartIndex, StartIndex + EntityCount) 范围内则返回 true，否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryWithinChunk(int globalIndex, out int localIndex)
         {
@@ -195,7 +195,7 @@ namespace ExtenderApp.ECS.Archetypes
         public abstract bool TryCopyTo(int globalIndex, ArchetypeChunk newArchetypeChunk, int newGlobalIndex);
 
         /// <summary>
-        /// 交换当前块内两个局部索引位置的数据。 注意：调用前应确保 localIndexA 与 localIndexB 都在 [0, Count) 范围内且块已初始化。 该方法直接调用底层 chunk 的 Swap 实现，适用于在移除元素时将最后一个元素移动到被移除位置以保持数据紧凑。
+        /// 交换当前块内两个局部索引位置的数据。 注意：调用前应确保 localIndexA 与 localIndexB 都在 [0, EntityCount) 范围内且块已初始化。 该方法直接调用底层 chunk 的 Swap 实现，适用于在移除元素时将最后一个元素移动到被移除位置以保持数据紧凑。
         /// </summary>
         /// <param name="localIndexA">要交换的第一个局部索引。</param>
         /// <param name="localIndexB">要交换的第二个局部索引。</param>
@@ -216,7 +216,7 @@ namespace ExtenderApp.ECS.Archetypes
         public abstract void CopiedUnsafe(int localIndex, nint soure, int count);
 
         /// <summary>
-        /// 将底层 chunk 归还到池中并清理状态（Count 重置）。
+        /// 将底层 chunk 归还到池中并清理状态（EntityCount 重置）。
         /// </summary>
         protected abstract void ReturnChunkToPool();
 
@@ -261,7 +261,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// 返回当前块链的文本表示。
         /// </summary>
         /// <returns>块链内容字符串。</returns>
-        public override string ToString() => $"ArchetypeChunk<{typeof(T).Name}> (StartIndex: {StartIndex}, Count: {Count}, Capacity: {Capacity})";
+        public override string ToString() => $"ArchetypeChunk<{typeof(T).Name}> (StartIndex: {StartIndex}, EntityCount: {Count}, Capacity: {Capacity})";
 
         /// <summary>
         /// 放入组件数据
