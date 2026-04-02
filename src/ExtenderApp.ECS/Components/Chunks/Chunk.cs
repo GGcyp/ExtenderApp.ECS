@@ -50,7 +50,8 @@ namespace ExtenderApp.ECS.Components
             ThrowIfDisposed();
 
             ElementSize = Marshal.SizeOf<T>();
-            chunkPtr = (nint)NativeMemory.Alloc((nuint)Capacity * (uint)ElementSize);
+            // 为了保证没有脏数据，初始化时将内存清零。
+            chunkPtr = (nint)NativeMemory.AllocZeroed((nuint)Capacity * (uint)ElementSize);
         }
 
         #region Operations

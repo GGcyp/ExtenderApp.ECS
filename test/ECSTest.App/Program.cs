@@ -1,4 +1,5 @@
 using ECSTest.CustomRuns;
+using ECSTest.Tests;
 using WorldSuite = ECSTest.WorldTests.WorldTests;
 
 namespace ECSTest.App;
@@ -70,6 +71,9 @@ public static class Program
             Console.WriteLine("  19. World 全量测试 (WorldTests.RunAll，可输入多组件实体数 N，并行段会打印入队作业数)");
             Console.WriteLine("  20. 托管堆 class 组件测试 (CustomRunner，执行测试工程中的 ManagedHeapClassComponentTests)");
             Console.WriteLine("  21. 组件增删写入影响验证 (CustomRunner，执行测试工程中的 ComponentMutationTests)");
+            Console.WriteLine("  22. 频繁写入/读取组件稳定性测试 (FrequentWriteReadTests)");
+            Console.WriteLine("  23. 频繁写入/读取 Query 路径稳定性测试 (FrequentWriteRead_WithQuery)");
+            Console.WriteLine("  24. 选择并运行多个 FrequentWriteRead 查询测试 (逗号分隔编号)");
             Console.WriteLine("  q. 退出");
             Console.WriteLine();
             Console.Write("请输入选项 (1-21 或 q): ");
@@ -83,6 +87,82 @@ public static class Program
             {
                 case "1":
                     BenchmarksRunner.Run(new string[] { "CreateSetGet" });
+                    break;
+
+                case "24":
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("可用的 FrequentWriteRead 测试：");
+                        Console.WriteLine("  1: FrequentWriteRead_ValueStable");
+                        Console.WriteLine("  2: FrequentWriteRead_WithQuery_ValueStable");
+                        Console.WriteLine("  3: FrequentWriteRead_Query_VelocityOnly");
+                        Console.WriteLine("  4: FrequentWriteRead_Query_PositionVelocity");
+                        Console.WriteLine("  5: FrequentWriteRead_Query_FourComponents");
+                        Console.WriteLine("  6: FrequentWriteRead_Query_FiveComponents");
+                        Console.WriteLine();
+                        Console.Write("请输入要运行的测试编号（逗号分隔，例如 1,3,5）：");
+                        var sel = Console.ReadLine();
+                        if (string.IsNullOrWhiteSpace(sel))
+                        {
+                            Console.WriteLine("未选择任何测试。返回主菜单。");
+                            break;
+                        }
+
+                        var parts = sel.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        var suite = new FrequentWriteReadTests();
+                        foreach (var p in parts)
+                        {
+                            if (!int.TryParse(p.Trim(), out var idx))
+                            {
+                                Console.WriteLine($"无效编号：{p}");
+                                continue;
+                            }
+
+                            try
+                            {
+                                switch (idx)
+                                {
+                                    case 1:
+                                        Console.WriteLine("--- Running FrequentWriteRead_ValueStable ---");
+                                        suite.FrequentWriteRead_ValueStable();
+                                        Console.WriteLine("PASS");
+                                        break;
+                                    case 2:
+                                        Console.WriteLine("--- Running FrequentWriteRead_WithQuery_ValueStable ---");
+                                        suite.FrequentWriteRead_WithQuery_ValueStable();
+                                        Console.WriteLine("PASS");
+                                        break;
+                                    case 3:
+                                        Console.WriteLine("--- Running FrequentWriteRead_Query_VelocityOnly ---");
+                                        suite.FrequentWriteRead_Query_VelocityOnly();
+                                        Console.WriteLine("PASS");
+                                        break;
+                                    case 4:
+                                        Console.WriteLine("--- Running FrequentWriteRead_Query_PositionVelocity ---");
+                                        suite.FrequentWriteRead_Query_PositionVelocity();
+                                        Console.WriteLine("PASS");
+                                        break;
+                                    case 5:
+                                        Console.WriteLine("--- Running FrequentWriteRead_Query_FourComponents ---");
+                                        suite.FrequentWriteRead_Query_FourComponents();
+                                        Console.WriteLine("PASS");
+                                        break;
+                                    case 6:
+                                        Console.WriteLine("--- Running FrequentWriteRead_Query_FiveComponents ---");
+                                        suite.FrequentWriteRead_Query_FiveComponents();
+                                        Console.WriteLine("PASS");
+                                        break;
+                                    default:
+                                        Console.WriteLine($"未知测试编号：{idx}");
+                                        break;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"FAIL (test {idx}): {ex.Message}");
+                            }
+                        }
+                    }
                     break;
 
                 case "2":
@@ -186,6 +266,44 @@ public static class Program
 
                 case "21":
                     CustomRunner.RunComponentMutationTests();
+                    break;
+
+                case "22":
+                    {
+                        // 在交互界面中执行 xUnit 风格的测试方法并打印结果
+                        var suite = new FrequentWriteReadTests();
+                        Console.WriteLine();
+                        Console.WriteLine("--- FrequentWriteReadTests.FrequentWriteRead_ValueStable ---");
+                        try
+                        {
+                            suite.FrequentWriteRead_ValueStable();
+                            Console.WriteLine("Result: PASS (FrequentWriteRead_ValueStable)");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Result: FAIL (FrequentWriteRead_ValueStable)");
+                            Console.WriteLine(ex);
+                        }
+                    }
+                    break;
+
+                case "23":
+                    {
+                        // 在交互界面中执行查询路径的测试方法并打印结果
+                        var suite2 = new FrequentWriteReadTests();
+                        Console.WriteLine();
+                        Console.WriteLine("--- FrequentWriteReadTests.FrequentWriteRead_WithQuery_ValueStable ---");
+                        try
+                        {
+                            suite2.FrequentWriteRead_WithQuery_ValueStable();
+                            Console.WriteLine("Result: PASS (FrequentWriteRead_WithQuery_ValueStable)");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Result: FAIL (FrequentWriteRead_WithQuery_ValueStable)");
+                            Console.WriteLine(ex);
+                        }
+                    }
                     break;
 
                 default:

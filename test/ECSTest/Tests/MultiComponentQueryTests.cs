@@ -12,7 +12,7 @@ public sealed class MultiComponentQueryTests : EcsTestContext
     /// 五组件直接 foreach 与期望组合和一致。
     /// </summary>
     [Fact]
-    public void MultiComponent_直接Query_T5_组合和()
+    public void MultiComponent_DirectQuery_T5_Checksum()
     {
         WorldSuite.TestMultiComponentEntityQueryDirect();
     }
@@ -21,7 +21,7 @@ public sealed class MultiComponentQueryTests : EcsTestContext
     /// 主线程系统 T2～T5 各 arity 独立 World 断言。
     /// </summary>
     [Fact]
-    public void MultiComponent_主线程_T2至T5()
+    public void MultiComponent_MainThread_T2ToT5()
     {
         WorldSuite.TestMultiComponentIterationMainThread();
     }
@@ -30,7 +30,7 @@ public sealed class MultiComponentQueryTests : EcsTestContext
     /// 并行系统 T2～T5 各 arity 独立 World 断言。
     /// </summary>
     [Fact]
-    public void MultiComponent_并行_T2至T5()
+    public void MultiComponent_Parallel_T2ToT5()
     {
         WorldSuite.TestMultiComponentIterationParallel();
     }
@@ -41,7 +41,7 @@ public sealed class MultiComponentQueryTests : EcsTestContext
     [Theory]
     [InlineData(2)]
     [InlineData(32)]
-    public void MultiComponent_N_变化时仍一致(int n)
+    public void MultiComponent_N_Variation_RemainsConsistent(int n)
     {
         WorldSuite.MultiComponentStressEntityCount = n;
         WorldSuite.TestMultiComponentEntityQueryDirect();
