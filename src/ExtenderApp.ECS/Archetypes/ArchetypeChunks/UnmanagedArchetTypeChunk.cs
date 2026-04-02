@@ -136,8 +136,13 @@ namespace ExtenderApp.ECS.Archetypes
         protected override void RemoveAtProtected(int localIndex)
         {
             int last = Count - 1;
+            ref T lastElement = ref chunk.GetElementRef<T>(last);
             if (localIndex != last)
-                chunk.Swap(localIndex, last);
+            {
+                ref T element = ref chunk.GetElementRef<T>(localIndex);
+                element = lastElement;
+            }
+            lastElement = default!;
         }
     }
 }

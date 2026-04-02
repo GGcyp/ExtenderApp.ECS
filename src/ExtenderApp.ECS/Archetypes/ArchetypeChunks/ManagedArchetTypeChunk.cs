@@ -116,10 +116,12 @@ namespace ExtenderApp.ECS.Archetypes
         protected override void RemoveAtProtected(int localIndex)
         {
             int last = Count - 1;
+            ref T lastValue = ref Span[last];
             if (localIndex != last)
-                Span[localIndex] = Span[last];
-            else
-                Span[localIndex] = default!;
+            {
+                Span[localIndex] = lastValue;
+            }
+            lastValue = default!;
         }
     }
 }
