@@ -106,8 +106,12 @@ public sealed class ManagedHeapClassComponentTests : EcsTestContext
         world.AddComponent(e1, new Position { X = 1f, Y = 2f });
 
         var e2 = world.CreateEntity(new ManagedRefComponent { Id = 20, Tag = "p2" });
-        world.AddComponent(e2, new Position { X = 3f, Y = 4f });
-        world.AddComponent(e2, new Health { Value = 100 });
+        var operation = world.GetEntityComponentOperation(e2);
+        operation.AddComponent(new Position { X = 3f, Y = 4f });
+        Console.WriteLine($"{operation.GetComponent<Position>().X}, {operation.GetComponent<Position>().Y}");
+        operation.AddComponent(new Health { Value = 100 });
+        Console.WriteLine($"{operation.GetComponent<Position>().X}, {operation.GetComponent<Position>().Y}");
+
 
         Console.WriteLine("[ManagedClassComponentWithStructArchetypeWorksCorrectly] Created 2 entities with Position + ManagedRefComponent.");
 
