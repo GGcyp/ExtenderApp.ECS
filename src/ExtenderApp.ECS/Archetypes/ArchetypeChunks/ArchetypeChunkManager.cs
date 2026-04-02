@@ -492,22 +492,22 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 尝试将指定全局索引的实体槽位从当前管理器复制到目标管理器。 复制成功后会移除当前槽位并同步句柄的管理器与全局索引信息。
         /// </summary>
-        /// <param name="globalIndex">源全局索引。</param>
+        /// <param name="oldGlobalIndex">源全局索引。</param>
         /// <param name="newManager">目标管理器。</param>
         /// <param name="newGlobalIndex">目标全局索引。</param>
+        /// <param name="oldIndexSpan">源组件列索引映射。</param>
         /// <param name="newIndexSpan">目标组件列索引映射。</param>
         /// <param name="componentTypes">迁移后组件掩码。</param>
         /// <returns>复制并移除成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryCopyToAndRemove(int globalIndex, ArchetypeChunkManager newManager, int newGlobalIndex, scoped Span<int> newIndexSpan, ComponentMask componentTypes)
+        public bool TryCopyToAndRemove(int oldGlobalIndex, ArchetypeChunkManager newManager, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan, ComponentMask componentTypes)
         {
-            if (!Entities.TryFindLocalIndexForGlobalIndex(globalIndex, out int localIndex, out int chunkIndex) ||
+            if (!Entities.TryFindLocalIndexForGlobalIndex(oldGlobalIndex, out int localIndex, out int chunkIndex) ||
                 !newManager.Entities.TryFindLocalIndexForGlobalIndex(newGlobalIndex, out int newLocalIndex, out int newChunkIndex))
                 return false;
 
-            int newColumnSpanIndex = 0;
-            int nextNewColumnIndex = newIndexSpan[0];
-            int newLength = newIndexSpan.Length - 1;
+            int columnSpanIndex = 0;
+            int copyLength = oldIndexSpan.Length;
             int columnIndex = 0;
             foreach (var oldChunkList in _columns)
             {
@@ -519,19 +519,19 @@ namespace ExtenderApp.ECS.Archetypes
 
                 var oldChunk = oldChunkList[chunkIndex];
 
-                if (columnIndex == nextNewColumnIndex &&
-                    newManager.TryGetChunkListForColumn(nextNewColumnIndex, out var newChunkList))
+                if (columnSpanIndex < copyLength &&
+                    columnIndex == oldIndexSpan[columnSpanIndex])
                 {
-                    var newChunk = newChunkList[newChunkIndex];
-
-                    if (!oldChunk.TryCopyTo(globalIndex, newChunk, newGlobalIndex))
+                    int newColumnIndex = newIndexSpan[columnSpanIndex];
+                    if (!newManager.TryGetChunkListForColumn(newColumnIndex, out var newChunkList))
                         return false;
 
-                    if (newColumnSpanIndex < newLength)
-                    {
-                        newColumnSpanIndex++;
-                        nextNewColumnIndex = newIndexSpan[newColumnSpanIndex];
-                    }
+                    var newChunk = newChunkList[newChunkIndex];
+
+                    if (!oldChunk.TryCopyTo(oldGlobalIndex, newChunk, newGlobalIndex))
+                        return false;
+
+                    columnSpanIndex++;
                 }
 
                 oldChunk.RemoveAt(localIndex);

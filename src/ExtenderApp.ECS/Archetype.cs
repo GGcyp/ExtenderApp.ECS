@@ -501,20 +501,24 @@ namespace ExtenderApp.ECS
             if (sameTypeCount <= CopyThreshold)
             {
                 Span<int> newIndexSpant = stackalloc int[sameTypeCount];
-                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, newIndexSpant);
+                Span<int> oldIndexSpant = stackalloc int[sameTypeCount];
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpant, newIndexSpant);
             }
 
             var newIndexArray = ArrayPool<int>.Shared.Rent(sameTypeCount);
+            var oldIndexArray = ArrayPool<int>.Shared.Rent(sameTypeCount);
 
             Span<int> newIndexSpan = newIndexArray.AsSpan(0, sameTypeCount);
+            Span<int> oldIndexSpan = oldIndexArray.AsSpan(0, sameTypeCount);
 
             try
             {
-                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, newIndexSpan);
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpan, newIndexSpan);
             }
             finally
             {
                 ArrayPool<int>.Shared.Return(newIndexArray);
+                ArrayPool<int>.Shared.Return(oldIndexArray);
             }
         }
 
@@ -524,25 +528,31 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
         /// <param name="newArchetype">目标 Archetype。</param>
         /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
+        /// <param name="oldIndexSpan">当前 Archetype 的列索引缓存。</param>
         /// <param name="newIndexSpan">目标 Archetype 的列索引缓存。</param>
         /// <returns>复制成功返回 true；否则返回 false。</returns>
-        private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> newIndexSpan)
+        private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan)
         {
             int copiedCount = 0;
+            int oldColumnIndex = 0;
 
             foreach (var componentType in ComponentMask)
             {
-                if (!newArchetype.ComponentMask.TryGetEncodedPosition(componentType, out var newColumnIndex))
-                    continue;
+                if (newArchetype.ComponentMask.TryGetEncodedPosition(componentType, out var newColumnIndex))
+                {
+                    newIndexSpan[copiedCount] = newColumnIndex;
+                    oldIndexSpan[copiedCount] = oldColumnIndex;
+                    copiedCount++;
+                }
 
-                newIndexSpan[copiedCount] = newColumnIndex;
-                copiedCount++;
+                oldColumnIndex++;
             }
 
             if (_chunkManager.TryCopyToAndRemove(
                 globalIndex,
                 newArchetype._chunkManager,
                 newGlobalIndex,
+                oldIndexSpan[..copiedCount],
                 newIndexSpan[..copiedCount],
                 newArchetype.ComponentMask))
             {
