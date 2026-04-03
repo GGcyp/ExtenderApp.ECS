@@ -56,12 +56,15 @@ namespace ExtenderApp.ECS.Archetypes
         public override ref T GetComponentRef(int index) => ref _components[index];
 
         /// <summary>
-        /// 将底层数组归还到数组池并清理内部状态（当对象被回收或需要释放资源时调用）。 当前实现为空，按需可调用 <see cref="ArrayPool{T}.Return(T[])" /> 以释放缓冲区。
+        /// 将底层数组归还到数组池并清理内部状态。若从未调用 <see cref="InitializeProtected"/> 租用缓冲区，或已归还过，则不再调用 <see cref="ArrayPool{T}.Return"/>。
         /// </summary>
         protected override void ReturnChunkToPool()
         {
+            if (_components == null)
+                return;
+
             _pool.Return(_components, true);
-            _components = default!;
+            _components = null!;
         }
 
         /// <summary>

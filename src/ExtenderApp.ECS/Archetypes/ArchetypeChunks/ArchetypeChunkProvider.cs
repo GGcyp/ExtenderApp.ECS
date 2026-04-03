@@ -9,7 +9,7 @@ namespace ExtenderApp.ECS.Archetypes
     internal abstract class ArchetypeChunkProvider
     {
         /// <summary>
-        /// 缓存每种组件类型对应的提供器实例，避免重复通过反射创建。 键为组件类型（struct 类型并实现 IComponent），值为对应的 ArchetypeChunkProvider 实例。
+        /// 缓存每种组件类型对应的提供器实例，避免重复通过反射创建。键为组件类型，值为对应的 <see cref="ArchetypeChunkProvider"/> 实例。
         /// </summary>
         private static ConcurrentDictionary<Type, ArchetypeChunkProvider> _providers = new();
 
@@ -46,7 +46,7 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// 类型安全的泛型获取方法（适用于 T1 为 struct）。
+        /// 类型安全的泛型获取方法。
         /// </summary>
         public static ArchetypeChunkProvider<T> GetOrCreate<T>(bool isSingle)
         {

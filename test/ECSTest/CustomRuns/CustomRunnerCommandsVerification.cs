@@ -141,6 +141,10 @@ public static class CustomRunnerCommandsVerification
     /// <summary>
     /// 校验共享组件的增删改查路径。
     /// </summary>
+    /// <remarks>
+    /// 共享托管类组件须使用专用 CLR 类型（如 <see cref="SharedManagedClassCrud"/>），勿与实体上的托管组件类型混用同一类名：
+    /// <see cref="ArchetypeChunkProvider"/> 按 <see cref="Type"/> 缓存提供器，共享侧 <c>GetOrCreate&amp;lt;T&amp;gt;(true)</c> 与实体侧 <c>GetOrCreate(Type)</c> 会争用同一提供器，导致块实现错误。
+    /// </remarks>
     public static void VerifySharedComponentCrud()
     {
         using var world = new World();
@@ -168,11 +172,11 @@ public static class CustomRunnerCommandsVerification
 
         Assert.False(world.TryGetSharedComponent<SharedSample>(out _));
 
-        Assert.True(world.TryAddSharedComponent(new ManagedData() { Level = 1, Name = "s" }));
+        Assert.True(world.TryAddSharedComponent(new SharedManagedClassCrud { Level = 1, Name = "s" }));
 
-        Assert.True(world.TryGetSharedComponent<ManagedData>(out var d));
+        Assert.True(world.TryGetSharedComponent<SharedManagedClassCrud>(out var d));
 
-        Console.WriteLine($"ManagedData: Level = {d.Level}, Name = {d.Name}");
+        Console.WriteLine($"SharedManagedClassCrud: Level = {d.Level}, Name = {d.Name}");
     }
 
     private struct SharedSample
@@ -182,24 +186,40 @@ public static class CustomRunnerCommandsVerification
     }
 
     /// <summary>
-    /// 校验托管引用类型组件的创建与查询条数。
+    /// 校验托管引用类型实体组件的批量创建与查询条数。
     /// </summary>
+    /// <remarks>
+    /// 使用独立类型 <see cref="EntityManagedClassBatch"/>，与 <see cref="VerifySharedComponentCrud"/> 中的共享托管类型分离；
+    /// 二者若共用同一 CLR 类，会与 <see cref="ArchetypeChunkProvider"/> 按类型缓存的提供器冲突（共享为单槽块、实体为多实例托管块）。
+    /// </remarks>
     public static void VerifyManagedUseData()
     {
         using var world = new World();
 
         const int n = 1000;
         for (int i = 0; i < n; i++)
-            world.CreateEntity(new ManagedData { Name = i.ToString(), Level = i });
+            world.CreateEntity(new EntityManagedClassBatch { Name = i.ToString(), Level = i });
 
         int count = 0;
-        foreach (var _ in world.Query<ManagedData>())
+        foreach (var _ in world.Query<EntityManagedClassBatch>())
             count++;
 
         Assert.Equal(n, count);
     }
 
-    private sealed class ManagedData
+    /// <summary>
+    /// 仅用于 <see cref="VerifySharedComponentCrud"/> 的托管共享组件类型（单槽路径）。
+    /// </summary>
+    private sealed class SharedManagedClassCrud
+    {
+        public string? Name { get; set; }
+        public int Level { get; set; }
+    }
+
+    /// <summary>
+    /// 仅用于 <see cref="VerifyManagedUseData"/> 的托管实体组件类型（多实体路径）。
+    /// </summary>
+    private sealed class EntityManagedClassBatch
     {
         public string? Name { get; set; }
         public int Level { get; set; }
