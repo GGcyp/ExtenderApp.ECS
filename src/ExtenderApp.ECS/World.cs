@@ -77,14 +77,7 @@ namespace ExtenderApp.ECS
             PJManager = new ParallelJobManager(parallelWorkers);
             SGManager = new();
 
-            InitSystemGroups();
             CreationTime = DateTime.UtcNow;
-        }
-
-        private void InitSystemGroups()
-        {
-            SGManager.AddGroup(SystemGroupNames.DefaultGroup);
-            SGManager.AddGroup(SystemGroupNames.RenderingSystem);
         }
 
         /// <summary>

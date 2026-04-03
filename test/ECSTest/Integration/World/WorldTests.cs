@@ -99,7 +99,6 @@ public static class WorldTests
         RunTimed(nameof(TestLateRegisteredSystemGetsLifecycle), TestLateRegisteredSystemGetsLifecycle);
         RunTimed(nameof(TestUnknownSystemGroupThrows), TestUnknownSystemGroupThrows);
         RunTimed(nameof(TestWorldLightweightOptions), TestWorldLightweightOptions);
-        RunTimed(nameof(TestCustomSystemGroup), TestCustomSystemGroup);
         RunTimed(nameof(TestEntityQueryIteration), TestEntityQueryIteration);
         RunTimed(nameof(TestEntityQueryIterationMainThreadSystem), TestEntityQueryIterationMainThreadSystem);
         RunTimed(nameof(TestEntityQueryIterationParallelSystem), TestEntityQueryIterationParallelSystem);
@@ -216,7 +215,7 @@ public static class WorldTests
     {
         using var world = new World("TestWorld_BadGroup");
         var ex = Assert.Throws<ArgumentException>(() =>
-            world.AddFrameSystemToCustomGroup<LifecycleTestSystem>("NoSuchGroup"));
+            world.SGManager.AddSystem<LifecycleTestSystem>("NoSuchGroup"));
         MetricLine($"  已捕获 ArgumentException（组名错误）: {ex.ParamName ?? "(null)"}");
     }
 
@@ -228,21 +227,6 @@ public static class WorldTests
         InitializeAndStart(world);
         world.Update(1f / 60f);
         MetricLine($"  WorldOptions.Lightweight: ParallelJobs={world.Options.ParallelJobs}");
-    }
-
-    /// <summary>
-    /// 自定义组仅通过 AddCustomSystemGroup + AddFrameSystemToCustomGroup 使用。
-    /// </summary>
-    public static void TestCustomSystemGroup()
-    {
-        LifecycleTestSystem.Reset();
-        using var world = new World("TestWorld_CustomGroup");
-        world.AddCustomSystemGroup("Physics");
-        world.AddFrameSystemToCustomGroup<LifecycleTestSystem>("Physics");
-        InitializeAndStart(world);
-        world.Update(1f / 60f);
-        Assert.Equal(1, LifecycleTestSystem.UpdateCount);
-        MetricLine($"  自定义组 Physics 上 OnUpdate 次数: {LifecycleTestSystem.UpdateCount}");
     }
 
     /// <summary>

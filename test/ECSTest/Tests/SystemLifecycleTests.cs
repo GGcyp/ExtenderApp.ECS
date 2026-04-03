@@ -36,10 +36,10 @@ public sealed class SystemLifecycleTests : EcsTestContext
     }
 
     /// <summary>
-    /// 未知自定义组名时抛出 <see cref="ArgumentException"/>。
+    /// 未知内置组名时抛出 <see cref="ArgumentException"/>。
     /// </summary>
     [Fact]
-    public void System_UnknownCustomGroupName_Throws()
+    public void System_UnknownGroupName_Throws()
     {
         WorldSuite.TestUnknownSystemGroupThrows();
     }
@@ -53,12 +53,4 @@ public sealed class SystemLifecycleTests : EcsTestContext
         WorldSuite.TestWorldLightweightOptions();
     }
 
-    /// <summary>
-    /// 自定义系统组上的系统正常参与 Update。
-    /// </summary>
-    [Fact]
-    public void System_CustomGroup_IsSchedulable()
-    {
-        WorldSuite.TestCustomSystemGroup();
-    }
 }

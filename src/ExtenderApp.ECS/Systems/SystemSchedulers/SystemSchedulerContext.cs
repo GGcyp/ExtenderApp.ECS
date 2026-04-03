@@ -24,7 +24,7 @@ namespace ExtenderApp.ECS.Systems
         }
 
         /// <summary>
-        /// 在宿主组的 OnCreate 阶段注入实际的 <see cref="ParallelJobManager"/> 实例。
+        /// 在宿主组的 OnCreate 阶段注入实际的 <see cref="ParallelJobManager" /> 实例。
         /// </summary>
         internal void SetJobManager(ParallelJobManager jobManager) => JobManager = jobManager;
 
@@ -61,19 +61,19 @@ namespace ExtenderApp.ECS.Systems
     {
         private TSystem _system;
 
-        public SystemSchedulerContext(TSystem system) : this(system, typeof(TSystem).Name, null)
+        public SystemSchedulerContext(in TSystem system) : this(system, typeof(TSystem).Name, null)
         {
         }
 
-        public SystemSchedulerContext(TSystem system, string name) : this(system, name, null)
+        public SystemSchedulerContext(in TSystem system, string name) : this(system, name, null)
         {
         }
 
-        public SystemSchedulerContext(TSystem system, ParallelJobManager? jobManager) : this(system, typeof(TSystem).Name, jobManager)
+        public SystemSchedulerContext(in TSystem system, ParallelJobManager? jobManager) : this(system, typeof(TSystem).Name, jobManager)
         {
         }
 
-        public SystemSchedulerContext(TSystem system, string name, ParallelJobManager? jobManager) : base(name, jobManager)
+        public SystemSchedulerContext(in TSystem system, string name, ParallelJobManager? jobManager) : base(name, jobManager)
             => _system = system;
 
         protected override void OnCreateProtected(ref SystemCreateContext createContext)
