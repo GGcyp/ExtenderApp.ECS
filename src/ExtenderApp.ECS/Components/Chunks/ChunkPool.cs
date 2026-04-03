@@ -1,5 +1,5 @@
 ﻿using System.Collections.Concurrent;
-using ExtenderApp.Contracts;
+using ExtenderApp.ECS;
 
 namespace ExtenderApp.ECS.Components
 {

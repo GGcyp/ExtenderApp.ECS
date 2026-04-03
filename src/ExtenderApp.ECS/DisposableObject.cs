@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace ExtenderApp.Contracts
+namespace ExtenderApp.ECS
 {
     /// <summary>
     /// 一个实现了IDisposable和IAsyncDisposable接口的抽象类，用于管理可释放资源。

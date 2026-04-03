@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using ExtenderApp.Contracts;
+using ExtenderApp.ECS;
 using ExtenderApp.ECS.Components;
 
 namespace ExtenderApp.ECS.Archetypes

@@ -1,4 +1,4 @@
-﻿using ExtenderApp.Contracts;
+﻿using ExtenderApp.ECS;
 using ExtenderApp.ECS.Abstract;
 
 namespace ExtenderApp.ECS.Systems

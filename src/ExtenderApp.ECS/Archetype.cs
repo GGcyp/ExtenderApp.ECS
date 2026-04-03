@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using ExtenderApp.Contracts;
 using ExtenderApp.ECS.Archetypes;
 using ExtenderApp.ECS.Components;
 using ExtenderApp.ECS.Entities;

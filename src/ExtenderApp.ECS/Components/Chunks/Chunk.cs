@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using ExtenderApp.Contracts;
+using ExtenderApp.ECS;
 
 namespace ExtenderApp.ECS.Components
 {

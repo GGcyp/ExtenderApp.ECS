@@ -1,4 +1,4 @@
-using ExtenderApp.Contracts;
+using ExtenderApp.ECS;
 using ExtenderApp.ECS.Entities;
 using ExtenderApp.ECS.Worlds;
 

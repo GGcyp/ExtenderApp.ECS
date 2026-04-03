@@ -1,4 +1,3 @@
-using ExtenderApp.Contracts;
 using ExtenderApp.ECS.Archetypes;
 using ExtenderApp.ECS.Commands;
 using ExtenderApp.ECS.Components;

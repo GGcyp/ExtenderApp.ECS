@@ -1,5 +1,5 @@
 ﻿using System.Runtime.InteropServices;
-using ExtenderApp.Contracts;
+using ExtenderApp.ECS;
 
 namespace ExtenderApp.ECS.Commands
 {
