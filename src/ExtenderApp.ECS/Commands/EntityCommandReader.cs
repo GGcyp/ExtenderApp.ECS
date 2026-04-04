@@ -220,53 +220,39 @@ namespace ExtenderApp.ECS.Commands
             if (target.IsVirtual && !TryAccessRealityEntity(target, out target))
                 return;
 
+            if (!_entityManager.TryGetArchetype(target, out var archetype, out var archetypeIndex) ||
+                archetype == null)
+                return;
+
             ComponentMask newMask = new();
+            newMask.SetComponents(archetype.ComponentMask);
+            newMask.Remove(ct);
+            if (newMask == archetype.ComponentMask)
+                return;
+
             Entity changedEntity = Entity.Empty;
-            if (_entityManager.TryGetArchetype(target, out var archetype, out var archetypeIndex) &&
-            archetype != null)
-            {
-                newMask.SetComponents(archetype.ComponentMask);
-                newMask.Remove(ct);
-                if (newMask == archetype.ComponentMask)
-                    return;
 
-                if (newMask.IsEmpty)
-                {
-                    if (archetype.TryRemoveEntity(archetypeIndex, out changedEntity) &&
-                        !changedEntity.IsEmpty)
-                    {
-                        _entityManager.TryChangedArchetypeIndex(changedEntity, archetypeIndex);
-                    }
-                    _entityManager.TryChangedArchetype(target, null, 0);
-                    return;
-                }
-            }
-
-            if (!newMask.IsEmpty)
+            if (newMask.IsEmpty)
             {
-                if (archetype?.TryRemoveEntity(archetypeIndex, out changedEntity) == true &&
+                if (archetype.TryRemoveEntity(archetypeIndex, out changedEntity) &&
                     !changedEntity.IsEmpty)
                 {
                     _entityManager.TryChangedArchetypeIndex(changedEntity, archetypeIndex);
                 }
 
-                archetype = null;
-                archetypeIndex = 0;
-            }
-            else
-            {
-                var newArchetype = _archetypeManager.GetOrCreateArchetype(newMask);
-                var newIndex = newArchetype.AddEntity(target);
-                if (archetype?.TryCopyToAndRemove(archetypeIndex, newArchetype, newIndex, out changedEntity) == true &&
-                    !changedEntity.IsEmpty)
-                {
-                    _entityManager.TryChangedArchetypeIndex(changedEntity, archetypeIndex);
-                }
-                archetype = newArchetype;
-                archetypeIndex = newIndex;
+                _entityManager.TryChangedArchetype(target, null, 0);
+                return;
             }
 
-            _entityManager.TryChangedArchetype(target, archetype, archetypeIndex);
+            var newArchetype = _archetypeManager.GetOrCreateArchetype(newMask);
+            var newIndex = newArchetype.AddEntity(target);
+            if (archetype.TryCopyToAndRemove(archetypeIndex, newArchetype, newIndex, out changedEntity) &&
+                !changedEntity.IsEmpty)
+            {
+                _entityManager.TryChangedArchetypeIndex(changedEntity, archetypeIndex);
+            }
+
+            _entityManager.TryChangedArchetype(target, newArchetype, newIndex);
         }
 
         /// <summary>
@@ -299,6 +285,7 @@ namespace ExtenderApp.ECS.Commands
 
         /// <summary>
         /// 类似 AddComponent，但带二进制数据拷贝（Set/SetLike）。
+        /// 当目标实体当前原型已包含该组件且掩码不变时，仅在原地覆盖该列数据（不迁移）。
         /// </summary>
         private void ApplySetLike(Entity target, ComponentType ct, nint dataPtr, int dataSize)
         {
@@ -312,7 +299,15 @@ namespace ExtenderApp.ECS.Commands
             {
                 newMask.SetComponents(archetype.ComponentMask);
                 if (newMask == archetype.ComponentMask)
+                {
+                    if (dataSize > 0 &&
+                        archetype.TryGetChunk(ct, archetypeIndex, out var inPlaceChunk, out var inPlaceLocalIndex))
+                    {
+                        inPlaceChunk.CopiedUnsafe(inPlaceLocalIndex, dataPtr, dataSize);
+                    }
+
                     return;
+                }
             }
 
             var newArchetype = _archetypeManager.GetOrCreateArchetype(newMask);

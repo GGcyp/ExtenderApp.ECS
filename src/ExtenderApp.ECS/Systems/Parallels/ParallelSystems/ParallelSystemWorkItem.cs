@@ -47,7 +47,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
             this.query = query;
             this.updateContext = updateContext;
             this.system = system;
-            IsActived = true;
+            IsActive = true;
         }
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
         /// </summary>
         public override void Retrun()
         {
-            IsActived = false;
+            IsActive = false;
             _provider.Return(this);
         }
     }
@@ -114,7 +114,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
             this.query = query;
             this.updateContext = updateContext;
             this.system = system;
-            IsActived = true;
+            IsActive = true;
         }
 
         /// <summary>
@@ -131,7 +131,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
         /// </summary>
         public override void Retrun()
         {
-            IsActived = false;
+            IsActive = false;
             _provider.Return(this);
         }
     }
@@ -159,7 +159,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
             this.query = query;
             this.updateContext = updateContext;
             this.system = system;
-            IsActived = true;
+            IsActive = true;
         }
 
         public override void Execute()
@@ -169,7 +169,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
 
         public override void Retrun()
         {
-            IsActived = false;
+            IsActive = false;
             _provider.Return(this);
         }
     }
@@ -216,7 +216,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
             this.query = query;
             this.updateContext = updateContext;
             this.system = system;
-            IsActived = true;
+            IsActive = true;
         }
 
         /// <summary>
@@ -232,7 +232,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
         /// </summary>
         public override void Retrun()
         {
-            IsActived = false;
+            IsActive = false;
             _provider.Return(this);
         }
     }
@@ -275,7 +275,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
             this.query = query;
             this.updateContext = updateContext;
             this.system = system;
-            IsActived = true;
+            IsActive = true;
         }
 
         /// <summary>
@@ -291,7 +291,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
         /// </summary>
         public override void Retrun()
         {
-            IsActived = false;
+            IsActive = false;
             _provider.Return(this);
         }
     }
@@ -334,7 +334,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
             this.query = query;
             this.updateContext = updateContext;
             this.system = system;
-            IsActived = true;
+            IsActive = true;
         }
 
         /// <summary>
@@ -350,7 +350,7 @@ namespace ExtenderApp.ECS.Systems.Parallels
         /// </summary>
         public override void Retrun()
         {
-            IsActived = false;
+            IsActive = false;
             _provider.Return(this);
         }
     }

@@ -8,7 +8,7 @@
         /// <summary>
         /// 获取当前 ParallelJobWorkItem 是否处于激活状态。
         /// </summary>
-        public bool IsActived { get; protected set; }
+        public bool IsActive { get; protected set; }
 
         /// <summary>
         /// 执行并行任务的核心方法。
