@@ -51,7 +51,7 @@ namespace ExtenderApp.ECS.Commands
         /// <summary>
         /// 写入移除组件命令（仅记录 component type index，无组件数据）。
         /// </summary>
-        public void RemoveComponent<T>(Entity entity) where T : struct
+        public void RemoveComponent<T>(Entity entity)
         {
             if (entity.IsEmpty)
                 return;
@@ -60,7 +60,7 @@ namespace ExtenderApp.ECS.Commands
             WriteTypeCommand(EntityCommandType.RemoveComponent, entity, compType.TypeIndex);
         }
 
-        public void AddComponent<T>(Entity entity) where T : struct
+        public void AddComponent<T>(Entity entity)
         {
             if (entity.IsEmpty)
                 return;
