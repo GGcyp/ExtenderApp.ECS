@@ -25,7 +25,7 @@ namespace ExtenderApp.ECS
         internal SystemGroupManager SGManager { get; }
 
         /// <summary>
-        /// 主线程命令回放器：将 <see cref="CommandBuffer"/> 中已记录的结构变更应用到实体/原型。
+        /// 主线程命令回放器：将 <see cref="CommandBuffer" /> 中已记录的结构变更应用到实体/原型。
         /// </summary>
         internal EntityCommandReader CommandReader { get; }
 
