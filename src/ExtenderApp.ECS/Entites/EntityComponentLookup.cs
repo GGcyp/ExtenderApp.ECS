@@ -17,7 +17,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 初始化 <see cref="EntityComponentLookup" /> 的新实例。
         /// </summary>
-        /// <param name="handle">组件句柄。</param>
+        /// <param name="handle"> 组件句柄。 </param>
         internal EntityComponentLookup(ComponentHandle handle)
         {
             _handle = handle;
@@ -26,22 +26,18 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 获取指定类型组件。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <returns>组件值。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <returns> 组件值。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T GetComponent<T>() where T : struct
-        {
-            ThrowIfNotMainThread();
-            return _handle.GetComponent<T>();
-        }
+        public T GetComponent<T>() => _handle.GetComponent<T>();
 
         /// <summary>
         /// 设置指定类型组件。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="component">组件值。</param>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="component"> 组件值。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void SetComponent<T>(T component) where T : struct
+        public void SetComponent<T>(T component)
         {
             ThrowIfNotMainThread();
             _handle.SetComponent(component);
@@ -50,15 +46,13 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 尝试获取指定类型组件。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="component">输出组件值。</param>
-        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="component"> 输出组件值。 </param>
+        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetComponent<T>(out T component) where T : struct
+        public bool TryGetComponent<T>(out T component)
         {
-            ThrowIfNotMainThread();
-
-            component = default;
+            component = default!;
             try
             {
                 component = _handle.GetComponent<T>();
