@@ -144,20 +144,10 @@ world.DestroySystems();
 
 结构性变更应写入 `SystemUpdateContext.CommandBuffer`，由框架在回放阶段应用。详细约定见接口 XML 注释与 `test/ECSTest` 中的示例（如 `PositionParallelAccumulator`）。
 
----
-
-## 测试与基准
-
-- 自动化测试（xUnit）：`dotnet test test/ECSTest/ECSTest.csproj`
-- 交互式菜单与命令行（基准 / CustomRunner / WorldTests）：`dotnet run --project test/ECSTest.App/ECSTest.App.csproj`
-- 自定义跑法实现：`test/ECSTest/CustomRuns/`（partial `CustomRunner`）
-
-建议在 **Release** 配置下评估性能。
-
----
 
 ## 更多说明
 
+- 共享组件（SharedComponent）与 ECS 实体组件（Entity Component）的**类型不能相同**：同一个 `T` 不允许同时作为共享组件与实体组件使用。
 - 错误与异常消息在库内倾向使用**简体中文**（便于阅读源码与日志）。
 - 若需发布 NuGet，可在 `ExtenderApp.ECS.csproj` 中补充包元数据（`PackageId`、`Authors`、`Description` 等）。
 

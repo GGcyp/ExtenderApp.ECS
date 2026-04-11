@@ -19,6 +19,14 @@ public struct TestVelocity
 }
 
 /// <summary>
+/// 测试中使用的生命值组件（非托管结构体）。
+/// </summary>
+public struct TestHealth
+{
+    public int Value;
+}
+
+/// <summary>
 /// 测试中使用的共享组件（结构体）。
 /// </summary>
 public struct TestSharedConfig

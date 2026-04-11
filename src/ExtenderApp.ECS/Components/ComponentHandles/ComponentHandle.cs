@@ -30,7 +30,7 @@ namespace ExtenderApp.ECS.Components
         /// <summary>
         /// 初始化 <see cref="ComponentHandle" /> 的新实例。
         /// </summary>
-        /// <param name="pool">句柄池实例。</param>
+        /// <param name="pool"> 句柄池实例。 </param>
         public ComponentHandle(ComponentHandlePool pool)
         {
             Manager = default!;
@@ -41,9 +41,9 @@ namespace ExtenderApp.ECS.Components
         /// <summary>
         /// 设置指定类型组件的值。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="component">要写入的组件值。</param>
-        public void SetComponent<T>(T component) where T : struct
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="component"> 要写入的组件值。 </param>
+        public void SetComponent<T>(T component)
         {
             if (ComponentTypes.TryGetEncodedPosition<T>(out var position) &&
                 Manager.TryFindChunkForGlobalIndex(position, GlobalIndex, out var chunk, out int localIndex) &&
@@ -59,9 +59,9 @@ namespace ExtenderApp.ECS.Components
         /// <summary>
         /// 获取指定类型组件的值。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <returns>组件值。</returns>
-        public T GetComponent<T>() where T : struct
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <returns> 组件值。 </returns>
+        public T GetComponent<T>()
         {
             if (ComponentTypes.TryGetEncodedPosition<T>(out var position) &&
                 Manager.TryFindChunkForGlobalIndex(position, GlobalIndex, out var chunk, out int localIndex) &&
@@ -87,7 +87,7 @@ namespace ExtenderApp.ECS.Components
         /// <summary>
         /// 抛出组件类型不匹配异常。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
         private void ThrowInvalidComponentType<T>()
         {
             throw new InvalidOperationException($"当前实体不包含类型为 {typeof(T).Name} 的组件。");

@@ -33,7 +33,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 使用指定的查询管理器创建一个新的实体查询构建器实例。
         /// </summary>
-        /// <param name="queryManager">用于管理与缓存实体查询的管理器实例。</param>
+        /// <param name="queryManager"> 用于管理与缓存实体查询的管理器实例。 </param>
         internal EntityQueryBuilder(EntityQueryManager queryManager)
         {
             _queryManager = queryManager;
@@ -217,7 +217,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须不包含的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder WithNone<T>() where T : struct
+        public EntityQueryBuilder WithNone<T>()
         {
             none.SetComponent<T>();
             return this;
@@ -300,8 +300,8 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <typeparam name="T">关系类型的结构体类型。</typeparam>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <typeparam name="T"> 关系类型的结构体类型。 </typeparam>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithRelation<T>() where T : struct
             => WithRelation(RelationType.Create<T>());
@@ -309,8 +309,8 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder WithRelation(RelationType relationType)
         {
@@ -323,7 +323,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 根据当前已配置的掩码构建或获取对应的 <see cref="EntityQuery" />。
         /// </summary>
-        /// <returns>从管理器缓存或新建的实体查询实例。</returns>
+        /// <returns> 从管理器缓存或新建的实体查询实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<T1> Build<T1>()
         {
@@ -397,7 +397,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c> Build&lt;T1,...&gt;() </c> 一致。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal EntityQueryCore BuildEntityQueryCore<T1>()
@@ -410,7 +410,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c> Build&lt;T1,...&gt;() </c> 一致。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal EntityQueryCore BuildEntityQueryCore<T1, T2>()
@@ -424,7 +424,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c> Build&lt;T1,...&gt;() </c> 一致。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal EntityQueryCore BuildEntityQueryCore<T1, T2, T3>()
@@ -439,7 +439,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c> Build&lt;T1,...&gt;() </c> 一致。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal EntityQueryCore BuildEntityQueryCore<T1, T2, T3, T4>()
@@ -455,7 +455,7 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c>Build&lt;T1,...&gt;()</c> 一致。
+        /// 根据当前掩码构建或复用查询核心，供并行系统等仅需核心的路径使用；语义与同签名的 <c> Build&lt;T1,...&gt;() </c> 一致。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal EntityQueryCore BuildEntityQueryCore<T1, T2, T3, T4, T5>()
@@ -474,8 +474,8 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 检查并返回指定泛型组件类型对应的 `ComponentType` 实例。
         /// </summary>
-        /// <typeparam name="T">要检查的组件类型。</typeparam>
-        /// <returns>对应的 `ComponentType` 实例。</returns>
+        /// <typeparam name="T"> 要检查的组件类型。 </typeparam>
+        /// <returns> 对应的 `ComponentType` 实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ComponentType CheckAndGetComponent<T>()
         {
@@ -514,7 +514,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 使用指定的查询管理器创建一个新的实体查询构建器实例。
         /// </summary>
-        /// <param name="queryManager">用于管理与缓存实体查询的管理器实例。</param>
+        /// <param name="queryManager"> 用于管理与缓存实体查询的管理器实例。 </param>
         internal EntityQueryBuilder(EntityQueryManager queryManager)
         {
             _queryManager = queryManager;
@@ -706,7 +706,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须不包含的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1> WithNone<T>() where T : struct
+        public EntityQueryBuilder<TQ1> WithNone<T>()
         {
             none.SetComponent<T>();
             return this;
@@ -793,16 +793,16 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <typeparam name="T">关系类型的结构体类型。</typeparam>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <typeparam name="T"> 关系类型的结构体类型。 </typeparam>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithRelation<T>() where T : struct => WithRelation(RelationType.Create<T>());
 
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1> WithRelation(RelationType relationType)
         {
@@ -815,7 +815,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 生成一个新的实体查询实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。
         /// </summary>
-        /// <returns>新的实体查询实例。</returns>
+        /// <returns> 新的实体查询实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1> Build()
             => new(BuildEntityQueryCore());
@@ -823,7 +823,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 生成一个新的实体查询核心实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。
         /// </summary>
-        /// <returns>新的实体查询核心实例。</returns>
+        /// <returns> 新的实体查询核心实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal EntityQueryCore BuildEntityQueryCore()
         {
@@ -862,7 +862,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 使用指定的查询管理器创建一个新的实体查询构建器实例。
         /// </summary>
-        /// <param name="queryManager">用于管理与缓存实体查询的管理器实例。</param>
+        /// <param name="queryManager"> 用于管理与缓存实体查询的管理器实例。 </param>
         internal EntityQueryBuilder(EntityQueryManager queryManager)
         {
             _queryManager = queryManager;
@@ -1054,7 +1054,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须不包含的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2> WithNone<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2> WithNone<T>()
         {
             none.SetComponent<T>();
             return this;
@@ -1141,16 +1141,16 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <typeparam name="T">关系类型的结构体类型。</typeparam>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <typeparam name="T"> 关系类型的结构体类型。 </typeparam>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithRelation<T>() where T : struct => WithRelation(RelationType.Create<T>());
 
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2> WithRelation(RelationType relationType)
         {
@@ -1163,7 +1163,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 生成一个新的实体查询实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。如果查询管理器中已经存在一个具有相同条件的查询实例，则返回该实例；否则创建一个新的查询实例并返回。
         /// </summary>
-        /// <returns>新的实体查询实例。</returns>
+        /// <returns> 新的实体查询实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2> Build()
             => new(BuildEntityQueryCore());
@@ -1207,7 +1207,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 使用指定的查询管理器创建一个新的实体查询构建器实例。
         /// </summary>
-        /// <param name="queryManager">用于管理与缓存实体查询的管理器实例。</param>
+        /// <param name="queryManager"> 用于管理与缓存实体查询的管理器实例。 </param>
         internal EntityQueryBuilder(EntityQueryManager queryManager)
         {
             _queryManager = queryManager;
@@ -1399,7 +1399,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须不包含的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2, TQ3> WithNone<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2, TQ3> WithNone<T>()
         {
             none.SetComponent<T>();
             return this;
@@ -1486,16 +1486,16 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <typeparam name="T">关系类型的结构体类型。</typeparam>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <typeparam name="T"> 关系类型的结构体类型。 </typeparam>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithRelation<T>() where T : struct => WithRelation(RelationType.Create<T>());
 
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3> WithRelation(RelationType relationType)
         {
@@ -1508,7 +1508,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 生成一个新的实体查询实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。如果查询管理器中已经存在一个具有相同条件的查询实例，则返回该实例；否则创建一个新的查询实例并返回。
         /// </summary>
-        /// <returns>新的实体查询实例。</returns>
+        /// <returns> 新的实体查询实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2, TQ3> Build()
             => new(BuildEntityQueryCore());
@@ -1553,7 +1553,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 使用指定的查询管理器创建一个新的实体查询构建器实例。
         /// </summary>
-        /// <param name="queryManager">用于管理与缓存实体查询的管理器实例。</param>
+        /// <param name="queryManager"> 用于管理与缓存实体查询的管理器实例。 </param>
         internal EntityQueryBuilder(EntityQueryManager queryManager)
         {
             _queryManager = queryManager;
@@ -1745,7 +1745,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须不包含的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithNone<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithNone<T>()
         {
             none.SetComponent<T>();
             return this;
@@ -1832,16 +1832,16 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <typeparam name="T">关系类型的结构体类型。</typeparam>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <typeparam name="T"> 关系类型的结构体类型。 </typeparam>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithRelation<T>() where T : struct => WithRelation(RelationType.Create<T>());
 
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4> WithRelation(RelationType relationType)
         {
@@ -1854,7 +1854,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 生成一个新的实体查询实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。如果查询管理器中已经存在一个具有相同条件的查询实例，则返回该实例；否则创建一个新的查询实例并返回。
         /// </summary>
-        /// <returns>新的实体查询实例。</returns>
+        /// <returns> 新的实体查询实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2, TQ3, TQ4> Build()
             => new(BuildEntityQueryCore());
@@ -1900,7 +1900,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 使用指定的查询管理器创建一个新的实体查询构建器实例。
         /// </summary>
-        /// <param name="queryManager">用于管理与缓存实体查询的管理器实例。</param>
+        /// <param name="queryManager"> 用于管理与缓存实体查询的管理器实例。 </param>
         internal EntityQueryBuilder(EntityQueryManager queryManager)
         {
             _queryManager = queryManager;
@@ -2092,7 +2092,7 @@ namespace ExtenderApp.ECS.Queries
         /// 指定必须不包含的单个泛型组件类型。
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithNone<T>() where T : struct
+        public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithNone<T>()
         {
             none.SetComponent<T>();
             return this;
@@ -2179,16 +2179,16 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <typeparam name="T">关系类型的结构体类型。</typeparam>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <typeparam name="T"> 关系类型的结构体类型。 </typeparam>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithRelation<T>() where T : struct => WithRelation(RelationType.Create<T>());
 
         /// <summary>
         /// 指定一个关系类型加入查询掩码，用于查询具有特定关系的实体。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>当前实体查询构建器实例。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 当前实体查询构建器实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQueryBuilder<TQ1, TQ2, TQ3, TQ4, TQ5> WithRelation(RelationType relationType)
         {
@@ -2201,7 +2201,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// 生成一个新的实体查询实例，包含构建器中指定的所有匹配条件（必须全部匹配、任意匹配、必须不包含和关系类型）。如果查询管理器中已经存在一个具有相同条件的查询实例，则返回该实例；否则创建一个新的查询实例并返回。
         /// </summary>
-        /// <returns>新的实体查询实例。</returns>
+        /// <returns> 新的实体查询实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityQuery<TQ1, TQ2, TQ3, TQ4, TQ5> Build()
             => new(BuildEntityQueryCore());

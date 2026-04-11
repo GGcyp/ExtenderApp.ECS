@@ -9,7 +9,7 @@ namespace ExtenderApp.ECS.Archetypes
     internal abstract class ArchetypeChunkProvider
     {
         /// <summary>
-        /// 缓存每种组件类型对应的提供器实例，避免重复通过反射创建。键为组件类型，值为对应的 <see cref="ArchetypeChunkProvider"/> 实例。
+        /// 缓存每种组件类型对应的提供器实例，避免重复通过反射创建。键为组件类型，值为对应的 <see cref="ArchetypeChunkProvider" /> 实例。
         /// </summary>
         private static ConcurrentDictionary<Type, ArchetypeChunkProvider> _providers = new();
 
@@ -24,8 +24,8 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 根据共享组件类型（由 SharedComponentType 包装）查找或创建提供器。
         /// </summary>
-        /// <param name="componentType">共享组件类型。</param>
-        /// <returns>对应的 ArchetypeChunkProvider 实例。</returns>
+        /// <param name="componentType"> 共享组件类型。 </param>
+        /// <returns> 对应的 ArchetypeChunkProvider 实例。 </returns>
         public static ArchetypeChunkProvider GetOrCreate(SharedComponentType componentType)
         {
             return GetOrCreate(componentType.TypeInstance);
@@ -63,7 +63,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 从提供器中租用一个 <see cref="ArchetypeChunk" /> 实例（具体类型由子类返回）。
         /// </summary>
-        /// <param name="startIndex">分配给返回块的全局起始索引（可选）。</param>
+        /// <param name="startIndex"> 分配给返回块的全局起始索引（可选）。 </param>
         public abstract ArchetypeChunk Rent(int startIndex = 0);
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 必须调用的初始化块生成函数。
         /// </summary>
-        /// <param name="isSingle">指示是否为单例组件块。</param>
+        /// <param name="isSingle"> 指示是否为单例组件块。 </param>
         public abstract void InitCreateFunc(bool isSingle);
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace ExtenderApp.ECS.Archetypes
     /// - 归还时会先把底层 <see cref="Chunk" /> 返回到 <see cref="ChunkPool" />，并把 <see cref="ArchetypeChunk{T}" /> 置为未初始化状态；
     /// - 当池达到上限时，多余的对象会被释放以避免无限增长。
     /// </summary>
-    /// <typeparam name="T">组件类型，要求为 struct 并实现 <see cref="IComponent" />。</typeparam>
+    /// <typeparam name="T"> 组件类型，要求为 struct 并实现 <see cref="IComponent" />。 </typeparam>
     internal sealed class ArchetypeChunkProvider<T> : ArchetypeChunkProvider
     {
         private const int MaxPoolSize = 16;
@@ -143,21 +143,21 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 创建新的 <see cref="ArchetypeChunk{T}" /> 实例的工厂方法，根据 T1 的类型选择托管或非托管实现。
         /// </summary>
-        /// <param name="isSingle">指示是否为单例组件块。</param>
-        /// <returns>返回一个用于创建 <see cref="ArchetypeChunk{T}" /> 实例的委托。</returns>
+        /// <param name="isSingle"> 指示是否为单例组件块。 </param>
+        /// <returns> 返回一个用于创建 <see cref="ArchetypeChunk{T}" /> 实例的委托。 </returns>
         private static Func<ArchetypeChunkProvider<T>, ArchetypeChunk<T>> CreateFunc(bool isSingle)
         {
             if (isSingle)
             {
                 return static (p) => new SingleManagerArchetTypeChunk<T>(p);
             }
-            else if (typeof(T).IsClass)
+            else if (typeof(T).IsValueType)
             {
-                return static (p) => new ManagedArchetTypeChunk<T>(p);
+                return static (p) => new UnmanagedArchetTypeChunk<T>(p);
             }
             else
             {
-                return static (p) => new UnmanagedArchetTypeChunk<T>(p);
+                return static (p) => new ManagedArchetTypeChunk<T>(p);
             }
         }
 
