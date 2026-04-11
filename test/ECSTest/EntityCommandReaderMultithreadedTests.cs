@@ -1,13 +1,13 @@
 using ECSTest.Components;
 using ExtenderApp.ECS;
 using ExtenderApp.ECS.Accessors;
+using ExtenderApp.ECS.Entities;
 using ExtenderApp.ECS.Queries;
 using Xunit;
 
 namespace ECSTest;
 
 /// <summary>
-/// 校验多线程向 <see cref="EntityCommandBuffer" /> 追加命令后，由 <see cref="World.PlaybackRecordedCommands" />（内部 <c>EntityCommandReader.ReadCommands</c>）在主线程单次回放的正确性。
 /// </summary>
 public sealed class EntityCommandReaderMultithreadedTests
 {
@@ -47,7 +47,6 @@ public sealed class EntityCommandReaderMultithreadedTests
     }
 
     /// <summary>
-    /// 单线程：主线程创建仅含 <see cref="TestPosition" /> 的真实实体，再通过缓冲逐条 Add <see cref="TestVelocity" />，回放后与实体一一对应。
     /// </summary>
     [Fact]
     public void Playback_RealEntity_BufferAddVelocitySequential_Baseline()
@@ -79,7 +78,6 @@ public sealed class EntityCommandReaderMultithreadedTests
     }
 
     /// <summary>
-    /// 多线程：对「同一虚拟实体」的创建与两条 Add 必须作为连续命令写入缓冲；否则回放切换实体时会提前 Flush，导致掩码与数据错位。 此处用细粒度锁保证每条虚拟实体上的命令块不被其它线程拆开；不同实体之间仍由多线程交错产生。
     /// </summary>
     [Fact]
     public void Playback_VirtualEntity_ParallelWriters_SlotsAndPayloadsConsistent()
