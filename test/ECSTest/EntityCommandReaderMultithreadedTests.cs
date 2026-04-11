@@ -8,6 +8,7 @@ using Xunit;
 namespace ECSTest;
 
 /// <summary>
+/// <see cref="ExtenderApp.ECS.Commands.EntityCommandReader"/> 回放相关测试：虚拟/真实实体、顺序与并行写入。
 /// </summary>
 public sealed class EntityCommandReaderMultithreadedTests
 {
@@ -47,24 +48,29 @@ public sealed class EntityCommandReaderMultithreadedTests
     }
 
     /// <summary>
+    /// 单线程真实实体：多阶段增删组件与缓冲写入后回放，校验各组件数据与多次原型迁移一致性。
     /// </summary>
     [Fact]
     public void Playback_RealEntity_BufferAddVelocitySequential_Baseline()
     {
         using var world = new World();
-        var buf = world.CommandBuffer;
         const int n = 100;
         var entities = new Entity[n];
         for (int i = 0; i < n; i++)
         {
             entities[i] = world.CreateEntity(new TestPosition { X = i, Y = i });
             world.AddComponent(entities[i], new TestEcsContext { Name = $"Entity_{i}", Id = i });
+            world.RemoveComponent<TestPosition>(entities[i]);
+            world.AddComponent(entities[i], new TestAgentContext { AgentId = i });
+            world.AddComponent(entities[i], new TestBufferElement { Value = i });
+            world.AddComponent(entities[i], new TestTag { Value = i });
         }
 
         for (int i = 0; i < n; i++)
         {
-            buf.AddComponent(entities[i], new TestVelocity { Dx = i, Dy = -i });
-            buf.RemoveComponent<TestPosition>(entities[i]);
+            world.AddComponent(entities[i], new TestVelocity { Dx = i, Dy = -i });
+            world.RemoveComponent<TestPosition>(entities[i]);
+            world.AddComponent(entities[i], new TestAgentContext { AgentId = i * 2 });
         }
 
         world.PlaybackRecordedCommands();
@@ -74,6 +80,13 @@ public sealed class EntityCommandReaderMultithreadedTests
             var v = world.GetComponent<TestVelocity>(entities[i]);
             Assert.Equal(i, v.Dx);
             Assert.Equal(-i, v.Dy);
+            var c = world.GetComponent<TestEcsContext>(entities[i]);
+            Assert.Equal($"Entity_{i}", c.Name);
+            Assert.Equal(i, c.Id);
+            var a = world.GetComponent<TestAgentContext>(entities[i]);
+            Assert.Equal(i * 2, a.AgentId);
+            var b = world.GetComponent<TestBufferElement>(entities[i]);
+            Assert.Equal(i, b.Value);
         }
     }
 

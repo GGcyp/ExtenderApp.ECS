@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Archetypes;
 using ExtenderApp.ECS.Threading;
+using ExtenderApp.ECS;
 
 namespace ExtenderApp.ECS.Entities
 {

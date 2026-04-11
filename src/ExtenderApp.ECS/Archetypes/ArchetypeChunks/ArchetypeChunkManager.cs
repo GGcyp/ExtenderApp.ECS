@@ -2,50 +2,51 @@ using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Components;
+using ExtenderApp.ECS;
 
 namespace ExtenderApp.ECS.Archetypes
 {
     /// <summary>
-    /// ¹ÜÀí Archetype µÄ×é¼şÁĞ¿éÓëÊµÌå¶ÎË÷Òı¡£ ¸ºÔğÊµÌå²ÛÎ»µÄ·ÖÅä/»ØÊÕ¡¢°´È«¾ÖË÷Òı¶¨Î»¿éÎ»ÖÃ£¬ÒÔ¼°×é¼ş¾ä±úµÄÎ¬»¤¡£
+    /// ç®¡ç†æŸä¸€ <see cref="Archetype"/> ä¸‹å„ç»„ä»¶åˆ—å¯¹åº”çš„å—å­˜å‚¨ã€å®ä½“åœ¨åˆ—ä¸­çš„åˆ†é…ä¸å›æ”¶ï¼Œä»¥åŠå…¨å±€è¡Œå·åˆ°å—å†…å±€éƒ¨ç´¢å¼•çš„æ˜ å°„ã€‚
     /// </summary>
     internal sealed class ArchetypeChunkManager
     {
         /// <summary>
-        /// Ä¬ÈÏ×é¼şÁĞ¿éÁĞ±í³õÊ¼ÈİÁ¿¡£ ¸ÃÖµ»á¸ù¾İÔö³¤±íµİÔö£¬³¬¹ıÔ¤Éèºó¹Ì¶¨Îª 2048¡£
+        /// æ–°å»ºåˆ—å—åˆ—è¡¨æ—¶çš„åˆå§‹å®¹é‡ï¼›å…·ä½“æ•°å€¼ç”± <see cref="Settings.DefaultArchetypeChunkListSize"/> å†³å®šï¼ˆé»˜è®¤ 2048ï¼‰ã€‚
         /// </summary>
         private const int DefaultListSize = Settings.DefaultArchetypeChunkListSize;
 
         /// <summary>
-        /// »ñÈ¡ÏÂÒ»¿éÈİÁ¿¡£ ¸ÃÖµ»á¸ù¾İÔö³¤±íµİÔö£¬³¬¹ıÔ¤Éèºó¹Ì¶¨Îª 2048¡£
+        /// æŒ‰å½“å‰å·²æœ‰å—æ•°é‡è®¡ç®—ä¸‹ä¸€æ¬¡æ‰©å®¹æˆ–æ–°å—åº”ä½¿ç”¨çš„å®¹é‡ã€‚
         /// </summary>
-        /// <param name="currentCount">µ±Ç°¿éÊıÁ¿¡£</param>
-        /// <returns>ÏÂÒ»¿éµÄÈİÁ¿¡£</returns>
+        /// <param name="currentCount">å½“å‰å—æ•°é‡ã€‚</param>
+        /// <returns>ä¸‹ä¸€æ¡£å®¹é‡ã€‚</returns>
         private static int GetNextSize(int currentCount) => Settings.GetNextArchetypeChunkSize(currentCount);
 
         /// <summary>
-        /// Ã¿¸ö×é¼şÁĞ¶ÔÓ¦µÄ¿éÌá¹©Æ÷Êı×é¡£
+        /// æ¯ä¸ªç»„ä»¶åˆ—å¯¹åº”çš„å—æä¾›å™¨æ•°ç»„ã€‚
         /// </summary>
         private readonly ArchetypeChunkProvider[] _archetypeChunkProviders;
 
         /// <summary>
-        /// ×é¼şÁĞ¿éÁĞ±íÊı×é£¬Ë÷ÒıÓë×é¼ş±àÂëÎ»ÖÃÒ»ÖÂ¡£
+        /// å„åˆ—çš„å—åˆ—è¡¨ï¼›ä¸ç»„ä»¶åˆ—ç´¢å¼•ä¸€ä¸€å¯¹åº”ï¼Œç©ºç»„ä»¶åˆ—å¯ä¸º nullã€‚
         /// </summary>
         private readonly ArchetypeChunkList?[] _columns;
 
         /// <summary>
-        /// ×é¼ş¾ä±ú³Ø£¬ÓÃÓÚ¹ÜÀí×é¼ş¾ä±úµÄ×âÓÃÓë¹é»¹£¬Ö§³ÖÊµÌåÒÆ³ıÊ±µÄÎ²²¿½»»»²Ù×÷¡£ ¸Ã³ØÎª¹²ÏíÊµÀı£¬ÊÊÓÃÓÚËùÓĞ ArchetypeChunkManager¡£
+        /// å…±äº«çš„ç»„ä»¶å¥æŸ„æ± ï¼Œç”¨äºç§Ÿç”¨/å½’è¿˜å¥æŸ„ï¼›åœ¨å®ä½“ç§»é™¤å‘ç”Ÿå°¾éƒ¨äº¤æ¢æ—¶ä»ä¼šç”¨åˆ°ã€‚å¥æŸ„çš„ <see cref="ComponentHandle.Manager"/> æŒ‡å‘æœ¬ <see cref="ArchetypeChunkManager"/>ã€‚
         /// </summary>
         private readonly ComponentHandlePool handlePool = ComponentHandlePool.Share;
 
         /// <summary>
-        /// ÊµÌå¶ÎĞÅÏ¢ÁĞ±í£¬ÓÃÓÚ½«È«¾ÖË÷ÒıÓ³Éäµ½¶ÎÄÚ¾Ö²¿Ë÷Òı¡£
+        /// å®ä½“æ®µä¿¡æ¯åˆ—è¡¨ï¼Œç”¨äºå°†å®ä½“å…¨å±€è¡Œå·æ˜ å°„åˆ°æ®µå†…å±€éƒ¨ç´¢å¼•ä¸å—ä¸‹æ ‡ã€‚
         /// </summary>
         internal readonly ArchetypeEntitySegmentInfoList Entities;
 
         /// <summary>
-        /// ³õÊ¼»¯ <see cref="ArchetypeChunkManager" /> µÄĞÂÊµÀı¡£
+        /// åˆå§‹åŒ– <see cref="ArchetypeChunkManager"/> çš„æ–°å®ä¾‹ã€‚
         /// </summary>
-        /// <param name="providers">°´×é¼ş±àÂëÎ»ÖÃÅÅÁĞµÄ¿éÌá¹©Æ÷Êı×é¡£</param>
+        /// <param name="providers">ä¸å„ç»„ä»¶åˆ—å¯¹é½çš„å—æä¾›å™¨æ•°ç»„ã€‚</param>
         public ArchetypeChunkManager(ArchetypeChunkProvider[] providers)
         {
             _archetypeChunkProviders = providers;
@@ -63,26 +64,26 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ×é¼şÁĞÊıÁ¿¡£
+        /// è·å–ç»„ä»¶åˆ—æ•°ï¼ˆä¸å—åˆ—è¡¨å¤´æ•°é‡ä¸€è‡´ï¼‰ã€‚
         /// </summary>
         public int ChunkHeadCount => _columns.Length;
 
         /// <summary>
-        /// »ñÈ¡Ö¸¶¨ÁĞµÄÍ·¿é¡£
+        /// è·å–æŒ‡å®šåˆ—çš„é¦–ä¸ªå—ï¼ˆè‹¥è¯¥åˆ—æ— å—åˆ™è¿”å› nullï¼‰ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı£¨0-based£©¡£</param>
-        /// <returns>´æÔÚÍ·¿éÔò·µ»Ø¶ÔÓ¦¿é£¬·ñÔò·µ»Ø null¡£</returns>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ï¼ˆä» 0 å¼€å§‹ï¼‰ã€‚</param>
+        /// <returns>å­˜åœ¨å¤´å—æ—¶è¿”å›è¯¥å—ï¼Œå¦åˆ™è¿”å› nullã€‚</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ArchetypeChunk? GetHead(int columnIndex) => _columns[columnIndex]?.Count > 0 ? _columns[columnIndex]?[0] : null;
 
         #region Add
 
         /// <summary>
-        /// ÏòÊµÌå¶ÎÓëËùÓĞ×é¼şÁĞ×·¼ÓÒ»¸öÊµÌå²ÛÎ»¡£
+        /// åœ¨å®ä½“è¡¨ä¸­è¿½åŠ ä¸€è¡Œï¼Œå¹¶åœ¨æ¯ä¸€ç»„ä»¶åˆ—ä¸­åˆ†é…å¯¹åº”æ§½ä½ï¼ˆæ— å¥æŸ„ï¼‰ã€‚
         /// </summary>
-        /// <param name="entity">Òª×·¼ÓµÄÊµÌå¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
-        /// <param name="globalIndex">Êä³ö·ÖÅäµ½µÄÊµÌåÈ«¾ÖË÷Òı¡£</param>
+        /// <param name="entity">è¦ç™»è®°çš„å®ä½“ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
+        /// <param name="globalIndex">è¾“å‡ºåˆ†é…åˆ°çš„å®ä½“å…¨å±€è¡Œå·ã€‚</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddEntity(Entity entity, ulong worldVersion, out int globalIndex)
         {
@@ -95,12 +96,12 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÏòÊµÌå¶ÎÓëËùÓĞ×é¼şÁĞ×·¼ÓÒ»¸öÊµÌå²ÛÎ»£¬²¢°ó¶¨×é¼ş¾ä±ú¡£
+        /// åœ¨å®ä½“è¡¨ä¸­è¿½åŠ ä¸€è¡Œï¼Œå¹¶åœ¨æ¯ä¸€ç»„ä»¶åˆ—ä¸­åˆ†é…æ§½ä½ï¼ŒåŒæ—¶å¯æºå¸¦ç»„ä»¶å¥æŸ„ã€‚
         /// </summary>
-        /// <param name="entity">Òª×·¼ÓµÄÊµÌå¡£</param>
-        /// <param name="handle">¿ÉÑ¡×é¼ş¾ä±ú¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
-        /// <param name="globalIndex">Êä³ö·ÖÅäµ½µÄÊµÌåÈ«¾ÖË÷Òı¡£</param>
+        /// <param name="entity">è¦ç™»è®°çš„å®ä½“ã€‚</param>
+        /// <param name="handle">å¯é€‰çš„ç»„ä»¶å¥æŸ„ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
+        /// <param name="globalIndex">è¾“å‡ºåˆ†é…åˆ°çš„å®ä½“å…¨å±€è¡Œå·ã€‚</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddEntity(Entity entity, ComponentHandle? handle, ulong worldVersion, out int globalIndex)
         {
@@ -114,11 +115,11 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÅúÁ¿ÏòÊµÌå¶ÎÓëËùÓĞ×é¼şÁĞ×·¼ÓÊµÌå²ÛÎ»¡£
+        /// æ‰¹é‡åœ¨å®ä½“è¡¨ä¸­è¿½åŠ å¤šè¡Œï¼Œå¹¶åœ¨å„åˆ—ä¸­åˆ†é…æ§½ä½ï¼ˆæ— å¥æŸ„ï¼‰ã€‚
         /// </summary>
-        /// <param name="entities">´ı×·¼ÓÊµÌå¼¯ºÏ¡£</param>
-        /// <param name="globalIndexSpan">Êä³ö·ÖÅäµ½µÄÊµÌåÈ«¾ÖË÷Òı¼¯ºÏ¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
+        /// <param name="entities">å¾…è¿½åŠ çš„å®ä½“é›†åˆã€‚</param>
+        /// <param name="globalIndexSpan">è¾“å‡ºå„è¡Œåˆ†é…åˆ°çš„å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan, ulong worldVersion)
         {
@@ -133,12 +134,12 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÅúÁ¿ÏòÊµÌå¶ÎÓëËùÓĞ×é¼şÁĞ×·¼ÓÊµÌå²ÛÎ»£¬²¢°ó¶¨×é¼ş¾ä±ú¡£
+        /// æ‰¹é‡åœ¨å®ä½“è¡¨ä¸­è¿½åŠ å¤šè¡Œï¼Œå¹¶åœ¨å„åˆ—ä¸­åˆ†é…æ§½ä½ï¼ŒåŒæ—¶å†™å…¥å¥æŸ„æ•°ç»„ã€‚
         /// </summary>
-        /// <param name="entities">´ı×·¼ÓÊµÌå¼¯ºÏ¡£</param>
-        /// <param name="globalIndexSpan">Êä³ö·ÖÅäµ½µÄÊµÌåÈ«¾ÖË÷Òı¼¯ºÏ¡£</param>
-        /// <param name="handles">´ı°ó¶¨×é¼ş¾ä±ú¼¯ºÏ¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
+        /// <param name="entities">å¾…è¿½åŠ çš„å®ä½“é›†åˆã€‚</param>
+        /// <param name="globalIndexSpan">è¾“å‡ºå„è¡Œåˆ†é…åˆ°çš„å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="handles">ä¸å„å®ä½“å¯¹é½çš„å¥æŸ„æ•°ç»„ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan, Span<ComponentHandle?> handles, ulong worldVersion)
         {
@@ -157,18 +158,18 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÔÚÖ¸¶¨ÁĞ×·¼ÓÒ»¸ö²ÛÎ»£»±ØÒªÊ±´´½¨ĞÂ¿é¡£
+        /// åœ¨æŒ‡å®šåˆ—è¿½åŠ ä¸€ä¸ªç©ºæ§½ä½ï¼›è‹¥å½“å‰åˆ—æ— å—åˆ™ä»æä¾›å™¨ç§Ÿæ–°å—å¹¶æŒ‚å…¥åˆ—è¡¨ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
-        /// <param name="capacity">ĞÂ½¨¿éÊ±Ê¹ÓÃµÄÈİÁ¿¡£</param>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
+        /// <param name="capacity">æ–°å»ºå—æ—¶ä½¿ç”¨çš„å®¹é‡ã€‚</param>
         private void AddToColumn(int columnIndex, ulong worldVersion, int capacity)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
                 return;
 
             ArchetypeChunk? chunk;
-            // ¸ÃÁĞÉĞÎŞ¿é£¬³¢ÊÔ´ÓÌá¹©Õß×âÓÃÒ»¸öĞÂ¿é²¢×·¼Ó
+            // è‹¥è¯¥åˆ—å°šæ— å—ï¼Œä»æä¾›å™¨ç§Ÿä¸€å—æ–°å—å¹¶åŠ å…¥åˆ—è¡¨
             if (chunkList.Count == 0)
             {
                 var provider = _archetypeChunkProviders[columnIndex];
@@ -198,12 +199,12 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÔÚÖ¸¶¨ÁĞÅúÁ¿×·¼Ó²ÛÎ»¡£
+        /// åœ¨æŒ‡å®šåˆ—è¿ç»­è¿½åŠ å¤šä¸ªç©ºæ§½ä½ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
-        /// <param name="count">Òª×·¼ÓµÄÊıÁ¿¡£</param>
-        /// <remarks>ĞÂ¿éÈİÁ¿°´Ôö³¤±íµİÔö£¬³¬¹ıÔ¤Éèºó¹Ì¶¨Îª 2048¡£</remarks>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
+        /// <param name="count">è¦è¿½åŠ çš„æ§½ä½æ•°ã€‚</param>
+        /// <remarks>æ–°å—å®¹é‡ä»ç”± <see cref="GetNextSize"/> ä¸è®¾ç½®é¡¹å†³å®šï¼ˆé»˜è®¤åŸºå‡† 2048ï¼‰ã€‚</remarks>
         private void AddToColumns(int columnIndex, ulong worldVersion, int count)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
@@ -244,13 +245,13 @@ namespace ExtenderApp.ECS.Archetypes
         #region Remove
 
         /// <summary>
-        /// °´È«¾ÖË÷ÒıÒÆ³ıÊµÌå£¬²¢Í¬²½ÒÆ³ı¸÷×é¼şÁĞ¶ÔÓ¦²ÛÎ»¡£
+        /// æŒ‰å…¨å±€è¡Œå·ç§»é™¤å®ä½“ï¼Œå¹¶åŒæ­¥ä»å„ç»„ä»¶åˆ—çš„å¯¹åº”å—ä¸­ç§»é™¤æ§½ä½ã€‚
         /// </summary>
-        /// <param name="globalIndex">ÊµÌåÈ«¾ÖË÷Òı¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
-        /// <param name="removedHandle">Êä³ö±»ÒÆ³ıÊµÌå¶ÔÓ¦µÄ×é¼ş¾ä±ú¡£</param>
-        /// <param name="changedEntity">Èô´¥·¢Î²²¿½»»»£¬Êä³ö±»ÒÆ¶¯µ½µ±Ç°Î»ÖÃµÄÊµÌå£»·ñÔòÎª <see cref="Entity.Empty" />¡£</param>
-        /// <returns>ÒÆ³ı³É¹¦·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="globalIndex">å®ä½“å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
+        /// <param name="removedHandle">è¢«ç§»é™¤è¡Œä¸Šçš„ç»„ä»¶å¥æŸ„ï¼ˆè‹¥æœ‰ï¼‰ã€‚</param>
+        /// <param name="changedEntity">è‹¥å‘ç”Ÿå°¾éƒ¨äº¤æ¢ï¼Œåˆ™ä¸ºè¢«æŒªåˆ°å½“å‰ä½ç½®çš„å®ä½“ï¼›å¦åˆ™ä¸º <see cref="Entity.Empty"/>ã€‚</param>
+        /// <returns>ç§»é™¤æˆåŠŸè¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         public bool TryRemove(int globalIndex, ulong worldVersion, out ComponentHandle? removedHandle, out Entity changedEntity)
         {
             if (!Entities.TryRemoveFromSegment(globalIndex, out int localIndex, out var chunkIndex, out removedHandle, out changedEntity, out _))
@@ -263,14 +264,14 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÅúÁ¿ÒÆ³ıÊµÌå£¬²¢Í¬²½ÒÆ³ıËùÓĞ×é¼şÁĞÖĞµÄ¶ÔÓ¦²ÛÎ»¡£
+        /// æ‰¹é‡æŒ‰å…¨å±€è¡Œå·ç§»é™¤å®ä½“ï¼Œå¹¶åŒæ­¥ä»å„åˆ—ç§»é™¤æ§½ä½ï¼ˆè¾“å‡ºè¢«ç§»é™¤å¥æŸ„ï¼‰ã€‚
         /// </summary>
-        /// <param name="globalIndexs">ÒªÒÆ³ıµÄÈ«¾ÖË÷Òı¼¯ºÏ¡£</param>
-        /// <param name="removedHandles">Êä³ö±»ÒÆ³ıÊµÌå¶ÔÓ¦µÄ×é¼ş¾ä±ú¼¯ºÏ¡£</param>
-        /// <param name="changedEntities">Êä³ö±»ÒÆ¶¯µ½Ä¿±êÎ»ÖÃµÄÊµÌå¼¯ºÏ¡£</param>
-        /// <param name="changedHandles">Êä³ö±»ÒÆ¶¯¾ä±ú¼¯ºÏ¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
-        /// <returns>È«²¿ÒÆ³ı³É¹¦·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="globalIndexs">å¾…ç§»é™¤çš„å…¨å±€è¡Œå·é›†åˆã€‚</param>
+        /// <param name="removedHandles">å„è¢«ç§»é™¤è¡Œä¸Šçš„å¥æŸ„è¾“å‡ºã€‚</param>
+        /// <param name="changedEntities">å› äº¤æ¢è¢«ç§»åŠ¨åˆ°ç›®æ ‡ä½ç½®çš„å®ä½“è¾“å‡ºã€‚</param>
+        /// <param name="changedHandles">éšå®ä½“ä¸€èµ·ç§»åŠ¨çš„å¥æŸ„è¾“å‡ºã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
+        /// <returns>å…¨éƒ¨ç§»é™¤æˆåŠŸè¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         public bool TryRemoveRange(Span<int> globalIndexs, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles, ulong worldVersion)
         {
             int count = globalIndexs.Length;
@@ -297,13 +298,13 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÅúÁ¿ÒÆ³ıÊµÌå£¬²¢Í¬²½ÒÆ³ıËùÓĞ×é¼şÁĞÖĞµÄ¶ÔÓ¦²ÛÎ»¡£
+        /// æ‰¹é‡æŒ‰å…¨å±€è¡Œå·ç§»é™¤å®ä½“ï¼Œå¹¶åŒæ­¥ä»å„åˆ—ç§»é™¤æ§½ä½ï¼ˆä¸è¾“å‡ºè¢«ç§»é™¤å¥æŸ„çš„é‡è½½ï¼‰ã€‚
         /// </summary>
-        /// <param name="globalIndexs">ÒªÒÆ³ıµÄÈ«¾ÖË÷Òı¼¯ºÏ¡£</param>
-        /// <param name="changedEntities">Êä³ö±»ÒÆ¶¯µ½Ä¿±êÎ»ÖÃµÄÊµÌå¼¯ºÏ¡£</param>
-        /// <param name="changedHandles">Êä³ö±»ÒÆ¶¯¾ä±ú¼¯ºÏ¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
-        /// <returns>È«²¿ÒÆ³ı³É¹¦·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="globalIndexs">å¾…ç§»é™¤çš„å…¨å±€è¡Œå·é›†åˆã€‚</param>
+        /// <param name="changedEntities">å› äº¤æ¢è¢«ç§»åŠ¨åˆ°ç›®æ ‡ä½ç½®çš„å®ä½“è¾“å‡ºã€‚</param>
+        /// <param name="changedHandles">éšå®ä½“ä¸€èµ·ç§»åŠ¨çš„å¥æŸ„è¾“å‡ºã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
+        /// <returns>å…¨éƒ¨ç§»é™¤æˆåŠŸè¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         public bool TryRemoveRange(Span<int> globalIndexs, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles, ulong worldVersion)
         {
             int count = globalIndexs.Length;
@@ -330,9 +331,9 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ÇåÀíÖ¸¶¨ÁĞÄ©Î²µÄ¿Õ¿é²¢¹é»¹µ½¶ÔÏó³Ø¡£
+        /// ä»åˆ—å°¾å¼€å§‹å›æ”¶è¿ç»­çš„ç©ºå—å¹¶å½’è¿˜æä¾›å™¨ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
         private void RemoveEmptyChunks(int columnIndex)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
@@ -358,12 +359,12 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ´ÓÖ¸¶¨ÁĞµÄÖ¸¶¨¿éÖĞÒÆ³ı¾Ö²¿Ë÷ÒıÎ»ÖÃµÄÊµÌå²Û¡£
+        /// åœ¨æŒ‡å®šåˆ—çš„æŒ‡å®šå—ä¸­æŒ‰å±€éƒ¨ç´¢å¼•ç§»é™¤æ§½ä½ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
-        /// <param name="chunkIndex">¿éË÷Òı¡£</param>
-        /// <param name="localIndex">¿éÄÚ¾Ö²¿Ë÷Òı¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
+        /// <param name="chunkIndex">å—åœ¨åˆ—åˆ—è¡¨ä¸­çš„ä¸‹æ ‡ã€‚</param>
+        /// <param name="localIndex">å—å†…å±€éƒ¨ç´¢å¼•ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
         private void RemoveFromColumn(int columnIndex, int chunkIndex, int localIndex, ulong worldVersion)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
@@ -377,12 +378,12 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ´ÓÖ¸¶¨ÁĞÅúÁ¿ÒÆ³ıÊµÌå²ÛÎ»¡£
+        /// åœ¨æŒ‡å®šåˆ—ä¸ŠæŒ‰å¤šç»„ï¼ˆå—ä¸‹æ ‡ã€å—å†…ç´¢å¼•ï¼‰æ‰¹é‡ç§»é™¤æ§½ä½ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
-        /// <param name="chunkIndexSpan">¿éË÷Òı¼¯ºÏ¡£</param>
-        /// <param name="localIndexSpan">¿éÄÚ¾Ö²¿Ë÷Òı¼¯ºÏ¡£</param>
-        /// <param name="worldVersion">µ±Ç°ÊÀ½ç°æ±¾¡£</param>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
+        /// <param name="chunkIndexSpan">å„è¡Œçš„å—ä¸‹æ ‡ã€‚</param>
+        /// <param name="localIndexSpan">å„è¡Œçš„å—å†…å±€éƒ¨ç´¢å¼•ã€‚</param>
+        /// <param name="worldVersion">å½“å‰ä¸–ç•Œç‰ˆæœ¬å·ã€‚</param>
         private void RemoveFromColumns(int columnIndex, Span<int> chunkIndexSpan, Span<int> localIndexSpan, ulong worldVersion)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
@@ -408,13 +409,13 @@ namespace ExtenderApp.ECS.Archetypes
         #region Find
 
         /// <summary>
-        /// °´ÁĞË÷ÒıÓëÈ«¾ÖË÷Òı²éÕÒ¶ÔÓ¦¿é¼°¾Ö²¿Ë÷Òı¡£
+        /// æ ¹æ®å®ä½“å…¨å±€è¡Œå·æŸ¥æ‰¾è¯¥åˆ—å¯¹åº”çš„å—åŠå—å†…å±€éƒ¨ç´¢å¼•ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
-        /// <param name="globalIndex">ÊµÌåÈ«¾ÖË÷Òı¡£</param>
-        /// <param name="foundChunk">Êä³öÕÒµ½µÄ¿é¡£</param>
-        /// <param name="localIndex">Êä³ö¿éÄÚ¾Ö²¿Ë÷Òı¡£</param>
-        /// <returns>ÕÒµ½·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
+        /// <param name="globalIndex">å®ä½“å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="foundChunk">æ‰¾åˆ°çš„å—ã€‚</param>
+        /// <param name="localIndex">å—å†…å±€éƒ¨ç´¢å¼•ã€‚</param>
+        /// <returns>æ‰¾åˆ°è¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryFindChunkForGlobalIndex(int columnIndex, int globalIndex, out ArchetypeChunk foundChunk, out int localIndex)
         {
@@ -422,14 +423,14 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// °´ÁĞË÷ÒıÓëÈ«¾ÖË÷Òı²éÕÒ¶ÔÓ¦¿é¡¢¾Ö²¿Ë÷ÒıÓë¿éË÷Òı¡£
+        /// æ ¹æ®å®ä½“å…¨å±€è¡Œå·æŸ¥æ‰¾è¯¥åˆ—å¯¹åº”çš„å—ã€å—å†…å±€éƒ¨ç´¢å¼•åŠå—åœ¨åˆ—åˆ—è¡¨ä¸­çš„ä¸‹æ ‡ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
-        /// <param name="globalIndex">ÊµÌåÈ«¾ÖË÷Òı¡£</param>
-        /// <param name="foundChunk">Êä³öÕÒµ½µÄ¿é¡£</param>
-        /// <param name="localIndex">Êä³ö¿éÄÚ¾Ö²¿Ë÷Òı¡£</param>
-        /// <param name="chunkIndex">Êä³ö¿éË÷Òı¡£</param>
-        /// <returns>ÕÒµ½·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
+        /// <param name="globalIndex">å®ä½“å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="foundChunk">æ‰¾åˆ°çš„å—ã€‚</param>
+        /// <param name="localIndex">å—å†…å±€éƒ¨ç´¢å¼•ã€‚</param>
+        /// <param name="chunkIndex">å—åœ¨åˆ—åˆ—è¡¨ä¸­çš„ä¸‹æ ‡ã€‚</param>
+        /// <returns>æ‰¾åˆ°è¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         public bool TryFindChunkForGlobalIndex(int columnIndex, int globalIndex, out ArchetypeChunk foundChunk, out int localIndex, out int chunkIndex)
         {
             foundChunk = null!;
@@ -443,11 +444,11 @@ namespace ExtenderApp.ECS.Archetypes
         }
 
         /// <summary>
-        /// ³¢ÊÔ»ñÈ¡Ö¸¶¨ÁĞµÄ¿éÁĞ±í¡£
+        /// å°è¯•è·å–æŒ‡å®šåˆ—çš„å—åˆ—è¡¨å¼•ç”¨ã€‚
         /// </summary>
-        /// <param name="columnIndex">ÁĞË÷Òı¡£</param>
-        /// <param name="chunkList">Êä³ö¿éÁĞ±í¡£</param>
-        /// <returns>¸ÃÁĞ´æÔÚ¿éÊ±·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="columnIndex">åˆ—ç´¢å¼•ã€‚</param>
+        /// <param name="chunkList">è¾“å‡ºçš„å—åˆ—è¡¨ã€‚</param>
+        /// <returns>è¯¥åˆ—å­˜åœ¨éç©ºåˆ—è¡¨æ—¶è¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetChunkListForColumn(int columnIndex, [NotNullWhen(true)] out ArchetypeChunkList chunkList)
         {
@@ -460,11 +461,11 @@ namespace ExtenderApp.ECS.Archetypes
         #region ComponentHandle
 
         /// <summary>
-        /// ³¢ÊÔ¸ù¾İÈ«¾ÖË÷Òı»ñÈ¡¶ÔÓ¦µÄ×é¼ş¾ä±ú¡£ Èôµ±Ç°Î»ÖÃÃ»ÓĞ¾ä±úÔò»á´Ó³ØÖĞ×âÓÃ²¢Ğ´»Ø¡£
+        /// æ ¹æ®å…¨å±€è¡Œå·è·å–è¯¥ä½ç½®ä¸Šçš„ç»„ä»¶è®¿é—®å¥æŸ„ï¼›è‹¥å°šæ— å¥æŸ„åˆ™ç§Ÿç”¨å¹¶å†™å…¥ï¼ŒåŒæ—¶å»ºç«‹æ˜ å°„ã€‚
         /// </summary>
-        /// <param name="globalIndex">ÊµÌåÈ«¾ÖË÷Òı¡£</param>
-        /// <param name="handle">Êä³ö×é¼ş¾ä±ú¡£</param>
-        /// <returns>²éÕÒ³É¹¦·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="globalIndex">å®ä½“å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="handle">è¾“å‡ºçš„ç»„ä»¶å¥æŸ„ã€‚</param>
+        /// <returns>è§£ææˆåŠŸè¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetComponentHandle(int globalIndex, out ComponentHandle handle)
         {
@@ -490,20 +491,25 @@ namespace ExtenderApp.ECS.Archetypes
         #region Copy
 
         /// <summary>
-        /// ³¢ÊÔ½«Ö¸¶¨È«¾ÖË÷ÒıµÄÊµÌå²ÛÎ»´Óµ±Ç°¹ÜÀíÆ÷¸´ÖÆµ½Ä¿±ê¹ÜÀíÆ÷¡£ ¸´ÖÆ³É¹¦ºó»áÒÆ³ıµ±Ç°²ÛÎ»²¢Í¬²½¾ä±úµÄ¹ÜÀíÆ÷ÓëÈ«¾ÖË÷ÒıĞÅÏ¢¡£
+        /// å°†æºå…¨å±€è¡Œä¸Šçš„å®ä½“è¿ç§»åˆ°ç›®æ ‡ç®¡ç†å™¨ï¼šæŒ‰äº¤é›†åˆ—æ‹·è´ç»„ä»¶ã€ä»æºå„åˆ—ç§»é™¤æ§½ä½ï¼Œæœ€ååœ¨å®ä½“è¡¨ä¸­ swap-remove æºè¡Œå¹¶æŠŠå®ä½“å†™å…¥ç›®æ ‡è¡Œã€‚
         /// </summary>
-        /// <param name="oldGlobalIndex">Ô´È«¾ÖË÷Òı¡£</param>
-        /// <param name="newManager">Ä¿±ê¹ÜÀíÆ÷¡£</param>
-        /// <param name="newGlobalIndex">Ä¿±êÈ«¾ÖË÷Òı¡£</param>
-        /// <param name="oldIndexSpan">Ô´×é¼şÁĞË÷ÒıÓ³Éä¡£</param>
-        /// <param name="newIndexSpan">Ä¿±ê×é¼şÁĞË÷ÒıÓ³Éä¡£</param>
-        /// <param name="componentTypes">Ç¨ÒÆºó×é¼şÑÚÂë¡£</param>
-        /// <returns>¸´ÖÆ²¢ÒÆ³ı³É¹¦·µ»Ø true£»·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="oldGlobalIndex">æºåŸå‹å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="newManager">ç›®æ ‡å—ç®¡ç†å™¨ã€‚</param>
+        /// <param name="newGlobalIndex">ç›®æ ‡åŸå‹å…¨å±€è¡Œå·ã€‚</param>
+        /// <param name="oldIndexSpan">æºä¾§å‚ä¸æ‹·è´çš„åˆ—ç´¢å¼•åºåˆ—ã€‚</param>
+        /// <param name="newIndexSpan">ç›®æ ‡ä¾§ä¸ <paramref name="oldIndexSpan"/> å¯¹é½çš„åˆ—ç´¢å¼•åºåˆ—ã€‚</param>
+        /// <param name="componentTypes">è¿ç§»åç›®æ ‡åŸå‹ä¸Šçš„ç»„ä»¶æ©ç ï¼ˆç”¨äºæ›´æ–°å¥æŸ„ï¼‰ã€‚</param>
+        /// <param name="entityRowSwapEntity">å®ä½“è¡¨ swap-remove æ—¶è¢«æŒªåˆ°åŸè¿ç§»è¡Œï¼ˆ<paramref name="oldGlobalIndex"/>ï¼‰çš„å®ä½“ï¼›æ— äº¤æ¢åˆ™ä¸º <see cref="Entity.Empty"/>ã€‚è°ƒç”¨æ–¹åº”è§†æƒ…å†µåŒæ­¥ <c>EntityManager</c> æ˜ å°„ã€‚</param>
+        /// <returns>æ•´æ®µæ“ä½œæˆåŠŸè¿”å› trueï¼›å¦åˆ™è¿”å› falseã€‚</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryCopyToAndRemove(int oldGlobalIndex, ArchetypeChunkManager newManager, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan, ComponentMask componentTypes)
+        public bool TryCopyToAndRemove(int oldGlobalIndex, ArchetypeChunkManager newManager, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan, ComponentMask componentTypes, out Entity entityRowSwapEntity)
         {
-            if (!Entities.TryFindLocalIndexForGlobalIndex(oldGlobalIndex, out int localIndex, out int chunkIndex) ||
-                !newManager.Entities.TryFindLocalIndexForGlobalIndex(newGlobalIndex, out int newLocalIndex, out int newChunkIndex))
+            entityRowSwapEntity = Entity.Empty;
+
+            if (!Entities.TryFindLocalIndexForGlobalIndex(oldGlobalIndex, out int localIndex, out int chunkIndex))
+                return false;
+
+            if (!newManager.Entities.TryFindLocalIndexForGlobalIndex(newGlobalIndex, out int newLocalIndex, out int newChunkIndex))
                 return false;
 
             int columnSpanIndex = 0;
@@ -542,7 +548,7 @@ namespace ExtenderApp.ECS.Archetypes
             ref var info = ref Entities.Span[chunkIndex];
             var entity = info.Entities[localIndex];
             var handle = info.ComponentHandles[localIndex];
-            info.Remove(localIndex, out _, out _, out _);
+            info.Remove(localIndex, out _, out entityRowSwapEntity, out _);
 
             ref var newInfo = ref newManager.Entities.Span[newChunkIndex];
             newInfo.Entities[newLocalIndex] = entity;
@@ -554,6 +560,7 @@ namespace ExtenderApp.ECS.Archetypes
                 handle.ComponentTypes = componentTypes;
                 handle.GlobalIndex = newGlobalIndex;
             }
+
             return true;
         }
 
