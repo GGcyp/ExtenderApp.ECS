@@ -7,12 +7,12 @@ using ExtenderApp.ECS;
 namespace ExtenderApp.ECS.Archetypes
 {
     /// <summary>
-    /// 管理某一 <see cref="Archetype"/> 下各组件列对应的块存储、实体在列中的分配与回收，以及全局行号到块内局部索引的映射。
+    /// 管理某一 <see cref="Archetype" /> 下各组件列对应的块存储、实体在列中的分配与回收，以及全局行号到块内局部索引的映射。
     /// </summary>
     internal sealed class ArchetypeChunkManager
     {
         /// <summary>
-        /// 新建列块列表时的初始容量；具体数值由 <see cref="Settings.DefaultArchetypeChunkListSize"/> 决定（默认 2048）。
+        /// 新建列块列表时的初始容量；具体数值由 <see cref="Settings.DefaultArchetypeChunkListSize" /> 决定（默认 2048）。
         /// </summary>
         private const int DefaultListSize = Settings.DefaultArchetypeChunkListSize;
 
@@ -34,7 +34,7 @@ namespace ExtenderApp.ECS.Archetypes
         private readonly ArchetypeChunkList?[] _columns;
 
         /// <summary>
-        /// 共享的组件句柄池，用于租用/归还句柄；在实体移除发生尾部交换时仍会用到。句柄的 <see cref="ComponentHandle.Manager"/> 指向本 <see cref="ArchetypeChunkManager"/>。
+        /// 共享的组件句柄池，用于租用/归还句柄；在实体移除发生尾部交换时仍会用到。句柄的 <see cref="ComponentHandle.Manager" /> 指向本 <see cref="ArchetypeChunkManager" />。
         /// </summary>
         private readonly ComponentHandlePool handlePool = ComponentHandlePool.Share;
 
@@ -44,7 +44,7 @@ namespace ExtenderApp.ECS.Archetypes
         internal readonly ArchetypeEntitySegmentInfoList Entities;
 
         /// <summary>
-        /// 初始化 <see cref="ArchetypeChunkManager"/> 的新实例。
+        /// 初始化 <see cref="ArchetypeChunkManager" /> 的新实例。
         /// </summary>
         /// <param name="providers">与各组件列对齐的块提供器数组。</param>
         public ArchetypeChunkManager(ArchetypeChunkProvider[] providers)
@@ -204,7 +204,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="columnIndex">列索引。</param>
         /// <param name="worldVersion">当前世界版本号。</param>
         /// <param name="count">要追加的槽位数。</param>
-        /// <remarks>新块容量仍由 <see cref="GetNextSize"/> 与设置项决定（默认基准 2048）。</remarks>
+        /// <remarks>新块容量仍由 <see cref="GetNextSize" /> 与设置项决定（默认基准 2048）。</remarks>
         private void AddToColumns(int columnIndex, ulong worldVersion, int count)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
@@ -250,7 +250,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <param name="globalIndex">实体全局行号。</param>
         /// <param name="worldVersion">当前世界版本号。</param>
         /// <param name="removedHandle">被移除行上的组件句柄（若有）。</param>
-        /// <param name="changedEntity">若发生尾部交换，则为被挪到当前位置的实体；否则为 <see cref="Entity.Empty"/>。</param>
+        /// <param name="changedEntity">若发生尾部交换，则为被挪到当前位置的实体；否则为 <see cref="Entity.Empty" />。</param>
         /// <returns>移除成功返回 true；否则返回 false。</returns>
         public bool TryRemove(int globalIndex, ulong worldVersion, out ComponentHandle? removedHandle, out Entity changedEntity)
         {
@@ -491,15 +491,18 @@ namespace ExtenderApp.ECS.Archetypes
         #region Copy
 
         /// <summary>
-        /// 将源全局行上的实体迁移到目标管理器：按交集列拷贝组件、从源各列移除槽位，最后在实体表中 swap-remove 源行并把实体写入目标行。
+        /// 将源全局行上的实体迁移到目标管理器：先对交集列完成拷贝，再统一从源各列移除槽位，最后在实体表中 swap-remove 源行并把实体写入目标行。
+        /// 分两阶段可避免拷贝失败时已部分 RemoveAt 导致的数据不一致；移除阶段须对 <c>_columns</c> 从 0 起重新递增列下标，不可复用第一段循环结束时的列下标（否则等于列数，会越界）。
         /// </summary>
         /// <param name="oldGlobalIndex">源原型全局行号。</param>
         /// <param name="newManager">目标块管理器。</param>
         /// <param name="newGlobalIndex">目标原型全局行号。</param>
         /// <param name="oldIndexSpan">源侧参与拷贝的列索引序列。</param>
-        /// <param name="newIndexSpan">目标侧与 <paramref name="oldIndexSpan"/> 对齐的列索引序列。</param>
+        /// <param name="newIndexSpan">目标侧与 <paramref name="oldIndexSpan" /> 对齐的列索引序列。</param>
         /// <param name="componentTypes">迁移后目标原型上的组件掩码（用于更新句柄）。</param>
-        /// <param name="entityRowSwapEntity">实体表 swap-remove 时被挪到原迁移行（<paramref name="oldGlobalIndex"/>）的实体；无交换则为 <see cref="Entity.Empty"/>。调用方应视情况同步 <c>EntityManager</c> 映射。</param>
+        /// <param name="entityRowSwapEntity">
+        /// 实体表 swap-remove 时被挪到原迁移行（ <paramref name="oldGlobalIndex" />）的实体；无交换则为 <see cref="Entity.Empty" />。调用方应视情况同步 <c>EntityManager</c> 映射。
+        /// </param>
         /// <returns>整段操作成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryCopyToAndRemove(int oldGlobalIndex, ArchetypeChunkManager newManager, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan, ComponentMask componentTypes, out Entity entityRowSwapEntity)
@@ -538,6 +541,19 @@ namespace ExtenderApp.ECS.Archetypes
                     columnSpanIndex++;
                 }
 
+                columnIndex++;
+            }
+
+            columnIndex = 0;
+            foreach (var oldChunkList in _columns)
+            {
+                if (oldChunkList == null)
+                {
+                    columnIndex++;
+                    continue;
+                }
+
+                var oldChunk = oldChunkList[chunkIndex];
                 oldChunk.RemoveAt(localIndex);
                 RemoveEmptyChunks(columnIndex);
                 columnIndex++;
