@@ -26,6 +26,12 @@ public struct TestHealth
     public int Value;
 }
 
+public class TestEcsContext
+{
+    public string Name;
+    public int Id;
+}
+
 /// <summary>
 /// 测试中使用的共享组件（结构体）。
 /// </summary>

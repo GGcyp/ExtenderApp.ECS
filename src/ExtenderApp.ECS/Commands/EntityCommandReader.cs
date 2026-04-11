@@ -33,30 +33,18 @@ namespace ExtenderApp.ECS.Commands
         // 虚拟实体 -> 真实实体 映射表（仅在一轮回放内有效）
         private readonly SortedList<Entity, Entity> _virtualToRealities;
 
-        //用于记录当前正在处理的实体及其目标组件掩码（在 ParseChunk 过程中逐条命令更新，直到遇到新实体或回放结束时 Flush 应用）。注意：由于回放过程中可能会多次修改同一实体的组件（Add/Remove/Set），因此需要在 Flush 时一次性应用最终的结构变化和数据更新，以避免中间状态引发的重复迁移或数据错位风险。
-        private Entity _pendingEntity;
-        private ComponentMask _pendingMask;
-        private bool _hasPending;
-
-        // 用于暂存当前实体待写入的组件数据 (TypeIndex -> Data) 注意：由于数据是在 ParseChunk 的 Span 中，迁移前必须拷贝出来，否则指针会失效
-        private readonly Dictionary<ushort, byte[]> _pendingDataBuffer;
-
         /// <summary>
         /// 构造一个命令回放器实例。
         /// </summary>
-        /// <param name="storage"> 命令缓冲存储（线程安全写入端）。 </param>
-        /// <param name="entityManager"> 实体管理器。 </param>
-        /// <param name="archetypeManager"> Archetype 管理器。 </param>
+        /// <param name="storage">命令缓冲存储（线程安全写入端）。</param>
+        /// <param name="entityManager">实体管理器。</param>
+        /// <param name="archetypeManager">Archetype 管理器。</param>
         public EntityCommandReader(EntityCommandStorage storage, EntityManager entityManager, ArchetypeManager archetypeManager, EntityQueryManager entityQueryManager)
         {
             _storage = storage;
             _entityManager = entityManager;
             _archetypeManager = archetypeManager;
             _entityQueryManager = entityQueryManager;
-            _pendingDataBuffer = new();
-            _pendingEntity = Entity.Empty;
-            _pendingMask = new();
-            _hasPending = false;
 
             _tempList = new(MaxCommandDataSize);
             _virtualToRealities = new(MaxCommandDataSize);
@@ -95,9 +83,6 @@ namespace ExtenderApp.ECS.Commands
                 ParseChunk(current, current.UsedBytes);
             }
 
-            // 关键：所有 Chunk 解析完后，必须手动 Flush 最后一个实体
-            FlushPendingStructuralChange();
-
             // 释放 sealed，重置 current
             bool resetCurrent = false;
             for (int i = 0; i < _tempList.Count; i++)
@@ -118,111 +103,6 @@ namespace ExtenderApp.ECS.Commands
             // 一轮读取结束，清理映射状态
             _storage.Clear();
             _virtualToRealities.Clear();
-
-            _pendingEntity = Entity.Empty;
-            _hasPending = false;
-            _pendingDataBuffer.Clear();
-        }
-
-        /// <summary>
-        /// 将暂存的实体状态真正应用到 EntityManager。
-        /// </summary>
-        private void FlushPendingStructuralChange()
-        {
-            if (!_hasPending || _pendingEntity.IsEmpty)
-                return;
-
-            // 1. 执行结构迁移（根据最终的 _pendingMask） 注意：当目标掩码与当前 Archetype 掩码一致时，不应迁移，否则可能导致“迁移到自己”引发重复 Add/Remove 的风险。
-            if (_pendingMask.IsEmpty)
-            {
-                // 等价于“移除所有组件”：从当前 Archetype 移除并清空映射。
-                if (_entityManager.TryGetArchetype(_pendingEntity, out var oldArchetype, out var oldIndex) &&
-                    oldArchetype != null)
-                {
-                    if (oldArchetype.TryRemoveEntity(oldIndex, out var changedEntity) &&
-                        !changedEntity.IsEmpty)
-                    {
-                        _entityManager.TryChangedArchetypeIndex(changedEntity, oldIndex);
-                    }
-                }
-                _entityManager.TryChangedArchetype(_pendingEntity, null, 0);
-            }
-            else if (_entityManager.TryGetArchetype(_pendingEntity, out var archetype, out _) &&
-                     archetype != null &&
-                     archetype.ComponentMask == _pendingMask)
-            {
-                // 无结构变化，仅写数据。
-            }
-            else
-            {
-                ApplyModifyComponent(_pendingEntity, _pendingMask);
-            }
-
-            // 2. 写入所有暂存的组件数据
-            if (_pendingDataBuffer.Count > 0)
-            {
-                if (_entityManager.TryGetArchetype(_pendingEntity, out var archetype, out var index) &&
-                    archetype != null)
-                {
-                    foreach (var kv in _pendingDataBuffer)
-                    {
-                        var typeIndex = kv.Key;
-                        var data = kv.Value;
-
-                        var ct = ComponentType.GetCommandType(typeIndex);
-                        if (archetype.TryGetChunk(ct, index, out var chunk, out var localIndex))
-                        {
-                            unsafe
-                            {
-                                fixed (byte* p = data)
-                                {
-                                    chunk.CopiedUnsafe(localIndex, (nint)p, data.Length);
-                                }
-                            }
-                        }
-                    }
-                }
-                _pendingDataBuffer.Clear();
-            }
-
-            _hasPending = false;
-            _pendingEntity = Entity.Empty;
-        }
-
-        /// <summary>
-        /// 准备处理新实体；如果实体切换了，先 Flush 旧实体。
-        /// </summary>
-        private bool PrepareEntity(Entity target, out Entity prepared, bool createIfMissing)
-        {
-            prepared = target;
-            // 如果是虚拟实体，先解析成真实实体
-            if (target.IsVirtual)
-            {
-                if (!TryAccessRealityEntity(target, out target, createIfMissing))
-                    return false;
-            }
-
-            if (_pendingEntity != target)
-            {
-                FlushPendingStructuralChange();
-
-                _pendingEntity = target;
-                _hasPending = true;
-
-                // 初始化 Mask 为该实体当前的实际 Mask
-                if (_entityManager.TryGetArchetype(target, out var archetype, out _) &&
-                    archetype != null)
-                {
-                    _pendingMask = new ComponentMask(archetype.ComponentMask);
-                }
-                else
-                {
-                    _pendingMask = ComponentMask.Empty;
-                }
-            }
-
-            prepared = target;
-            return true;
         }
 
         /// <summary>
@@ -251,10 +131,7 @@ namespace ExtenderApp.ECS.Commands
                 {
                     case EntityCommandType.DestroyEntity:
                         {
-                            if (!PrepareEntity(target, out var prepared, createIfMissing: false))
-                                break;
-                            FlushPendingStructuralChange();
-                            ApplyDestroy(prepared);
+                            ApplyDestroy(target);
                             break;
                         }
 
@@ -266,9 +143,8 @@ namespace ExtenderApp.ECS.Commands
                             ushort typeIndex = MemoryMarshal.Read<ushort>(span.Slice(offset, sizeof(ushort)));
                             offset += sizeof(ushort);
 
-                            if (!PrepareEntity(target, out _, createIfMissing: false))
-                                break;
-                            _pendingMask.Remove(ComponentType.GetCommandType(typeIndex));
+                            var ct = ComponentType.GetCommandType(typeIndex);
+                            ApplyRemoveComponent(target, ct);
                             break;
                         }
 
@@ -285,16 +161,12 @@ namespace ExtenderApp.ECS.Commands
                             if (offset + dataLen > span.Length)
                                 return;
 
-                            if (!PrepareEntity(target, out _, createIfMissing: true))
-                                break;
-                            _pendingMask.Add(ComponentType.GetCommandType(typeIndex));
-
-                            // 如果有数据，拷贝到临时 buffer（span 生命周期只在本次 ParseChunk 内有效）
-                            if (dataLen > 0)
+                            var ct = ComponentType.GetCommandType(typeIndex);
+                            nint dataPtr;
+                            fixed (byte* src = &MemoryMarshal.GetReference(span.Slice(offset, dataLen)))
                             {
-                                byte[] data = new byte[dataLen];
-                                span.Slice(offset, dataLen).CopyTo(data);
-                                _pendingDataBuffer[typeIndex] = data;
+                                dataPtr = (nint)src;
+                                ApplySetLike(target, ct, dataPtr, dataLen);
                             }
 
                             offset += dataLen;
@@ -303,9 +175,6 @@ namespace ExtenderApp.ECS.Commands
 
                     case EntityCommandType.DestroyEntitiesForQuery:
                         {
-                            // 全局命令：执行前先 Flush，避免结构迁移/写数据与批量销毁交错
-                            FlushPendingStructuralChange();
-
                             int dataLen = head.DataLength;
                             if (offset + dataLen > span.Length)
                                 return;
@@ -412,8 +281,7 @@ namespace ExtenderApp.ECS.Commands
         }
 
         /// <summary>
-        /// 类似 AddComponent，但带二进制数据拷贝（Set/SetLike）。
-        /// 当目标实体当前原型已包含该组件且掩码不变时，仅在原地覆盖该列数据（不迁移）。
+        /// 类似 AddComponent，但带二进制数据拷贝（Set/SetLike）。 当目标实体当前原型已包含该组件且掩码不变时，仅在原地覆盖该列数据（不迁移）。
         /// </summary>
         private void ApplySetLike(Entity target, ComponentType ct, nint dataPtr, int dataSize)
         {
