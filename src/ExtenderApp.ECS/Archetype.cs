@@ -480,7 +480,7 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
         /// <param name="newArchetype">目标 Archetype。</param>
         /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
-        /// <param name="changedEntity">发生改变的实体。</param>
+        /// <param name="changedEntity">尾部交换时被挪到原迁移行（<paramref name="globalIndex"/>）的实体；无交换则为 <see cref="Entity.Empty"/>。含「仅实体表段 swap」与 <see cref="TryRemoveEntity"/> 两种来源。</param>
         internal bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, out Entity changedEntity)
         {
             const int CopyThreshold = 512;
@@ -501,7 +501,7 @@ namespace ExtenderApp.ECS
             {
                 Span<int> newIndexSpant = stackalloc int[sameTypeCount];
                 Span<int> oldIndexSpant = stackalloc int[sameTypeCount];
-                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpant, newIndexSpant);
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpant, newIndexSpant, out changedEntity);
             }
 
             var newIndexArray = ArrayPool<int>.Shared.Rent(sameTypeCount);
@@ -512,7 +512,7 @@ namespace ExtenderApp.ECS
 
             try
             {
-                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpan, newIndexSpan);
+                return TryCopyToAndRemove(globalIndex, newArchetype, newGlobalIndex, oldIndexSpan, newIndexSpan, out changedEntity);
             }
             finally
             {
@@ -529,15 +529,18 @@ namespace ExtenderApp.ECS
         /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
         /// <param name="oldIndexSpan">当前 Archetype 的列索引缓存。</param>
         /// <param name="newIndexSpan">目标 Archetype 的列索引缓存。</param>
+        /// <param name="changedEntity">实体表段移除时因 swap 被移动的实体；无则为 Empty。</param>
         /// <returns>复制成功返回 true；否则返回 false。</returns>
-        private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan)
+        private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan, out Entity changedEntity)
         {
+            changedEntity = Entity.Empty;
             int copiedCount = 0;
             int oldColumnIndex = 0;
 
             foreach (var componentType in ComponentMask)
             {
-                if (newArchetype.ComponentMask.TryGetEncodedPosition(componentType, out var newColumnIndex))
+                if (!componentType.IsEmptyComponent &&
+                    newArchetype.ComponentMask.TryGetEncodedPosition(componentType, out var newColumnIndex))
                 {
                     newIndexSpan[copiedCount] = newColumnIndex;
                     oldIndexSpan[copiedCount] = oldColumnIndex;
@@ -553,11 +556,13 @@ namespace ExtenderApp.ECS
                 newGlobalIndex,
                 oldIndexSpan[..copiedCount],
                 newIndexSpan[..copiedCount],
-                newArchetype.ComponentMask))
+                newArchetype.ComponentMask,
+                out changedEntity))
             {
                 EntityCount--;
                 return true;
             }
+
             return false;
         }
 

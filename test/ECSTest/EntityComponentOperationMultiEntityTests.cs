@@ -17,6 +17,8 @@ public sealed class EntityComponentOperationMultiEntityTests
     [InlineData(2)]
     [InlineData(32)]
     [InlineData(128)]
+    [InlineData(1280)]
+    [InlineData(12800)]
     public void ManyEntities_AddComponentPositionViaOperation_RoundTripsPerEntity(int count)
     {
         using var world = new World();
