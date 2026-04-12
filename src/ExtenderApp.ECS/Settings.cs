@@ -20,7 +20,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 预设段容量增长表。 在索引范围内按该数组递增，超出后使用 <see cref="FixedArchetypeChunkSegmentSize" />。
         /// </summary>
-        private static readonly int[] ArchetypeChunkSizeArray = { 16, 32, 64, 128, 1024 };
+        private static readonly int[] ArchetypeChunkSizeArray = { 16, 32, 64, 128, 256, 512, 1024 };
 
         /// <summary>
         /// 获取预设段容量数组的只读视图。 在索引范围内按该数组递增，超出后使用 <see cref="FixedArchetypeChunkSegmentSize" />。
