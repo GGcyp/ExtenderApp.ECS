@@ -491,8 +491,7 @@ namespace ExtenderApp.ECS.Archetypes
         #region Copy
 
         /// <summary>
-        /// 将源全局行上的实体迁移到目标管理器：先对交集列完成拷贝，再统一从源各列移除槽位，最后在实体表中 swap-remove 源行并把实体写入目标行。
-        /// 分两阶段可避免拷贝失败时已部分 RemoveAt 导致的数据不一致；移除阶段须对 <c>_columns</c> 从 0 起重新递增列下标，不可复用第一段循环结束时的列下标（否则等于列数，会越界）。
+        /// 将源全局行上的实体迁移到目标管理器：先对交集列完成拷贝，再统一从源各列移除槽位，最后在实体表中 swap-remove 源行并把实体写入目标行。 分两阶段可避免拷贝失败时已部分 RemoveAt 导致的数据不一致；移除阶段须对 <c>_columns</c> 从 0 起重新递增列下标，不可复用第一段循环结束时的列下标（否则等于列数，会越界）。
         /// </summary>
         /// <param name="oldGlobalIndex">源原型全局行号。</param>
         /// <param name="newManager">目标块管理器。</param>

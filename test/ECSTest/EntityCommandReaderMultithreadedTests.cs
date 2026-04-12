@@ -8,7 +8,7 @@ using Xunit;
 namespace ECSTest;
 
 /// <summary>
-/// <see cref="ExtenderApp.ECS.Commands.EntityCommandReader"/> 回放相关测试：虚拟/真实实体、顺序与并行写入。
+/// <see cref="ExtenderApp.ECS.Commands.EntityCommandReader" /> 回放相关测试：虚拟/真实实体、顺序与并行写入。
 /// </summary>
 public sealed class EntityCommandReaderMultithreadedTests
 {

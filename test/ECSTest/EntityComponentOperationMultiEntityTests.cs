@@ -5,12 +5,12 @@ using Xunit;
 namespace ECSTest;
 
 /// <summary>
-/// 验证批量实体通过 <see cref="World.GetEntityComponentOperation"/> 写入组件后，读回数据与写入一致。
+/// 验证批量实体通过 <see cref="World.GetEntityComponentOperation" /> 写入组件后，读回数据与写入一致。
 /// </summary>
 public sealed class EntityComponentOperationMultiEntityTests
 {
     /// <summary>
-    /// 批量创建空实体后，对每个实体用 <c>AddComponent</c> 写入互不相同的 <see cref="TestPosition"/>，再逐实体校验读回值。
+    /// 批量创建空实体后，对每个实体用 <c>AddComponent</c> 写入互不相同的 <see cref="TestPosition" />，再逐实体校验读回值。
     /// </summary>
     /// <param name="count">实体数量。</param>
     [Theory]

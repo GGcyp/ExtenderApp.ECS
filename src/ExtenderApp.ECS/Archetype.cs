@@ -480,7 +480,9 @@ namespace ExtenderApp.ECS
         /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
         /// <param name="newArchetype">目标 Archetype。</param>
         /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
-        /// <param name="changedEntity">尾部交换时被挪到原迁移行（<paramref name="globalIndex"/>）的实体；无交换则为 <see cref="Entity.Empty"/>。含「仅实体表段 swap」与 <see cref="TryRemoveEntity"/> 两种来源。</param>
+        /// <param name="changedEntity">
+        /// 尾部交换时被挪到原迁移行（ <paramref name="globalIndex" />）的实体；无交换则为 <see cref="Entity.Empty" />。含「仅实体表段 swap」与 <see cref="TryRemoveEntity" /> 两种来源。
+        /// </param>
         internal bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, out Entity changedEntity)
         {
             const int CopyThreshold = 512;

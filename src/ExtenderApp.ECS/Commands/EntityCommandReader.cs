@@ -7,13 +7,11 @@ using ExtenderApp.ECS.Queries;
 namespace ExtenderApp.ECS.Commands
 {
     /// <summary>
-    /// 命令回放器：负责将线程安全的命令缓冲区中的命令按时间顺序回放到主线程的实体系统中。
-    ///
-    /// 设计要点：
+    /// 命令回放器：负责将线程安全的命令缓冲区中的命令按时间顺序回放到主线程的实体系统中。 /// 设计要点：
     /// - 命令由工作线程写入为二进制 chunk，回放在主线程执行以保证实体/原型操作的线程安全性；
     /// - 支持 "虚拟实体"（负 id）的映射：回放过程中会将虚拟实体映射为真实实体并维护映射表；
-        /// - 在回放迁移时通过先在目标 Archetype 分配槽位、复制组件数据、再更新 EntityManager 映射的顺序，保证不会留下残留槽位或错位索引；
-        /// - 若拷贝并移除失败，则回退为仅从旧原型移除该行（与主线程 <c>EntityComponentOperation.ChangedArchetype</c> 一致），再更新映射；
+    /// - 在回放迁移时通过先在目标 Archetype 分配槽位、复制组件数据、再更新 EntityManager 映射的顺序，保证不会留下残留槽位或错位索引；
+    /// - 若拷贝并移除失败，则回退为仅从旧原型移除该行（与主线程 <c>EntityComponentOperation.ChangedArchetype</c> 一致），再更新映射；
     /// - 对于并发产生的命令流，回放应尽量容错（忽略已删除的虚拟实体、跳过不完整命令）。
     /// </summary>
     internal class EntityCommandReader
@@ -323,8 +321,9 @@ namespace ExtenderApp.ECS.Commands
         }
 
         /// <summary>
-        /// 在已通过 <see cref="Archetype.AddEntity"/> 为目标原型预留 <paramref name="newIndex"/> 后，完成从旧原型的数据迁移并更新 <see cref="EntityManager"/>。
-        /// 先尝试 <see cref="Archetype.TryCopyToAndRemove"/>；失败则仅从旧原型 <see cref="Archetype.TryRemoveEntity"/>，语义与主线程 <c>EntityComponentOperation.ChangedArchetype</c> 一致。
+        /// 在已通过 <see cref="Archetype.AddEntity" /> 为目标原型预留 <paramref name="newIndex" /> 后，完成从旧原型的数据迁移并更新 <see cref="EntityManager" />。 先尝试 <see
+        /// cref="Archetype.TryCopyToAndRemove" />；失败则仅从旧原型 <see cref="Archetype.TryRemoveEntity" />，语义与主线程
+        /// <c>EntityComponentOperation.ChangedArchetype</c> 一致。
         /// </summary>
         /// <param name="target">要迁移映射的实体。</param>
         /// <param name="oldArchetype">迁移前所在原型；若无旧原型（例如新建实体后首次加组件）则为 null。</param>

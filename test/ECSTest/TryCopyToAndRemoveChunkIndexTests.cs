@@ -6,39 +6,45 @@ using Xunit;
 namespace ECSTest;
 
 /// <summary>
-/// 针对 <see cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkManager.TryCopyToAndRemove"/> 路径上
-/// 可能出现的 <see cref="ArgumentOutOfRangeException"/>（列块列表索引越界）进行复现尝试与辅助定位。
+/// 针对 <see cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkManager.TryCopyToAndRemove" /> 路径上 可能出现的 <see cref="ArgumentOutOfRangeException" />（列块列表索引越界）进行复现尝试与辅助定位。
 /// </summary>
 /// <remarks>
 /// 结论摘要（当前仓库版本下的调查）：
 /// <list type="bullet">
-/// <item><description>
-/// 实体段下标 <c>chunkIndex</c> 来自 <see cref="ExtenderApp.ECS.Archetypes.ArchetypeEntitySegmentInfoList.TryFindLocalIndexForGlobalIndex"/>，
-/// 与各列 <see cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkList"/> 下标一一对应；各列拥有独立的块列表，
-/// 因此「处理完第一列后 RemoveEmptyChunks 缩短列表导致第二列越界」的推断<strong>不成立</strong>。
-/// </description></item>
-/// <item><description>
-/// 「第二实体段 + 双数据列 + 迁移」场景下直接调用 <see cref="ExtenderApp.ECS.Archetype.TryCopyToAndRemove"/> 可完整成功返回，
-/// 说明此类简单场景不足以触发 <c>List&lt;T&gt;[index]</c> 越界。
-/// </description></item>
-/// <item><description>
-/// 若运行时出现越界，更可疑的是：<strong>某一列</strong>上 <c>chunkList.Count &lt;= chunkIndex</c>（实体段数与块列表长度不同步），
-/// 或 <strong>目标列</strong> <c>newChunkList.Count &lt;= newChunkIndex</c>；应怀疑
-/// <see cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkManager.AddEntity"/>、
-/// <see cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkManager.RemoveEmptyChunks"/>、
-/// 与实体段收缩逻辑之间的不变量被破坏，而非列与列之间的交叉影响。
-/// </description></item>
+/// <item>
+/// <description>
+/// 实体段下标 <c>chunkIndex</c> 来自 <see cref="ExtenderApp.ECS.Archetypes.ArchetypeEntitySegmentInfoList.TryFindLocalIndexForGlobalIndex" />， 与各列 <see
+/// cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkList" /> 下标一一对应；各列拥有独立的块列表， 因此「处理完第一列后 RemoveEmptyChunks 缩短列表导致第二列越界」的推断 <strong>不成立</strong>。
+/// </description>
+/// </item>
+/// <item>
+/// <description>
+/// 「第二实体段 + 双数据列 + 迁移」场景下直接调用 <see cref="ExtenderApp.ECS.Archetype.TryCopyToAndRemove" /> 可完整成功返回， 说明此类简单场景不足以触发 <c>List&lt;T&gt;[index]</c> 越界。
+/// </description>
+/// </item>
+/// <item>
+/// <description>
+/// 若运行时出现越界，更可疑的是： <strong>某一列</strong> 上 <c>chunkList.Count &lt;= chunkIndex</c>（实体段数与块列表长度不同步）， 或 <strong>目标列</strong><c>newChunkList.Count &lt;=
+/// newChunkIndex</c>；应怀疑 <see cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkManager.AddEntity" />、 <see
+/// cref="ExtenderApp.ECS.Archetypes.ArchetypeChunkManager.RemoveEmptyChunks" />、 与实体段收缩逻辑之间的不变量被破坏，而非列与列之间的交叉影响。
+/// </description>
+/// </item>
 /// </list>
 /// </remarks>
 public sealed class TryCopyToAndRemoveChunkIndexTests
 {
-    /// <summary>目标原型上预先存在的同签名实体数量（填满首段 16，使孤立实体迁入时目标侧易出现第二实体段）。</summary>
+    /// <summary>
+    /// 目标原型上预先存在的同签名实体数量（填满首段 16，使孤立实体迁入时目标侧易出现第二实体段）。
+    /// </summary>
     private const int PrefillSameSignatureEntityCount = 16;
 
-    /// <summary>随机迁移压力测试的总步数。</summary>
-    private const int StressIterationCount = 8000;
     /// <summary>
-    /// 校验：对掩码中每个存在块列表的列，列块数量应大于实体段下标 <paramref name="chunkIndex"/>。
+    /// 随机迁移压力测试的总步数。
+    /// </summary>
+    private const int StressIterationCount = 8000;
+
+    /// <summary>
+    /// 校验：对掩码中每个存在块列表的列，列块数量应大于实体段下标 <paramref name="chunkIndex" />。
     /// </summary>
     private static void AssertChunkListsCoverChunkIndex(Archetype archetype, int chunkIndex, string context)
     {
@@ -95,8 +101,7 @@ public sealed class TryCopyToAndRemoveChunkIndexTests
     }
 
     /// <summary>
-    /// 基线：第 17 个实体落在第二实体段（chunkIndex=1），两列块列表长度均为 2；
-    /// 直接调用 TryCopyToAndRemove 应成功且不抛越界（用于否定「跨列缩短列表」类假设）。
+    /// 基线：第 17 个实体落在第二实体段（chunkIndex=1），两列块列表长度均为 2； 直接调用 TryCopyToAndRemove 应成功且不抛越界（用于否定「跨列缩短列表」类假设）。
     /// </summary>
     [Fact]
     public void DirectTryCopyToAndRemove_SeventeenthEntity_TwoDataColumns_CompletesSuccessfully()
@@ -162,7 +167,7 @@ public sealed class TryCopyToAndRemoveChunkIndexTests
     }
 
     /// <summary>
-    /// 命令缓冲回放路径：与 <see cref="AddComponent_LonelyEntity_TargetArchetypeAlreadyHasFullFirstSegment_DoesNotThrowArgumentOutOfRange"/> 相同结构。
+    /// 命令缓冲回放路径：与 <see cref="AddComponent_LonelyEntity_TargetArchetypeAlreadyHasFullFirstSegment_DoesNotThrowArgumentOutOfRange" /> 相同结构。
     /// </summary>
     [Fact]
     public void Playback_AddComponent_LonelyEntity_TargetArchetypeFullFirstSegment_DoesNotThrowArgumentOutOfRange()
@@ -192,16 +197,28 @@ public sealed class TryCopyToAndRemoveChunkIndexTests
     }
 
     /// <summary>
-    /// 随机迁移/回放压力：若破坏「chunkIndex &lt; chunkList.Count」不变量则断言失败；
-    /// 若抛出 <see cref="ArgumentOutOfRangeException"/> 则测试失败并保留异常信息。
+    /// 随机迁移/回放压力：若破坏「chunkIndex &lt; chunkList.Count」不变量则断言失败； 若抛出 <see cref="ArgumentOutOfRangeException" /> 则测试失败并保留异常信息。
     /// </summary>
     /// <remarks>
     /// 每步行为（按随机分支）：
     /// <list type="bullet">
-    /// <item><description>创建实体：仅含 <see cref="TestPosition"/> + <see cref="TestVelocity"/>。</description></item>
-    /// <item><description>添加 <see cref="TestTag"/>：经 <see cref="World.CommandBuffer"/> 或 <see cref="World.AddComponent{T}(Entity, T)"/>，并调用 <see cref="World.PlaybackRecordedCommands"/> 回放未决命令。</description></item>
-    /// <item><description>移除 Tag：<see cref="World.RemoveComponent{T}(Entity)"/> 仅去掉 Tag，实体迁回「仅 P+V」原型，<strong>Position/Velocity 仍保留</strong>；若当前掩码本无 Tag，API 约定为忽略（不报错）。</description></item>
-    /// <item><description>销毁：实体从世界中移除。</description></item>
+    /// <item>
+    /// <description>创建实体：仅含 <see cref="TestPosition" /> + <see cref="TestVelocity" />。</description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// 添加 <see cref="TestTag" />：经 <see cref="World.CommandBuffer" /> 或 <see cref="World.AddComponent{T}(Entity, T)" />，并调用 <see
+    /// cref="World.PlaybackRecordedCommands" /> 回放未决命令。
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>
+    /// 移除 Tag： <see cref="World.RemoveComponent{T}(Entity)" /> 仅去掉 Tag，实体迁回「仅 P+V」原型， <strong>Position/Velocity 仍保留</strong>；若当前掩码本无 Tag，API 约定为忽略（不报错）。
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>销毁：实体从世界中移除。</description>
+    /// </item>
     /// </list>
     /// 因此「删 Tag 之后」预期仍是 P+V 都在，不是「旧原型里错误残留 Tag 列」；本测试每步对存活实体校验列块列表与实体段下标一致，用于捕捉迁移/回收路径上的不同步。
     /// </remarks>
