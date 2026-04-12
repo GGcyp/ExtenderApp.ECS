@@ -2,7 +2,6 @@ using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Components;
-using ExtenderApp.ECS;
 
 namespace ExtenderApp.ECS.Archetypes
 {
@@ -561,7 +560,9 @@ namespace ExtenderApp.ECS.Archetypes
             ref var info = ref Entities.Span[chunkIndex];
             var entity = info.Entities[localIndex];
             var handle = info.ComponentHandles[localIndex];
-            info.Remove(localIndex, out _, out entityRowSwapEntity, out _);
+            //info.Remove(localIndex, out _, out entityRowSwapEntity, out _);
+            //应该先从 Entities 移除行，避免 TryCopyTo 中的 TryFindLocalIndexForGlobalIndex 找到已被移除但尚未 swap-remove 的行导致数据不一致；但 Remove 后 info 就不能访问了，所以直接在 RemoveAt 里输出 entityRowSwapEntity（即被 swap-remove 挪到 oldGlobalIndex 行的实体），并在这里把 info.Remove 的输出参数改为 out _。
+            Entities.TryRemoveFromSegment(oldGlobalIndex, out _, out _, out _, out entityRowSwapEntity, out _);
 
             ref var newInfo = ref newManager.Entities.Span[newChunkIndex];
             newInfo.Entities[newLocalIndex] = entity;
