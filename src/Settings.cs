@@ -33,18 +33,54 @@ namespace ExtenderApp.ECS
         internal static readonly int PresetArchetypeChunkSizeLength = ArchetypeChunkSizeArray.Length;
 
         /// <summary>
+        /// 所有预设段容量的总和。 该值用于计算在预设范围内可以容纳的最大实体数量，以优化内存分配和性能。
+        /// </summary>
+        internal static readonly int AllPresetArchetypeChunkSizeLength = GetAllPresetArchetypeChunkSize();
+
+        /// <summary>
         /// 按段序号获取下一段容量。
         /// </summary>
-        /// <param name="index">段序号。</param>
-        /// <returns>预设容量或固定容量。</returns>
+        /// <param name="index"> 段序号。 </param>
+        /// <returns> 预设容量或固定容量。 </returns>
         internal static int GetNextArchetypeChunkSize(int index) => index < ArchetypeChunkSizeArray.Length ? ArchetypeChunkSizeArray[index] : FixedArchetypeChunkSegmentSize;
 
         /// <summary>
         /// 按段序号获取上一段容量。
         /// </summary>
-        /// <param name="index">段序号。</param>
-        /// <returns>上一段的预设容量或固定容量。</returns>
+        /// <param name="index"> 段序号。 </param>
+        /// <returns> 上一段的预设容量或固定容量。 </returns>
         internal static int GetPreviousArchetypeChunkSize(int index) => index < ArchetypeChunkSizeArray.Length ? ArchetypeChunkSizeArray[index] : FixedArchetypeChunkSegmentSize;
+
+        /// <summary>
+        /// 获取是否可以移除空段的条件。 当段数为0时允许移除；当段数在预设范围内时，允许移除小于1024的段；当段数超过预设范围时，允许移除小于固定容量的一半的段。
+        /// </summary>
+        /// <param name="chunkCount"> 块数 </param>
+        /// <param name="count"> 当前段的容量 </param>
+        /// <returns> 是否可以移除空段 </returns>
+        internal static bool TryCanRemoveEmptySegmentsSize(int chunkCount, int count)
+        {
+            if (chunkCount <= 0)
+                return true;
+
+            if (chunkCount <= PresetArchetypeChunkSizeLength)
+                return count <= 1024;
+            else
+                return count <= AllPresetArchetypeChunkSizeLength + (FixedArchetypeChunkSegmentSize * (chunkCount - PresetArchetypeChunkSizeLength));
+        }
+
+        /// <summary>
+        /// 获取所有预设段容量的总和。 该值用于计算在预设范围内可以容纳的最大实体数量，以优化内存分配和性能。
+        /// </summary>
+        /// <returns> 所有预设段容量的总和 </returns>
+        internal static int GetAllPresetArchetypeChunkSize()
+        {
+            int sum = 0;
+            foreach (var size in ArchetypeChunkSizeArray)
+            {
+                sum += size;
+            }
+            return sum;
+        }
 
         #endregion Archetype Settings
 

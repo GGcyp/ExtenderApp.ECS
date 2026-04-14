@@ -78,10 +78,10 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 初始化 <see cref="Archetype" /> 的新实例。
         /// </summary>
-        /// <param name="providers">按组件编码位置排列的块提供器数组。</param>
-        /// <param name="componentTypes">当前 Archetype 对应的组件掩码。</param>
-        /// <param name="relationTypes">当前 Archetype 对应的关系掩码。</param>
-        /// <param name="worldVersionManager">世界版本管理器。</param>
+        /// <param name="providers"> 按组件编码位置排列的块提供器数组。 </param>
+        /// <param name="componentTypes"> 当前 Archetype 对应的组件掩码。 </param>
+        /// <param name="relationTypes"> 当前 Archetype 对应的关系掩码。 </param>
+        /// <param name="worldVersionManager"> 世界版本管理器。 </param>
         internal Archetype(ArchetypeChunkProvider[] providers, ComponentMask componentTypes, RelationMask relationTypes, WorldVersionManager worldVersionManager)
         {
             _wvManager = worldVersionManager;
@@ -98,8 +98,8 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 添加关系对。 添加前会校验关系类型是否在当前 <see cref="RelationTypes" /> 掩码中。
         /// </summary>
-        /// <param name="relationPair">关系对。</param>
-        /// <returns>添加（或覆盖）成功返回 true；关系类型不在掩码中返回 false。</returns>
+        /// <param name="relationPair"> 关系对。 </param>
+        /// <returns> 添加（或覆盖）成功返回 true；关系类型不在掩码中返回 false。 </returns>
         public bool TryAddRelation(RelationPair relationPair)
         {
             if (!relationMask.On(relationPair.RelationType) || _relations == null)
@@ -115,7 +115,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 添加关系对（失败抛异常）。
         /// </summary>
-        /// <param name="relationPair">关系对。</param>
+        /// <param name="relationPair"> 关系对。 </param>
         public void AddRelation(RelationPair relationPair)
         {
             if (!TryAddRelation(relationPair))
@@ -125,17 +125,17 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 按关系类型与目标实体添加关系。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <param name="target">目标实体。</param>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <param name="target"> 目标实体。 </param>
         public void AddRelation(RelationType relationType, Entity target)
             => AddRelation(RelationPair.Create(relationType, target));
 
         /// <summary>
         /// 查询指定关系类型的关系对。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <param name="relationPair">输出关系对。</param>
-        /// <returns>找到返回 true；否则返回 false。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <param name="relationPair"> 输出关系对。 </param>
+        /// <returns> 找到返回 true；否则返回 false。 </returns>
         public bool TryGetRelation(RelationType relationType, out RelationPair relationPair)
         {
             relationPair = default;
@@ -157,8 +157,8 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 删除指定关系类型的关系对。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>删除成功返回 true；不存在返回 false。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 删除成功返回 true；不存在返回 false。 </returns>
         public bool RemoveRelation(RelationType relationType)
         {
             if (!relationMask.On(relationType) || _relations == null)
@@ -183,8 +183,8 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 向当前 Archetype 添加实体，并返回分配到的全局索引。
         /// </summary>
-        /// <param name="entity">要添加的实体。</param>
-        /// <returns>返回添加后的在当前原型内的全局索引。</returns>
+        /// <param name="entity"> 要添加的实体。 </param>
+        /// <returns> 返回添加后的在当前原型内的全局索引。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int AddEntity(Entity entity)
         {
@@ -196,7 +196,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 批量向当前 Archetype 添加实体。
         /// </summary>
-        /// <param name="entities">要添加的实体集合。</param>
+        /// <param name="entities"> 要添加的实体集合。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan)
         {
@@ -211,9 +211,9 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试移除指定全局索引处的实体。
         /// </summary>
-        /// <param name="globalIndex">要移除的实体全局索引。</param>
-        /// <param name="changedEntity">若触发尾部交换，返回被移动的实体；否则为 <see cref="Entity.Empty" />。</param>
-        /// <returns>移除成功返回 true；否则返回 false。</returns>
+        /// <param name="globalIndex"> 要移除的实体全局索引。 </param>
+        /// <param name="changedEntity"> 若触发尾部交换，返回被移动的实体；否则为 <see cref="Entity.Empty" />。 </param>
+        /// <returns> 移除成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryRemoveEntity(int globalIndex, out Entity changedEntity)
         {
@@ -222,23 +222,29 @@ namespace ExtenderApp.ECS
 
             removedHandle?.Return();
             EntityCount--;
+
+            if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
+                _chunkManager.CompactTrailingStorageAfterRemovals();
             return true;
         }
 
         /// <summary>
         /// 批量尝试移除指定全局索引集合中的实体。
         /// </summary>
-        /// <param name="globalIndices">要移除的实体全局索引集合。</param>
-        /// <param name="removedHandles">输出被移除实体的组件句柄集合。</param>
-        /// <param name="changedEntities">若发生尾部交换，输出被移动实体集合。</param>
-        /// <param name="changedHandles">若发生尾部交换，输出被移动实体的组件句柄集合。</param>
-        /// <returns>全部移除成功返回 true；否则返回 false。</returns>
+        /// <param name="globalIndices"> 要移除的实体全局索引集合。 </param>
+        /// <param name="removedHandles"> 输出被移除实体的组件句柄集合。 </param>
+        /// <param name="changedEntities"> 若发生尾部交换，输出被移动实体集合。 </param>
+        /// <param name="changedHandles"> 若发生尾部交换，输出被移动实体的组件句柄集合。 </param>
+        /// <returns> 全部移除成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryRemoveEntityRange(Span<int> globalIndices, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
             if (_chunkManager.TryRemoveRange(globalIndices, removedHandles, changedEntities, changedHandles, _wvManager.WorldVersion))
             {
                 EntityCount -= globalIndices.Length;
+                if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
+                    _chunkManager.CompactTrailingStorageAfterRemovals();
+                
                 return true;
             }
             return false;
@@ -247,16 +253,19 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 批量尝试移除指定全局索引集合中的实体。
         /// </summary>
-        /// <param name="globalIndices">要移除的实体全局索引集合。</param>
-        /// <param name="changedEntities">若发生尾部交换，输出被移动实体集合。</param>
-        /// <param name="changedHandles">若发生尾部交换，输出被移动实体的组件句柄集合。</param>
-        /// <returns>全部移除成功返回 true；否则返回 false。</returns>
+        /// <param name="globalIndices"> 要移除的实体全局索引集合。 </param>
+        /// <param name="changedEntities"> 若发生尾部交换，输出被移动实体集合。 </param>
+        /// <param name="changedHandles"> 若发生尾部交换，输出被移动实体的组件句柄集合。 </param>
+        /// <returns> 全部移除成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryRemoveEntityRange(Span<int> globalIndices, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
             if (_chunkManager.TryRemoveRange(globalIndices, changedEntities, changedHandles, _wvManager.WorldVersion))
             {
                 EntityCount -= globalIndices.Length;
+                if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
+                    _chunkManager.CompactTrailingStorageAfterRemovals();
+                
                 return true;
             }
             return false;
@@ -269,11 +278,11 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试获取指定组件类型和实体全局索引对应的块和局部索引。
         /// </summary>
-        /// <param name="type">指定组件类型。</param>
-        /// <param name="globalIndex">指定全局索引。</param>
-        /// <param name="chunk">指定块。</param>
-        /// <param name="localIndex">指定本地索引。</param>
-        /// <returns>如果成功返回true，否则返回false</returns>
+        /// <param name="type"> 指定组件类型。 </param>
+        /// <param name="globalIndex"> 指定全局索引。 </param>
+        /// <param name="chunk"> 指定块。 </param>
+        /// <param name="localIndex"> 指定本地索引。 </param>
+        /// <returns> 如果成功返回true，否则返回false </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetChunk(ComponentType type, int globalIndex, [NotNullWhen(true)] out ArchetypeChunk chunk, out int localIndex)
         {
@@ -288,11 +297,11 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试获取指定组件列索引和实体全局索引对应的块和局部索引。
         /// </summary>
-        /// <param name="cloumn">指定列索引。</param>
-        /// <param name="globalIndex">指定全局索引。</param>
-        /// <param name="chunk">指定块。</param>
-        /// <param name="localIndex">指定本地索引。</param>
-        /// <returns>如果成功返回true，否则返回false</returns>
+        /// <param name="cloumn"> 指定列索引。 </param>
+        /// <param name="globalIndex"> 指定全局索引。 </param>
+        /// <param name="chunk"> 指定块。 </param>
+        /// <param name="localIndex"> 指定本地索引。 </param>
+        /// <returns> 如果成功返回true，否则返回false </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetChunk(int cloumn, int globalIndex, [NotNullWhen(true)] out ArchetypeChunk chunk, out int localIndex)
             => _chunkManager.TryFindChunkForGlobalIndex(cloumn, globalIndex, out chunk, out localIndex);
@@ -300,10 +309,10 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试按列索引获取指定组件列的块列表。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="cloumn">组件列索引。</param>
-        /// <param name="chunks">输出对应类型的块列表。</param>
-        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="cloumn"> 组件列索引。 </param>
+        /// <param name="chunks"> 输出对应类型的块列表。 </param>
+        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetChunkList<T>(int cloumn, [NotNullWhen(true)] out ArchetypeChunkList<T> chunks)
         {
@@ -318,10 +327,10 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试按列索引获取头块（强类型版本）。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="index">组件列索引。</param>
-        /// <param name="component">输出头块。</param>
-        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="index"> 组件列索引。 </param>
+        /// <param name="component"> 输出头块。 </param>
+        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetHeadChunk<T>(int index, [NotNullWhen(true)] out ArchetypeChunk<T> component)
         {
@@ -337,9 +346,9 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试按列索引获取头块。
         /// </summary>
-        /// <param name="index">组件列索引。</param>
-        /// <param name="component">输出头块。</param>
-        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        /// <param name="index"> 组件列索引。 </param>
+        /// <param name="component"> 输出头块。 </param>
+        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetHeadChunk(int index, [NotNullWhen(true)] out ArchetypeChunk component)
         {
@@ -354,9 +363,9 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试按组件类型获取头块。
         /// </summary>
-        /// <param name="componentType">组件类型描述。</param>
-        /// <param name="component">输出头块。</param>
-        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        /// <param name="componentType"> 组件类型描述。 </param>
+        /// <param name="component"> 输出头块。 </param>
+        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetHeadChunk(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk component)
         {
@@ -374,10 +383,10 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试按组件类型获取头块（强类型版本）。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="componentType">组件类型描述。</param>
-        /// <param name="component">输出头块。</param>
-        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="componentType"> 组件类型描述。 </param>
+        /// <param name="component"> 输出头块。 </param>
+        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetHeadChunk<T>(ComponentType componentType, [NotNullWhen(true)] out ArchetypeChunk<T> component)
         {
@@ -387,9 +396,9 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试按泛型组件类型获取头块。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="component">输出头块。</param>
-        /// <returns>获取成功返回 true；否则返回 false。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="component"> 输出头块。 </param>
+        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetHeadChunk<T>([NotNullWhen(true)] out ArchetypeChunk<T> component)
         {
@@ -403,9 +412,9 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 设置指定实体索引处的组件值；若失败则抛出异常。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="globalIndex">实体全局索引。</param>
-        /// <param name="component">组件值。</param>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="globalIndex"> 实体全局索引。 </param>
+        /// <param name="component"> 组件值。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetComponent<T>(int globalIndex, T component)
         {
@@ -416,10 +425,10 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试设置指定实体索引处的组件值。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="globalIndex">实体全局索引。</param>
-        /// <param name="component">组件值。</param>
-        /// <returns>设置成功返回 true；否则返回 false。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="globalIndex"> 实体全局索引。 </param>
+        /// <param name="component"> 组件值。 </param>
+        /// <returns> 设置成功返回 true；否则返回 false。 </returns>
         internal bool TrySetComponent<T>(int globalIndex, T component)
         {
             if (!componentMask.TryGetEncodedPosition(ComponentType.Create<T>(), out int columnIndex) ||
@@ -439,9 +448,9 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 获取指定实体索引处的组件值；若失败则抛出异常。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="globalIndex">实体全局索引。</param>
-        /// <returns>组件值。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="globalIndex"> 实体全局索引。 </param>
+        /// <returns> 组件值。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal T GetComponent<T>(int globalIndex)
         {
@@ -454,10 +463,10 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 尝试读取指定实体索引处的组件值。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="globalIndex">实体全局索引。</param>
-        /// <param name="component">输出组件值。</param>
-        /// <returns>读取成功返回 true；否则返回 false。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="globalIndex"> 实体全局索引。 </param>
+        /// <param name="component"> 输出组件值。 </param>
+        /// <returns> 读取成功返回 true；否则返回 false。 </returns>
         internal bool TryGetComponent<T>(int globalIndex, out T component)
         {
             component = default;
@@ -477,9 +486,9 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 将指定实体从当前 Archetype 复制到目标 Archetype 后，再从当前 Archetype 移除。
         /// </summary>
-        /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
-        /// <param name="newArchetype">目标 Archetype。</param>
-        /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
+        /// <param name="globalIndex"> 当前 Archetype 中的实体全局索引。 </param>
+        /// <param name="newArchetype"> 目标 Archetype。 </param>
+        /// <param name="newGlobalIndex"> 目标 Archetype 中的实体全局索引。 </param>
         /// <param name="changedEntity">
         /// 尾部交换时被挪到原迁移行（ <paramref name="globalIndex" />）的实体；无交换则为 <see cref="Entity.Empty" />。含「仅实体表段 swap」与 <see cref="TryRemoveEntity" /> 两种来源。
         /// </param>
@@ -526,13 +535,13 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 执行复制核心逻辑：先计算列索引映射，再逐列复制组件数据。
         /// </summary>
-        /// <param name="globalIndex">当前 Archetype 中的实体全局索引。</param>
-        /// <param name="newArchetype">目标 Archetype。</param>
-        /// <param name="newGlobalIndex">目标 Archetype 中的实体全局索引。</param>
-        /// <param name="oldIndexSpan">当前 Archetype 的列索引缓存。</param>
-        /// <param name="newIndexSpan">目标 Archetype 的列索引缓存。</param>
-        /// <param name="changedEntity">实体表段移除时因 swap 被移动的实体；无则为 Empty。</param>
-        /// <returns>复制成功返回 true；否则返回 false。</returns>
+        /// <param name="globalIndex"> 当前 Archetype 中的实体全局索引。 </param>
+        /// <param name="newArchetype"> 目标 Archetype。 </param>
+        /// <param name="newGlobalIndex"> 目标 Archetype 中的实体全局索引。 </param>
+        /// <param name="oldIndexSpan"> 当前 Archetype 的列索引缓存。 </param>
+        /// <param name="newIndexSpan"> 目标 Archetype 的列索引缓存。 </param>
+        /// <param name="changedEntity"> 实体表段移除时因 swap 被移动的实体；无则为 Empty。 </param>
+        /// <returns> 复制成功返回 true；否则返回 false。 </returns>
         private bool TryCopyToAndRemove(int globalIndex, Archetype newArchetype, int newGlobalIndex, scoped Span<int> oldIndexSpan, scoped Span<int> newIndexSpan, out Entity changedEntity)
         {
             changedEntity = Entity.Empty;
@@ -562,6 +571,9 @@ namespace ExtenderApp.ECS
                 out changedEntity))
             {
                 EntityCount--;
+                if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
+                    _chunkManager.CompactTrailingStorageAfterRemovals();
+                
                 return true;
             }
 
@@ -600,8 +612,8 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 判断当前 Archetype 与另一个 Archetype 是否等价（按组件掩码比较）。
         /// </summary>
-        /// <param name="other">要比较的 Archetype。</param>
-        /// <returns>等价返回 true；否则返回 false。</returns>
+        /// <param name="other"> 要比较的 Archetype。 </param>
+        /// <returns> 等价返回 true；否则返回 false。 </returns>
         public bool Equals(Archetype? other)
         {
             if (ReferenceEquals(this, other)) return true;
@@ -612,20 +624,20 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 判断当前对象是否与指定对象相等。
         /// </summary>
-        /// <param name="obj">要比较的对象。</param>
-        /// <returns>相等返回 true；否则返回 false。</returns>
+        /// <param name="obj"> 要比较的对象。 </param>
+        /// <returns> 相等返回 true；否则返回 false。 </returns>
         public override bool Equals(object? obj) => Equals(obj as Archetype);
 
         /// <summary>
         /// 获取当前 Archetype 的哈希码。
         /// </summary>
-        /// <returns>哈希码值。</returns>
+        /// <returns> 哈希码值。 </returns>
         public override int GetHashCode() => componentMask.GetHashCode();
 
         /// <summary>
         /// 返回当前 Archetype 的可读字符串。
         /// </summary>
-        /// <returns>字符串表示。</returns>
+        /// <returns> 字符串表示。 </returns>
         public override string ToString() => $"Archetype(EntityCount = {EntityCount}, RelationMask = {relationMask}, ComponentMask = {componentMask})";
 
         /// <summary>
@@ -641,7 +653,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 将 Archetype 隐式转换为其组件掩码。
         /// </summary>
-        /// <param name="archetype">源 Archetype。</param>
+        /// <param name="archetype"> 源 Archetype。 </param>
         public static implicit operator ComponentMask(Archetype archetype) => archetype.componentMask;
 
         #endregion Object Overrides & Equality

@@ -12,7 +12,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 初始化 <see cref="ArchetypeEntitySegmentInfoList" /> 的新实例。
         /// </summary>
-        /// <param name="capacity">初始容量。</param>
+        /// <param name="capacity"> 初始容量。 </param>
         public ArchetypeEntitySegmentInfoList(int capacity) : base(capacity)
         {
         }
@@ -25,9 +25,9 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 将实体添加到可用段；若不存在可用段则创建新段。
         /// </summary>
-        /// <param name="entity">要添加的实体。</param>
-        /// <param name="handle">可选组件句柄。</param>
-        /// <param name="globalIndex">输出实体全局索引。</param>
+        /// <param name="entity"> 要添加的实体。 </param>
+        /// <param name="handle"> 可选组件句柄。 </param>
+        /// <param name="globalIndex"> 输出实体全局索引。 </param>
         public void AddToSegment(Entity entity, ComponentHandle? handle, out int globalIndex)
         {
             if (!TryGetFirstAvailableSegmentIndex(out var segmentIndex))
@@ -44,10 +44,10 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 批量将实体写入可用段；若容量不足则自动创建新段。
         /// </summary>
-        /// <param name="entities">待写入实体集合。</param>
-        /// <param name="globalIndexSpan">输出分配到的实体全局索引集合。</param>
-        /// <param name="count">本次写入数量。</param>
-        /// <param name="globalIndex">输出第一个写入实体的全局索引。</param>
+        /// <param name="entities"> 待写入实体集合。 </param>
+        /// <param name="globalIndexSpan"> 输出分配到的实体全局索引集合。 </param>
+        /// <param name="count"> 本次写入数量。 </param>
+        /// <param name="globalIndex"> 输出第一个写入实体的全局索引。 </param>
         public void AddToSegmentRange(Span<Entity> entities, Span<int> globalIndexSpan, int count, out int globalIndex)
         {
             globalIndex = -1;
@@ -78,11 +78,11 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 批量将实体写入可用段；若容量不足则自动创建新段。
         /// </summary>
-        /// <param name="entities">待写入实体集合。</param>
-        /// <param name="globalIndexSpan">输出分配到的实体全局索引集合。</param>
-        /// <param name="handles">待写入组件句柄集合。</param>
-        /// <param name="count">本次写入数量。</param>
-        /// <param name="globalIndex">输出第一个写入实体的全局索引。</param>
+        /// <param name="entities"> 待写入实体集合。 </param>
+        /// <param name="globalIndexSpan"> 输出分配到的实体全局索引集合。 </param>
+        /// <param name="handles"> 待写入组件句柄集合。 </param>
+        /// <param name="count"> 本次写入数量。 </param>
+        /// <param name="globalIndex"> 输出第一个写入实体的全局索引。 </param>
         public void AddToSegmentRange(Span<Entity> entities, Span<int> globalIndexSpan, Span<ComponentHandle?> handles, int count, out int globalIndex)
         {
             globalIndex = -1;
@@ -114,10 +114,10 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 根据全局索引查找段内局部索引与段索引。
         /// </summary>
-        /// <param name="globalIndex">全局索引。</param>
-        /// <param name="localIndex">输出局部索引。</param>
-        /// <param name="chunkIndex">输出段索引。</param>
-        /// <returns>找到返回 true；否则返回 false。</returns>
+        /// <param name="globalIndex"> 全局索引。 </param>
+        /// <param name="localIndex"> 输出局部索引。 </param>
+        /// <param name="chunkIndex"> 输出段索引。 </param>
+        /// <returns> 找到返回 true；否则返回 false。 </returns>
         public bool TryFindLocalIndexForGlobalIndex(int globalIndex, out int localIndex, out int chunkIndex)
         {
             localIndex = -1;
@@ -173,13 +173,13 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 从实体段中按全局索引移除实体。
         /// </summary>
-        /// <param name="globalIndex">实体全局索引。</param>
-        /// <param name="localIndex">输出段内局部索引。</param>
-        /// <param name="chunkIndex">输出实体段索引。</param>
-        /// <param name="removedHandle">输出被移除实体对应句柄。</param>
-        /// <param name="changedEntity">输出被移动到目标位置的实体。</param>
-        /// <param name="changedHandle">输出被移动到目标位置的句柄。</param>
-        /// <returns>移除成功返回 true；否则返回 false。</returns>
+        /// <param name="globalIndex"> 实体全局索引。 </param>
+        /// <param name="localIndex"> 输出段内局部索引。 </param>
+        /// <param name="chunkIndex"> 输出实体段索引。 </param>
+        /// <param name="removedHandle"> 输出被移除实体对应句柄。 </param>
+        /// <param name="changedEntity"> 输出被移动到目标位置的实体。 </param>
+        /// <param name="changedHandle"> 输出被移动到目标位置的句柄。 </param>
+        /// <returns> 移除成功返回 true；否则返回 false。 </returns>
         public bool TryRemoveFromSegment(int globalIndex, out int localIndex, out int chunkIndex, out ComponentHandle? removedHandle, out Entity changedEntity, out ComponentHandle? changedHandle)
         {
             changedEntity = Entity.Empty;
@@ -201,13 +201,13 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 批量从实体段中移除实体。
         /// </summary>
-        /// <param name="globalIndexs">全局索引集合。</param>
-        /// <param name="localIndexSpan">输出段内局部索引集合。</param>
-        /// <param name="chunkIndexSpan">输出段索引集合。</param>
-        /// <param name="removedHandles">输出被移除实体句柄集合。</param>
-        /// <param name="changedEntities">输出被移动实体集合。</param>
-        /// <param name="changedHandles">输出被移动句柄集合。</param>
-        /// <returns>全部移除成功返回 true；否则返回 false。</returns>
+        /// <param name="globalIndexs"> 全局索引集合。 </param>
+        /// <param name="localIndexSpan"> 输出段内局部索引集合。 </param>
+        /// <param name="chunkIndexSpan"> 输出段索引集合。 </param>
+        /// <param name="removedHandles"> 输出被移除实体句柄集合。 </param>
+        /// <param name="changedEntities"> 输出被移动实体集合。 </param>
+        /// <param name="changedHandles"> 输出被移动句柄集合。 </param>
+        /// <returns> 全部移除成功返回 true；否则返回 false。 </returns>
         public bool TryRemoveFromSegmentRange(Span<int> globalIndexs, Span<int> localIndexSpan, Span<int> chunkIndexSpan, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
             var span = Span;
@@ -237,12 +237,12 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 批量从实体段中移除实体。
         /// </summary>
-        /// <param name="globalIndexs">全局索引集合。</param>
-        /// <param name="localIndexSpan">输出段内局部索引集合。</param>
-        /// <param name="chunkIndexSpan">输出段索引集合。</param>
-        /// <param name="changedEntities">输出被移动实体集合。</param>
-        /// <param name="changedHandles">输出被移动句柄集合。</param>
-        /// <returns>全部移除成功返回 true；否则返回 false。</returns>
+        /// <param name="globalIndexs"> 全局索引集合。 </param>
+        /// <param name="localIndexSpan"> 输出段内局部索引集合。 </param>
+        /// <param name="chunkIndexSpan"> 输出段索引集合。 </param>
+        /// <param name="changedEntities"> 输出被移动实体集合。 </param>
+        /// <param name="changedHandles"> 输出被移动句柄集合。 </param>
+        /// <returns> 全部移除成功返回 true；否则返回 false。 </returns>
         public bool TryRemoveFromSegmentRange(Span<int> globalIndexs, Span<int> localIndexSpan, Span<int> chunkIndexSpan, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
             var span = Span;
@@ -284,7 +284,7 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 清理末尾空段并归还实体数组到对象池。
         /// </summary>
-        private void RemoveEmptySegments()
+        internal void RemoveEmptySegments()
         {
             var span = Span;
             int count = Count;
@@ -307,8 +307,8 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 获取第一个仍有可用空间的段索引。
         /// </summary>
-        /// <param name="segmentIndex">输出段索引。</param>
-        /// <returns>找到返回 true；否则返回 false。</returns>
+        /// <param name="segmentIndex"> 输出段索引。 </param>
+        /// <returns> 找到返回 true；否则返回 false。 </returns>
         private bool TryGetFirstAvailableSegmentIndex(out int segmentIndex)
         {
             segmentIndex = -1;
