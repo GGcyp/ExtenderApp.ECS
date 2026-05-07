@@ -14,14 +14,17 @@ namespace ExtenderApp.ECS.Systems
         /// 系统调度上下文列表
         /// </summary>
         private readonly List<SystemSchedulerContext> _groups;
+
         /// <summary>
         /// 并行作业调度器
         /// </summary>
         private ParallelJobManager parallelScheduler;
+
         /// <summary>
         /// 世界对象
         /// </summary>
         private World world;
+
         /// <summary>
         /// 调度组名称
         /// </summary>
@@ -119,6 +122,7 @@ namespace ExtenderApp.ECS.Systems
                 world.EQManager,
                 world.CommandBuffer,
                 parallelScheduler,
+                world.EManager,
                 updateContext.DeltaTime,
                 updateContext.Time,
                 updateContext.FrameIndex);

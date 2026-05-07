@@ -15,9 +15,14 @@ namespace ExtenderApp.ECS.Entities
         private readonly ComponentHandle _handle;
 
         /// <summary>
+        /// 获取一个值，指示当前 <see cref="EntityComponentLookup" /> 是否为空（未初始化或无效）。
+        /// </summary>
+        public bool IsEmpty => _handle == null;
+
+        /// <summary>
         /// 初始化 <see cref="EntityComponentLookup" /> 的新实例。
         /// </summary>
-        /// <param name="handle"> 组件句柄。 </param>
+        /// <param name="handle">组件句柄。</param>
         internal EntityComponentLookup(ComponentHandle handle)
         {
             _handle = handle;
@@ -26,16 +31,16 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 获取指定类型组件。
         /// </summary>
-        /// <typeparam name="T"> 组件类型。 </typeparam>
-        /// <returns> 组件值。 </returns>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <returns>组件值。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetComponent<T>() => _handle.GetComponent<T>();
 
         /// <summary>
         /// 设置指定类型组件。
         /// </summary>
-        /// <typeparam name="T"> 组件类型。 </typeparam>
-        /// <param name="component"> 组件值。 </param>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <param name="component">组件值。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SetComponent<T>(T component)
         {
@@ -46,9 +51,9 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 尝试获取指定类型组件。
         /// </summary>
-        /// <typeparam name="T"> 组件类型。 </typeparam>
-        /// <param name="component"> 输出组件值。 </param>
-        /// <returns> 获取成功返回 true；否则返回 false。 </returns>
+        /// <typeparam name="T">组件类型。</typeparam>
+        /// <param name="component">输出组件值。</param>
+        /// <returns>获取成功返回 true；否则返回 false。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetComponent<T>(out T component)
         {

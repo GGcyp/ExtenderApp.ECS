@@ -1,9 +1,10 @@
+using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Commands;
 using ExtenderApp.ECS.Components;
+using ExtenderApp.ECS.Entities;
 using ExtenderApp.ECS.Queries;
 using ExtenderApp.ECS.Systems;
 using ExtenderApp.ECS.Systems.Parallels;
-using ExtenderApp.ECS.Threading;
 
 namespace ExtenderApp.ECS.Abstract
 {
@@ -43,6 +44,11 @@ namespace ExtenderApp.ECS.Abstract
         private readonly ParallelJobManager _parallelJobManager;
 
         /// <summary>
+        /// 实体管理
+        /// </summary>
+        private readonly EntityManager _entityManager;
+
+        /// <summary>
         /// 本帧延迟执行的实体创建、销毁与组件变更命令。
         /// </summary>
         public EntityCommandBuffer CommandBuffer;
@@ -50,22 +56,17 @@ namespace ExtenderApp.ECS.Abstract
         /// <summary>
         /// 由框架在更新阶段构造，注入共享组件、查询、命令缓冲、并行调度以及时间与帧信息。
         /// </summary>
-        internal SystemUpdateContext(SharedComponentManager sharedComponentManager, EntityQueryManager entityQueryManager, EntityCommandBuffer commandBuffer, ParallelJobManager parallelJobManager, float deltaTime, double time, ulong frameIndex)
+        internal SystemUpdateContext(SharedComponentManager sharedComponentManager, EntityQueryManager entityQueryManager, EntityCommandBuffer commandBuffer, ParallelJobManager parallelJobManager, EntityManager entityManager, float deltaTime, double time, ulong frameIndex)
         {
             _sharedComponentManager = sharedComponentManager;
             _entityQueryManager = entityQueryManager;
             _parallelJobManager = parallelJobManager;
+            _entityManager = entityManager;
 
             CommandBuffer = commandBuffer;
             DeltaTime = deltaTime;
             Time = time;
             FrameIndex = frameIndex;
-        }
-
-        private void ThrowIfMainThreadAccess()
-        {
-            if (!MainThreadDetector.IsMainThread())
-                throw new InvalidOperationException("SystemUpdateContext can only be accessed from the main thread.");
         }
 
         #region SharedComponent
@@ -367,5 +368,28 @@ namespace ExtenderApp.ECS.Abstract
             => _parallelJobManager.AddWorkItem<TSystem, T1, T2, T3, T4, T5>(queryBuilder.BuildEntityQueryCore(), this, system);
 
         #endregion ParallelJob
+
+        #region EntityComponentLookup
+
+        /// <summary>
+        /// 尝试获取指定实体的组件句柄，若实体有效且未销毁，则返回 true 并输出对应的 <see cref="EntityComponentLookup" />；否则抛出异常。
+        /// </summary>
+        /// <param name="entity">指定的实体</param>
+        /// <param name="lookup">输出的组件句柄</param>
+        /// <returns>如果成功获取组件句柄则返回 true，否则抛出异常</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetLookup(Entity entity, out EntityComponentLookup lookup)
+        {
+            if (_entityManager.TryGetArchetype(entity, out var archetype, out int archetypeIndex) &&
+               (archetype?.TryGetComponentHandle(archetypeIndex, out var handle) ?? false))
+            {
+                lookup = new(handle);
+                return true;
+            }
+
+            throw new Exception("未找到实体的组件句柄，可能实体无效或已销毁。");
+        }
+
+        #endregion EntityComponentLookup
     }
 }
