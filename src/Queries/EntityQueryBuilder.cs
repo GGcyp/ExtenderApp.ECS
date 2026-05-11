@@ -318,7 +318,20 @@ namespace ExtenderApp.ECS.Queries
 			return this;
 		}
 
-		#endregion WithRelation
+        #endregion WithRelation
+
+        /// <summary>
+        /// 根据当前已配置的掩码构建或获取对应的 <see cref="EntityQuery" />。
+        /// </summary>
+        /// <returns> 从管理器缓存或新建的实体查询实例。 </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public EntityQuery Build()
+        {
+            ComponentMask buildQuery = new();
+
+            EntityQueryDesc desc = new(buildQuery, all, any, none, relationTypes);
+            return _queryManager.GetOrCreateQuery(desc);
+        }
 
         /// <summary>
         /// 根据当前已配置的掩码构建或获取对应的 <see cref="EntityQuery" />。
