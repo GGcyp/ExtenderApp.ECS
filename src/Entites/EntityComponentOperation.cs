@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Archetypes;
 using ExtenderApp.ECS.Threading;
 using ExtenderApp.ECS;
@@ -43,8 +43,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 使用指定 CurrentWorld 与 Entity 构造一个 ComponentBuffer 实例（内部使用）。
         /// </summary>
-        /// <param name="world">所属的 CurrentWorld 实例。</param>
-        /// <param name="entity">目标实体句柄。</param>
+        /// <param name="world"> 所属的 CurrentWorld 实例。 </param>
+        /// <param name="entity"> 目标实体句柄。 </param>
         internal EntityComponentOperation(World world, Entity entity)
         {
             _world = world;
@@ -54,9 +54,9 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 设置实体在其当前 Archetype 中已存在的组件的值。 若该组件列不存在会抛出异常。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="component">要写入的组件值。</param>
-        /// <returns>返回自身以支持链式调用（轻量便捷）。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="component"> 要写入的组件值。 </param>
+        /// <returns> 返回自身以支持链式调用（轻量便捷）。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation SetComponent<T>(T component)
         {
@@ -72,8 +72,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 获取实体在其当前 Archetype 中已存在的组件的值。 若该组件列不存在会抛出异常。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <returns>指定组件的值。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <returns> 指定组件的值。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetComponent<T>()
         {
@@ -88,9 +88,9 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 获取实体在其当前 Archetype 中已存在的组件的值，并通过输出参数返回。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="value">输出参数，用于返回组件的值。</param>
-        /// <returns>返回自身以支持链式调用（轻量便捷）。</returns>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="value"> 输出参数，用于返回组件的值。 </param>
+        /// <returns> 返回自身以支持链式调用（轻量便捷）。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation GetComponent<T>(out T value)
         {
@@ -106,8 +106,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加一个新组件（可能导致实体迁移到新的 Archetype）。 如果实体已经包含该组件则直接覆盖组件的值。
         /// </summary>
-        /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="component">要添加或覆盖的组件值。</param>
+        /// <typeparam name="T"> 组件类型。 </typeparam>
+        /// <param name="component"> 要添加或覆盖的组件值。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddComponent<T>(T component)
         {
@@ -142,7 +142,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加一个新组件（可能导致实体迁移到新的 Archetype）。
         /// </summary>
-        /// <typeparam name="T1">组件类型。</typeparam>
+        /// <typeparam name="T1"> 组件类型。 </typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddComponent<T1>()
         {
@@ -170,8 +170,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加二个新组件（可能导致实体迁移到新的 Archetype）。
         /// </summary>
-        /// <typeparam name="T1">组件类型。</typeparam>
-        /// <typeparam name="T2">组件类型。</typeparam>
+        /// <typeparam name="T1"> 组件类型。 </typeparam>
+        /// <typeparam name="T2"> 组件类型。 </typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddComponent<T1, T2>()
         {
@@ -205,9 +205,9 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加三个新组件（可能导致实体迁移到新的 Archetype）。
         /// </summary>
-        /// <typeparam name="T1">组件类型。</typeparam>
-        /// <typeparam name="T2">组件类型。</typeparam>
-        /// <typeparam name="T3">组件类型。</typeparam>
+        /// <typeparam name="T1"> 组件类型。 </typeparam>
+        /// <typeparam name="T2"> 组件类型。 </typeparam>
+        /// <typeparam name="T3"> 组件类型。 </typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddComponent<T1, T2, T3>()
         {
@@ -244,10 +244,10 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加四个新组件（可能导致实体迁移到新的 Archetype）。
         /// </summary>
-        /// <typeparam name="T1">组件类型。</typeparam>
-        /// <typeparam name="T2">组件类型。</typeparam>
-        /// <typeparam name="T3">组件类型。</typeparam>
-        /// <typeparam name="T4">组件类型。</typeparam>
+        /// <typeparam name="T1"> 组件类型。 </typeparam>
+        /// <typeparam name="T2"> 组件类型。 </typeparam>
+        /// <typeparam name="T3"> 组件类型。 </typeparam>
+        /// <typeparam name="T4"> 组件类型。 </typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddComponent<T1, T2, T3, T4>()
         {
@@ -287,11 +287,11 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加五个新组件（可能导致实体迁移到新的 Archetype）。
         /// </summary>
-        /// <typeparam name="T1">组件类型。</typeparam>
-        /// <typeparam name="T2">组件类型。</typeparam>
-        /// <typeparam name="T3">组件类型。</typeparam>
-        /// <typeparam name="T4">组件类型。</typeparam>
-        /// <typeparam name="T5">组件类型。</typeparam>
+        /// <typeparam name="T1"> 组件类型。 </typeparam>
+        /// <typeparam name="T2"> 组件类型。 </typeparam>
+        /// <typeparam name="T3"> 组件类型。 </typeparam>
+        /// <typeparam name="T4"> 组件类型。 </typeparam>
+        /// <typeparam name="T5"> 组件类型。 </typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddComponent<T1, T2, T3, T4, T5>()
         {
@@ -334,7 +334,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 变更实体的组件掩码（可能导致实体迁移到新的 Archetype）。 该方法适用于需要一次性修改多个组件的场景，避免多次调用 AddComponent/RemoveComponent 导致的重复迁移。
         /// </summary>
-        /// <param name="newMask">需要被迁移到的掩码。</param>
+        /// <param name="newMask"> 需要被迁移到的掩码。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation ChangedMask(in ComponentMask newMask)
         {
@@ -364,7 +364,7 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 从实体中移除指定组件（可能导致实体迁移到新的 Archetype）。 若组件不存在则忽略。
         /// </summary>
-        /// <typeparam name="T">要移除的组件类型。</typeparam>
+        /// <typeparam name="T"> 要移除的组件类型。 </typeparam>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation RemoveComponent<T>()
         {
@@ -401,9 +401,9 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 向实体添加关系。 若当前 Archetype 已包含该关系类型，则直接覆盖目标实体； 否则会迁移到包含该关系类型的新 Archetype。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <param name="target">目标实体。</param>
-        /// <returns>返回自身以支持链式调用。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <param name="target"> 目标实体。 </param>
+        /// <returns> 返回自身以支持链式调用。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation AddRelation(RelationType relationType, Entity target)
         {
@@ -438,8 +438,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 从实体移除关系类型。 若关系类型不存在则忽略；存在则迁移到移除该关系类型后的 Archetype。
         /// </summary>
-        /// <param name="relationType">关系类型。</param>
-        /// <returns>返回自身以支持链式调用。</returns>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <returns> 返回自身以支持链式调用。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public EntityComponentOperation RemoveRelation(RelationType relationType)
         {
@@ -463,8 +463,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 构建（或获取）指定组件掩码与关系掩码对应的 Archetype。
         /// </summary>
-        /// <param name="componentMask">组件掩码。</param>
-        /// <returns>对应的 Archetype 实例。</returns>
+        /// <param name="componentMask"> 组件掩码。 </param>
+        /// <returns> 对应的 Archetype 实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Archetype BuildArchetype(in ComponentMask componentMask)
             => BuildArchetype(componentMask, default);
@@ -472,9 +472,9 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 构建（或获取）指定组件掩码与关系掩码对应的 Archetype。
         /// </summary>
-        /// <param name="componentMask">组件掩码。</param>
-        /// <param name="relationMask">关系掩码。</param>
-        /// <returns>对应的 Archetype 实例。</returns>
+        /// <param name="componentMask"> 组件掩码。 </param>
+        /// <param name="relationMask"> 关系掩码。 </param>
+        /// <returns> 对应的 Archetype 实例。 </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Archetype BuildArchetype(in ComponentMask componentMask, in RelationMask relationMask)
             => Components.GetOrCreateArchetype(componentMask, relationMask);
@@ -482,8 +482,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 尝试获取实体当前的 Archetype 与在该 Archetype 中的索引（内部辅助）。 若实体不存在或已被销毁会抛出异常。
         /// </summary>
-        /// <param name="archetype">输出实体所属的 Archetype。</param>
-        /// <param name="archetypeIndex">输出实体在 Archetype 中的索引。</param>
+        /// <param name="archetype"> 输出实体所属的 Archetype。 </param>
+        /// <param name="archetypeIndex"> 输出实体在 Archetype 中的索引。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool TryGetArchetype(out Archetype? archetype, out int archetypeIndex)
         {
@@ -507,8 +507,8 @@ namespace ExtenderApp.ECS.Entities
         /// <summary>
         /// 将实体切换到指定的 Archetype，并输出新 Archetype 中的索引。 该方法委托给 EManager 执行实际的迁移逻辑。
         /// </summary>
-        /// <param name="archetype">目标 Archetype。</param>
-        /// <param name="archetypeIndex">输出迁移后实体在目标 Archetype 中的索引。</param>
+        /// <param name="archetype"> 目标 Archetype。 </param>
+        /// <param name="archetypeIndex"> 输出迁移后实体在目标 Archetype 中的索引。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ChangedArchetype(Archetype? archetype, int archetypeIndex)
         {

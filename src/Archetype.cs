@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -244,7 +244,7 @@ namespace ExtenderApp.ECS
                 EntityCount -= globalIndices.Length;
                 if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
                     _chunkManager.CompactTrailingStorageAfterRemovals();
-                
+
                 return true;
             }
             return false;
@@ -265,7 +265,7 @@ namespace ExtenderApp.ECS
                 EntityCount -= globalIndices.Length;
                 if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
                     _chunkManager.CompactTrailingStorageAfterRemovals();
-                
+
                 return true;
             }
             return false;
@@ -573,7 +573,7 @@ namespace ExtenderApp.ECS
                 EntityCount--;
                 if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
                     _chunkManager.CompactTrailingStorageAfterRemovals();
-                
+
                 return true;
             }
 
