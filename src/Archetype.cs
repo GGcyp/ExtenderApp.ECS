@@ -18,7 +18,7 @@ namespace ExtenderApp.ECS
         /// <summary>
         /// 当前 Archetype 所属世界的版本管理器。
         /// </summary>
-        private readonly WorldVersionManager _wvManager;
+        private readonly StructureVersionManager _svManager;
 
         /// <summary>
         /// 当前 Archetype 的组件掩码。
@@ -81,11 +81,11 @@ namespace ExtenderApp.ECS
         /// <param name="providers"> 按组件编码位置排列的块提供器数组。 </param>
         /// <param name="componentTypes"> 当前 Archetype 对应的组件掩码。 </param>
         /// <param name="relationTypes"> 当前 Archetype 对应的关系掩码。 </param>
-        /// <param name="worldVersionManager"> 世界版本管理器。 </param>
-        internal Archetype(ArchetypeChunkProvider[] providers, ComponentMask componentTypes, RelationMask relationTypes, WorldVersionManager worldVersionManager)
+        /// <param name="structureVersionManager"> 结构版本管理器。 </param>
+        internal Archetype(ArchetypeChunkProvider[] providers, ComponentMask componentTypes, RelationMask relationTypes, StructureVersionManager structureVersionManager)
         {
-            _wvManager = worldVersionManager;
-            _chunkManager = new(providers);
+            _svManager = structureVersionManager;
+            _chunkManager = new(providers, structureVersionManager);
             componentMask = componentTypes;
             relationMask = relationTypes;
 
@@ -188,7 +188,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int AddEntity(Entity entity)
         {
-            _chunkManager.AddEntity(entity, _wvManager.WorldVersion, out var globalIndex);
+            _chunkManager.AddEntity(entity, out var globalIndex);
             EntityCount++;
             return globalIndex;
         }
@@ -200,7 +200,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan)
         {
-            _chunkManager.AddEntityRange(entities, globalIndexSpan, _wvManager.WorldVersion);
+            _chunkManager.AddEntityRange(entities, globalIndexSpan);
             EntityCount += entities.Length;
         }
 
@@ -217,7 +217,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryRemoveEntity(int globalIndex, out Entity changedEntity)
         {
-            if (!_chunkManager.TryRemove(globalIndex, _wvManager.WorldVersion, out var removedHandle, out changedEntity))
+            if (!_chunkManager.TryRemove(globalIndex, out var removedHandle, out changedEntity))
                 return false;
 
             removedHandle?.Return();
@@ -239,7 +239,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryRemoveEntityRange(Span<int> globalIndices, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
-            if (_chunkManager.TryRemoveRange(globalIndices, removedHandles, changedEntities, changedHandles, _wvManager.WorldVersion))
+            if (_chunkManager.TryRemoveRange(globalIndices, removedHandles, changedEntities, changedHandles))
             {
                 EntityCount -= globalIndices.Length;
                 if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
@@ -260,7 +260,7 @@ namespace ExtenderApp.ECS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryRemoveEntityRange(Span<int> globalIndices, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
-            if (_chunkManager.TryRemoveRange(globalIndices, changedEntities, changedHandles, _wvManager.WorldVersion))
+            if (_chunkManager.TryRemoveRange(globalIndices, changedEntities, changedHandles))
             {
                 EntityCount -= globalIndices.Length;
                 if (Settings.TryCanRemoveEmptySegmentsSize(_chunkManager.ChunkHeadCount, EntityCount))
@@ -436,7 +436,7 @@ namespace ExtenderApp.ECS
                 chuck is not ArchetypeChunk<T> c)
                 return false;
 
-            c.Version = _wvManager.WorldVersion;
+            c.Version = _svManager.StructureVersion;
             c.SetComponent(localIndex, component);
             return true;
         }

@@ -16,7 +16,7 @@ namespace ExtenderApp.ECS
 
         internal EntityManager EManager { get; }
         internal ArchetypeManager AManager { get; }
-        internal WorldVersionManager WVManager { get; }
+        internal StructureVersionManager SVManager { get; }
         internal EntityQueryManager EQManager { get; }
         internal SharedComponentManager SCManager { get; }
         internal EntityCommandStorage ECStorage { get; }
@@ -61,11 +61,11 @@ namespace ExtenderApp.ECS
             Options = options;
             Name = name;
             EManager = new();
-            WVManager = new();
+            SVManager = new();
 
             ArchetypeRepository = new();
-            AManager = new(ArchetypeRepository, WVManager);
-            EQManager = new(ArchetypeRepository, WVManager);
+            AManager = new(ArchetypeRepository, SVManager);
+            EQManager = new(ArchetypeRepository, SVManager);
             SCManager = new();
 
             ECStorage = new();

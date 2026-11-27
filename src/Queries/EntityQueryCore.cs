@@ -23,9 +23,9 @@ namespace ExtenderApp.ECS.Queries
         private readonly ArchetypeRepository _repository;
 
         /// <summary>
-        /// 世界版本管理器，用于获取当前世界版本以支持跳过未变化的块的优化逻辑。
+        /// 结构版本管理器，用于获取当前结构版本以支持跳过未变化的块的优化逻辑。
         /// </summary>
-        private readonly WorldVersionManager _worldVersionManager;
+        private readonly StructureVersionManager _structureVersionManager;
 
         /// <summary>
         /// 查询描述，包含 Query/All/Any/None/Relation 等筛选条件。
@@ -81,10 +81,10 @@ namespace ExtenderApp.ECS.Queries
         /// </summary>
         /// <param name="allArchetypeList">全局 Archetype 仓库引用，用于匹配扫描。</param>
         /// <param name="desc">查询描述，包含筛选条件。</param>
-        /// <param name="worldVersionManager">世界版本管理器，用于版本检测与跳过未变化块的优化。</param>
-        internal EntityQueryCore(ArchetypeRepository allArchetypeList, EntityQueryDesc desc, WorldVersionManager worldVersionManager)
+        /// <param name="structureVersionManager">结构版本管理器，用于版本检测与跳过未变化块的优化。</param>
+        internal EntityQueryCore(ArchetypeRepository allArchetypeList, EntityQueryDesc desc, StructureVersionManager structureVersionManager)
         {
-            _worldVersionManager = worldVersionManager;
+            _structureVersionManager = structureVersionManager;
             _repository = allArchetypeList;
             _desc = desc;
             lastArchetypeCount = 0;
@@ -94,7 +94,7 @@ namespace ExtenderApp.ECS.Queries
         /// 为指定组件类型创建按 Archetype 聚合的访问器。 返回的 <see cref="ArchetypeAccessor{T}" /> 可用于跨匹配 Archetype 遍历该组件的列数据。
         /// </summary>
         /// <typeparam name="T">组件类型。</typeparam>
-        /// <param name="skipUnchanged">是否启用跳过未发生变化的块的优化（true 将传入当前世界版本）。</param>
+        /// <param name="skipUnchanged">是否启用跳过未发生变化的块的优化（true 将传入当前结构版本）。</param>
         /// <returns>相应类型的 <see cref="ArchetypeAccessor{T}" />。</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal GlobalQueryEnumerator<T> GetArchetypeEnumerator<T>(bool skipUnchanged) => new(GetArchetypeAccessor<T>(skipUnchanged));
@@ -132,11 +132,11 @@ namespace ExtenderApp.ECS.Queries
         }
 
         /// <summary>
-        /// 根据是否跳过未变化块返回访问器应使用的版本参数。 若 <paramref name="skipUnchanged" /> 为 true，则返回当前世界版本号以启用跳过逻辑；否则返回 0 表示不启用跳过。
+        /// 根据是否跳过未变化块返回访问器应使用的版本参数。 若 <paramref name="skipUnchanged" /> 为 true，则返回当前结构版本号以启用跳过逻辑；否则返回 0 表示不启用跳过。
         /// </summary>
         /// <param name="skipUnchanged">是否跳过未变化的块。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ulong GetVersion(bool skipUnchanged) => skipUnchanged ? _worldVersionManager.WorldVersion : 0;
+        private ulong GetVersion(bool skipUnchanged) => skipUnchanged ? _structureVersionManager.StructureVersion : 0;
 
         /// <summary>
         /// 确保当前缓存的匹配集合仍然有效。若仓库计数发生变化则触发重建匹配链表。

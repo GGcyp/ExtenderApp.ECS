@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using ExtenderApp.ECS.Archetypes;
 using ExtenderApp.ECS.Threading;
 using ExtenderApp.ECS.Worlds;
@@ -27,7 +27,7 @@ namespace ExtenderApp.ECS.Queries
         /// <summary>
         /// CurrentWorld 版本管理器。用于在查询核心中判断匹配缓存是否失效并触发重建。
         /// </summary>
-        private readonly WorldVersionManager _worldVersionManager;
+        private readonly StructureVersionManager _structureVersionManager;
 
         /// <summary>
         /// 查询核心缓存表。Key 为查询描述，Value 为对应的查询核心实例。
@@ -38,13 +38,13 @@ namespace ExtenderApp.ECS.Queries
         /// 创建查询管理器实例。通常由 CurrentWorld 在初始化时构造并持有生命周期。
         /// </summary>
         /// <param name="archetypeRepository">当前 CurrentWorld 中全部 Archetype 的只读集合。</param>
-        /// <param name="worldVersionManager">CurrentWorld 版本管理器。</param>
-        public EntityQueryManager(ArchetypeRepository archetypeRepository, WorldVersionManager worldVersionManager)
+        /// <param name="structureVersionManager">CurrentWorld 版本管理器。</param>
+        public EntityQueryManager(ArchetypeRepository archetypeRepository, StructureVersionManager structureVersionManager)
         {
             _archetypeRepository = archetypeRepository;
-            _worldVersionManager = worldVersionManager;
+            _structureVersionManager = structureVersionManager;
             _queries = new();
-            _coreFactory = desc => new(_archetypeRepository, desc, _worldVersionManager);
+            _coreFactory = desc => new(_archetypeRepository, desc, _structureVersionManager);
         }
 
         /// <summary>

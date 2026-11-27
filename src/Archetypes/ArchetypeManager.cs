@@ -10,9 +10,9 @@ namespace ExtenderApp.ECS.Archetypes
     internal class ArchetypeManager : DisposableObject
     {
         /// <summary>
-        /// 管理世界版本的实例。
+        /// 管理结构版本的实例。
         /// </summary>
-        private readonly WorldVersionManager _wvManager;
+        private readonly StructureVersionManager _svManager;
 
         /// <summary>
         /// Archetype 仓库。
@@ -22,9 +22,9 @@ namespace ExtenderApp.ECS.Archetypes
         /// <summary>
         /// 创建一个新的 <see cref="ArchetypeManager" /> 实例并初始化内部存储。
         /// </summary>
-        public ArchetypeManager(ArchetypeRepository archetypeDict, WorldVersionManager worldVersionManager)
+        public ArchetypeManager(ArchetypeRepository archetypeDict, StructureVersionManager structureVersionManager)
         {
-            _wvManager = worldVersionManager;
+            _svManager = structureVersionManager;
             _archetypes = archetypeDict;
         }
 
@@ -57,7 +57,7 @@ namespace ExtenderApp.ECS.Archetypes
             }
 
             // 创建并缓存新的 Archetype
-            archetype = new(providers, componentMask, relationMask, _wvManager);
+            archetype = new(providers, componentMask, relationMask, _svManager);
             _archetypes[componentMask, relationMask] = archetype;
             return archetype;
         }

@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Components;
+using ExtenderApp.ECS.Worlds;
 
 namespace ExtenderApp.ECS.Archetypes
 {
@@ -38,6 +39,11 @@ namespace ExtenderApp.ECS.Archetypes
         private readonly ComponentHandlePool handlePool = ComponentHandlePool.Share;
 
         /// <summary>
+        /// 所属世界的版本管理器：实体槽位分配与回收（结构变化）时递增其全局版本，并把递增后的版本号盖到所涉及的块上。
+        /// </summary>
+        private readonly StructureVersionManager _svManager;
+
+        /// <summary>
         /// 实体段信息列表，用于将实体全局行号映射到段内局部索引与块下标。
         /// </summary>
         internal readonly ArchetypeEntitySegmentInfoList Entities;
@@ -46,8 +52,10 @@ namespace ExtenderApp.ECS.Archetypes
         /// 初始化 <see cref="ArchetypeChunkManager" /> 的新实例。
         /// </summary>
         /// <param name="providers"> 与各组件列对齐的块提供器数组。 </param>
-        public ArchetypeChunkManager(ArchetypeChunkProvider[] providers)
+        /// <param name="structureVersionManager"> 所属世界的版本管理器（结构变化时递增版本）。 </param>
+        public ArchetypeChunkManager(ArchetypeChunkProvider[] providers, StructureVersionManager structureVersionManager)
         {
+            _svManager = structureVersionManager;
             _archetypeChunkProviders = providers;
             _columns = new ArchetypeChunkList?[providers.Length];
             for (int i = 0; i < providers.Length; i++)
@@ -79,68 +87,71 @@ namespace ExtenderApp.ECS.Archetypes
 
         /// <summary>
         /// 在实体表中追加一行，并在每一组件列中分配对应槽位（无句柄）。
+        /// 分配成功后递增世界结构版本，并把新版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="entity"> 要登记的实体。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         /// <param name="globalIndex"> 输出分配到的实体全局行号。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddEntity(Entity entity, ulong worldVersion, out int globalIndex)
+        public void AddEntity(Entity entity, out int globalIndex)
         {
             Entities.AddToSegment(entity, null, out globalIndex);
+            _svManager.IncrementStructureVersion();
 
             int capacity = GetNextSize(Entities.Count - 1);
 
             for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
-                AddToColumn(columnIndex, worldVersion, capacity);
+                AddToColumn(columnIndex, capacity);
         }
 
         /// <summary>
         /// 在实体表中追加一行，并在每一组件列中分配槽位，同时可携带组件句柄。
+        /// 分配成功后递增世界结构版本，并把新版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="entity"> 要登记的实体。 </param>
         /// <param name="handle"> 可选的组件句柄。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         /// <param name="globalIndex"> 输出分配到的实体全局行号。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddEntity(Entity entity, ComponentHandle? handle, ulong worldVersion, out int globalIndex)
+        public void AddEntity(Entity entity, ComponentHandle? handle, out int globalIndex)
         {
             if (handle != null)
                 handle.Manager = this;
             Entities.AddToSegment(entity, handle, out globalIndex);
+            _svManager.IncrementStructureVersion();
 
             int capacity = GetNextSize(Entities.Count - 1);
             for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
-                AddToColumn(columnIndex, worldVersion, capacity);
+                AddToColumn(columnIndex, capacity);
         }
 
         /// <summary>
         /// 批量在实体表中追加多行，并在各列中分配槽位（无句柄）。
+        /// 分配成功后按数量递增世界结构版本，并把新版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="entities"> 待追加的实体集合。 </param>
         /// <param name="globalIndexSpan"> 输出各行分配到的全局行号。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan, ulong worldVersion)
+        public void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan)
         {
             int count = entities.Length;
             if (count == 0)
                 return;
 
             Entities.AddToSegmentRange(entities, globalIndexSpan, count, out _);
+            _svManager.IncrementStructureVersion(count);
 
             for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
-                AddToColumns(columnIndex, worldVersion, count);
+                AddToColumns(columnIndex, count);
         }
 
         /// <summary>
         /// 批量在实体表中追加多行，并在各列中分配槽位，同时写入句柄数组。
+        /// 分配成功后按数量递增世界结构版本，并把新版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="entities"> 待追加的实体集合。 </param>
         /// <param name="globalIndexSpan"> 输出各行分配到的全局行号。 </param>
         /// <param name="handles"> 与各实体对齐的句柄数组。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan, Span<ComponentHandle?> handles, ulong worldVersion)
+        public void AddEntityRange(Span<Entity> entities, Span<int> globalIndexSpan, Span<ComponentHandle?> handles)
         {
             int count = entities.Length;
             if (count == 0)
@@ -151,18 +162,19 @@ namespace ExtenderApp.ECS.Archetypes
                     handle.Manager = this;
 
             Entities.AddToSegmentRange(entities, globalIndexSpan, handles, count, out _);
+            _svManager.IncrementStructureVersion(count);
 
             for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
-                AddToColumns(columnIndex, worldVersion, count);
+                AddToColumns(columnIndex, count);
         }
 
         /// <summary>
         /// 在指定列追加一个空槽位；若当前列无块则从提供器租新块并挂入列表。
+        /// 槽位分配后把当前结构版本号盖到该块上。
         /// </summary>
         /// <param name="columnIndex"> 列索引。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         /// <param name="capacity"> 新建块时使用的容量。 </param>
-        private void AddToColumn(int columnIndex, ulong worldVersion, int capacity)
+        private void AddToColumn(int columnIndex, int capacity)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
                 return;
@@ -183,7 +195,7 @@ namespace ExtenderApp.ECS.Archetypes
             {
                 if (chunk.TryAdd())
                 {
-                    chunk.Version = worldVersion;
+                    chunk.Version = _svManager.StructureVersion;
                     return;
                 }
 
@@ -201,10 +213,9 @@ namespace ExtenderApp.ECS.Archetypes
         /// 在指定列连续追加多个空槽位。
         /// </summary>
         /// <param name="columnIndex"> 列索引。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         /// <param name="count"> 要追加的槽位数。 </param>
         /// <remarks> 新块容量仍由 <see cref="GetNextSize" /> 与设置项决定（默认基准 2048）。 </remarks>
-        private void AddToColumns(int columnIndex, ulong worldVersion, int count)
+        private void AddToColumns(int columnIndex, int count)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
                 return;
@@ -226,7 +237,7 @@ namespace ExtenderApp.ECS.Archetypes
                 if (!chunk.TryAdds(count, out int addCount) || count != addCount)
                 {
                     count = count - addCount;
-                    chunk.Version = worldVersion;
+                    chunk.Version = _svManager.StructureVersion;
                     if (chunk.Next == null)
                     {
                         capacity = GetNextSize(chunkList.Count);
@@ -245,33 +256,35 @@ namespace ExtenderApp.ECS.Archetypes
 
         /// <summary>
         /// 按全局行号移除实体，并同步从各组件列的对应块中移除槽位。
+        /// 移除成功后递增世界结构版本，并把新版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="globalIndex"> 实体全局行号。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         /// <param name="removedHandle"> 被移除行上的组件句柄（若有）。 </param>
         /// <param name="changedEntity"> 若发生尾部交换，则为被挪到当前位置的实体；否则为 <see cref="Entity.Empty" />。 </param>
         /// <returns> 移除成功返回 true；否则返回 false。 </returns>
-        public bool TryRemove(int globalIndex, ulong worldVersion, out ComponentHandle? removedHandle, out Entity changedEntity)
+        public bool TryRemove(int globalIndex, out ComponentHandle? removedHandle, out Entity changedEntity)
         {
             if (!Entities.TryRemoveFromSegment(globalIndex, out int localIndex, out var chunkIndex, out removedHandle, out changedEntity, out _))
                 return false;
 
+            _svManager.IncrementStructureVersion();
+
             for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
-                RemoveFromColumn(columnIndex, chunkIndex, localIndex, worldVersion);
+                RemoveFromColumn(columnIndex, chunkIndex, localIndex);
 
             return true;
         }
 
         /// <summary>
         /// 批量按全局行号移除实体，并同步从各列移除槽位（输出被移除句柄）。
+        /// 移除成功后按数量递增世界结构版本，并把新版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="globalIndexs"> 待移除的全局行号集合。 </param>
         /// <param name="removedHandles"> 各被移除行上的句柄输出。 </param>
         /// <param name="changedEntities"> 因交换被移动到目标位置的实体输出。 </param>
         /// <param name="changedHandles"> 随实体一起移动的句柄输出。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         /// <returns> 全部移除成功返回 true；否则返回 false。 </returns>
-        public bool TryRemoveRange(Span<int> globalIndexs, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles, ulong worldVersion)
+        public bool TryRemoveRange(Span<int> globalIndexs, Span<ComponentHandle?> removedHandles, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
             int count = globalIndexs.Length;
 
@@ -285,8 +298,11 @@ namespace ExtenderApp.ECS.Archetypes
             {
                 if (!Entities.TryRemoveFromSegmentRange(globalIndexs, localIndexSpan, chunkIndexSpan, removedHandles, changedEntities, changedHandles))
                     return false;
+
+                _svManager.IncrementStructureVersion(count);
+
                 for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
-                    RemoveFromColumns(columnIndex, chunkIndexSpan, localIndexSpan, worldVersion);
+                    RemoveFromColumns(columnIndex, chunkIndexSpan, localIndexSpan);
                 return true;
             }
             finally
@@ -298,13 +314,13 @@ namespace ExtenderApp.ECS.Archetypes
 
         /// <summary>
         /// 批量按全局行号移除实体，并同步从各列移除槽位（不输出被移除句柄的重载）。
+        /// 移除成功后按数量递增世界结构版本，并把新版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="globalIndexs"> 待移除的全局行号集合。 </param>
         /// <param name="changedEntities"> 因交换被移动到目标位置的实体输出。 </param>
         /// <param name="changedHandles"> 随实体一起移动的句柄输出。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
         /// <returns> 全部移除成功返回 true；否则返回 false。 </returns>
-        public bool TryRemoveRange(Span<int> globalIndexs, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles, ulong worldVersion)
+        public bool TryRemoveRange(Span<int> globalIndexs, Span<Entity> changedEntities, Span<ComponentHandle?> changedHandles)
         {
             int count = globalIndexs.Length;
 
@@ -318,8 +334,11 @@ namespace ExtenderApp.ECS.Archetypes
             {
                 if (!Entities.TryRemoveFromSegmentRange(globalIndexs, localIndexSpan, chunkIndexSpan, changedEntities, changedHandles))
                     return false;
+
+                _svManager.IncrementStructureVersion(count);
+
                 for (int columnIndex = 0; columnIndex < _columns.Length; columnIndex++)
-                    RemoveFromColumns(columnIndex, chunkIndexSpan, localIndexSpan, worldVersion);
+                    RemoveFromColumns(columnIndex, chunkIndexSpan, localIndexSpan);
                 return true;
             }
             finally
@@ -369,29 +388,29 @@ namespace ExtenderApp.ECS.Archetypes
 
         /// <summary>
         /// 在指定列的指定块中按局部索引移除槽位。
+        /// 槽位移除后把当前结构版本号盖到该块上。
         /// </summary>
         /// <param name="columnIndex"> 列索引。 </param>
         /// <param name="chunkIndex"> 块在列列表中的下标。 </param>
         /// <param name="localIndex"> 块内局部索引。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
-        private void RemoveFromColumn(int columnIndex, int chunkIndex, int localIndex, ulong worldVersion)
+        private void RemoveFromColumn(int columnIndex, int chunkIndex, int localIndex)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
                 return;
 
             var chunk = chunkList[chunkIndex];
             chunk.RemoveAt(localIndex);
-            chunk.Version = worldVersion;
+            chunk.Version = _svManager.StructureVersion;
         }
 
         /// <summary>
         /// 在指定列上按多组（块下标、块内索引）批量移除槽位。
+        /// 槽位移除后把当前结构版本号盖到所涉及的块上。
         /// </summary>
         /// <param name="columnIndex"> 列索引。 </param>
         /// <param name="chunkIndexSpan"> 各行的块下标。 </param>
         /// <param name="localIndexSpan"> 各行的块内局部索引。 </param>
-        /// <param name="worldVersion"> 当前世界版本号。 </param>
-        private void RemoveFromColumns(int columnIndex, Span<int> chunkIndexSpan, Span<int> localIndexSpan, ulong worldVersion)
+        private void RemoveFromColumns(int columnIndex, Span<int> chunkIndexSpan, Span<int> localIndexSpan)
         {
             if (!TryGetChunkListForColumn(columnIndex, out var chunkList))
                 return;
@@ -405,7 +424,7 @@ namespace ExtenderApp.ECS.Archetypes
 
                 var chunk = chunkList[chunkIndex];
                 chunk.RemoveAt(localIndex);
-                chunk.Version = worldVersion;
+                chunk.Version = _svManager.StructureVersion;
             }
         }
 
