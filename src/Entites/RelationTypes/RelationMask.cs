@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Runtime.CompilerServices;
 
 namespace ExtenderApp.ECS.Entities
@@ -17,6 +17,11 @@ namespace ExtenderApp.ECS.Entities
         /// 位图数据。
         /// </summary>
         private ulong mask;
+
+        /// <summary>
+        /// 位图原始值（internal 访问，供 Archetype 计算关系列偏移等）。
+        /// </summary>
+        internal ulong RawValue => mask;
 
         /// <summary>
         /// 当前掩码是否为空。
@@ -74,7 +79,7 @@ namespace ExtenderApp.ECS.Entities
         /// 添加关系类型。
         /// </summary>
         /// <param name="relationType">关系类型。</param>
-        public void Add(RelationType relationType) => SetBit(relationType.Id);
+        public void Add(RelationType relationType) => SetBit(relationType.TypeIndex);
 
         /// <summary>
         /// 移除指定关系。
@@ -86,14 +91,14 @@ namespace ExtenderApp.ECS.Entities
         /// 移除关系类型。
         /// </summary>
         /// <param name="relationType">关系类型。</param>
-        public void Remove(RelationType relationType) => ClearBit(relationType.Id);
+        public void Remove(RelationType relationType) => ClearBit(relationType.TypeIndex);
 
         /// <summary>
         /// 判断当前掩码是否包含指定关系类型。
         /// </summary>
         /// <param name="relationType">关系类型。</param>
         /// <returns>包含返回 true；否则返回 false。</returns>
-        public bool On(RelationType relationType) => (mask & (1UL << relationType.Id)) != 0;
+        public bool On(RelationType relationType) => (mask & (1UL << relationType.TypeIndex)) != 0;
 
         /// <summary>
         /// 判断当前掩码是否包含指定泛型关系类型。
@@ -121,7 +126,7 @@ namespace ExtenderApp.ECS.Entities
         /// </summary>
         /// <param name="relationType">关系类型。</param>
         /// <returns>不包含返回 true；否则返回 false。</returns>
-        public bool Off(RelationType relationType) => (mask & (1UL << relationType.Id)) == 0;
+        public bool Off(RelationType relationType) => (mask & (1UL << relationType.TypeIndex)) == 0;
 
         /// <summary>
         /// 判断当前掩码与给定关系掩码是否完全不相交（交集为空）。
@@ -134,13 +139,25 @@ namespace ExtenderApp.ECS.Entities
         /// 设置指定索引位为 1。
         /// </summary>
         /// <param name="index">位索引。</param>
-        public void SetBit(int index) => mask |= 1UL << index;
+        /// <exception cref="ArgumentOutOfRangeException">索引超出 0..63 范围时抛出（位移超出 64 位会按 64 取模回绕，必须防御）。</exception>
+        public void SetBit(int index)
+        {
+            if ((uint)index >= 64)
+                throw new ArgumentOutOfRangeException(nameof(index), $"关系类型位索引 {index} 超出 0..63 范围。");
+            mask |= 1UL << index;
+        }
 
         /// <summary>
         /// 清除指定索引位（设置为 0）。
         /// </summary>
         /// <param name="index">位索引。</param>
-        public void ClearBit(int index) => mask &= ~(1UL << index);
+        /// <exception cref="ArgumentOutOfRangeException">索引超出 0..63 范围时抛出。</exception>
+        public void ClearBit(int index)
+        {
+            if ((uint)index >= 64)
+                throw new ArgumentOutOfRangeException(nameof(index), $"关系类型位索引 {index} 超出 0..63 范围。");
+            mask &= ~(1UL << index);
+        }
 
         /// <summary>
         /// 获取结构体枚举器（foreach 优先走该路径，避免装箱）。

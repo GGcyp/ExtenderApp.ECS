@@ -48,12 +48,18 @@ namespace ExtenderApp.ECS.Archetypes
             if (_archetypes.TryGetValue(componentMask, relationMask, out var archetype))
                 return archetype;
 
-            // 为每个组件类型从提供者租用并初始化 ArchetypeChunk
-            var providers = new ArchetypeChunkProvider[componentMask.ComponentCount];
+            // 列提供器：组件列在前（按掩码编码位置），关系目标列在后（每关系类型一列，元素类型为 Entity）
+            var providers = new ArchetypeChunkProvider[componentMask.ComponentCount + relationMask.RelationCount];
             int i = 0;
             foreach (var componentType in componentMask)
             {
                 providers[i++] = ArchetypeChunkProvider.GetOrCreate(componentType);
+            }
+
+            var relationTargetProvider = ArchetypeChunkProvider.GetOrCreate(typeof(Entity));
+            foreach (var relationType in relationMask)
+            {
+                providers[i++] = relationTargetProvider;
             }
 
             // 创建并缓存新的 Archetype

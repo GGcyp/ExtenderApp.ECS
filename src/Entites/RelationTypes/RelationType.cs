@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using static ExtenderApp.ECS.Entities.RelationTypeRegistry;
 
@@ -23,9 +23,9 @@ namespace ExtenderApp.ECS.Entities
         internal readonly ushort TypeIndex;
 
         /// <summary>
-        /// 为兼容旧调用方保留的 Id 访问。
+        /// 获取当前关系类型是否为空关系类型（索引为 0）。
         /// </summary>
-        internal ushort Id => TypeIndex;
+        public bool IsEmpty => TypeIndex == 0;
 
         /// <summary>
         /// 具体关系数据类型。

@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Entities;
 
 namespace ExtenderApp.ECS
@@ -221,25 +221,78 @@ namespace ExtenderApp.ECS
         #region Destroy
 
         /// <summary>
-        /// 销毁指定实体，回收其资源并从所属 Archetype 中移除对应槽位。
+        /// 销毁指定实体，回收其资源并从所属 Archetype 中移除对应槽位。 不级联删除子实体（关系目标指向它的实体保持悬挂）。
         /// </summary>
         /// <param name="entity">要销毁的实体句柄。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DestroyEntity(Entity entity)
         {
-            ThrowIfNotMainThread();
-            EManager.DestroyEntity(entity);
+            DestroyEntity(entity, false);
         }
 
         /// <summary>
-        /// 批量销毁实体。
+        /// 销毁指定实体。 cascade 为 true 时递归级联删除所有子实体（任一关系类型的目标实体等于该实体的实体）。
+        /// </summary>
+        /// <param name="entity">要销毁的实体句柄。</param>
+        /// <param name="cascade">是否级联删除子实体，默认 false（子实体保持悬挂）。</param>
+        public void DestroyEntity(Entity entity, bool cascade)
+        {
+            ThrowIfNotMainThread();
+            if (cascade)
+                DestroyEntityCascade(entity);
+            else
+                EManager.DestroyEntity(entity);
+        }
+
+        /// <summary>
+        /// 批量销毁实体（不级联）。
         /// </summary>
         /// <param name="entities">要销毁的实体集合。</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void DestroyEntity(ReadOnlySpan<Entity> entities)
         {
+            DestroyEntity(entities, false);
+        }
+
+        /// <summary>
+        /// 批量销毁实体。 cascade 为 true 时对每个实体递归级联删除子实体（先删自身再删子实体，互指环天然终止，无需防环集合）。
+        /// </summary>
+        /// <param name="entities">要销毁的实体集合。</param>
+        /// <param name="cascade">是否级联删除子实体，默认 false。</param>
+        public void DestroyEntity(ReadOnlySpan<Entity> entities, bool cascade)
+        {
             ThrowIfNotMainThread();
-            EManager.DestroyEntity(entities);
+            if (!cascade)
+            {
+                EManager.DestroyEntity(entities);
+                return;
+            }
+
+            foreach (var entity in entities)
+                DestroyEntityCascade(entity);
+        }
+
+        /// <summary>
+        /// 级联删除核心：先收集子实体（关系目标指向当前实体的存活实体）并删除自身，再逐个递归级联删除子实体。
+        /// 「先删自身」的顺序使互指环天然终止：环中实体被删后，另一侧收集时它已不在任何表中，不会再次被枚举。
+        /// 无需 IsAlive 检查：删除已销毁实体是安全 no-op（EntityManager 内部按版本校验拦截）。
+        /// 注意：对已销毁实体调用级联删除会清理仍悬挂指向它的实体（行内目标值未清除，仍会被收集）。
+        /// IsEmpty 短路保留：关系目标列未写入时的默认值即 Entity.Empty，防止误把「未设置目标」的行收集进来。
+        /// 收集使用局部列表：遍历期间删除行会破坏段迭代，必须先收集再删（级联删除为低频操作，此分配可接受）。
+        /// </summary>
+        private void DestroyEntityCascade(Entity entity)
+        {
+            if (entity.IsEmpty)
+                return;
+
+            var children = new List<Entity>();
+            foreach (var child in GetChildren(entity))
+                children.Add(child);
+
+            EManager.DestroyEntity(entity);
+
+            foreach (var child in children)
+                DestroyEntityCascade(child);
         }
 
         #endregion Destroy

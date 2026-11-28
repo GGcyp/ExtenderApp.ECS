@@ -1,0 +1,43 @@
+﻿
+Release, 每轮 5 次取最小
+
+--- 1 组件 (C1) (N=1,000,000) ---
+AddRelation 初始(类型位迁移)                                           23.55 ms       23.6 ns/op
+AddRelation 覆盖目标(原地写行)                                          23.74 ms       23.7 ns/op
+TryGetRelationTarget 读目标                                        21.33 ms       21.3 ns/op
+AddRelation+RemoveRelation 往返迁移(2N 迁移)                        1986.97 ms      993.5 ns/op
+GetEntitiesWithRelation 全命中(行过滤)                                12.53 ms       12.5 ns/op
+GetEntitiesWithRelation 零命中(行扫描)                                11.75 ms       11.8 ns/op
+
+--- 2 组件 (C1+C2) (N=1,000,000) ---
+AddRelation 初始(类型位迁移)                                           23.69 ms       23.7 ns/op
+AddRelation 覆盖目标(原地写行)                                          23.67 ms       23.7 ns/op
+TryGetRelationTarget 读目标                                        19.99 ms       20.0 ns/op
+AddRelation+RemoveRelation 往返迁移(2N 迁移)                        3009.30 ms     1504.6 ns/op
+GetEntitiesWithRelation 全命中(行过滤)                                 9.81 ms        9.8 ns/op
+GetEntitiesWithRelation 零命中(行扫描)                                 8.64 ms        8.6 ns/op
+
+--- 4 组件 (C1..C4) (N=1,000,000) ---
+AddRelation 初始(类型位迁移)                                           23.62 ms       23.6 ns/op
+AddRelation 覆盖目标(原地写行)                                          23.69 ms       23.7 ns/op
+TryGetRelationTarget 读目标                                        20.04 ms       20.0 ns/op
+AddRelation+RemoveRelation 往返迁移(2N 迁移)                        6365.75 ms     3182.9 ns/op
+GetEntitiesWithRelation 全命中(行过滤)                                 9.77 ms        9.8 ns/op
+GetEntitiesWithRelation 零命中(行扫描)                                 8.47 ms        8.5 ns/op
+
+--- 50 组件 (C1..C50) (N=500,000) ---
+AddRelation 初始(类型位迁移)                                           11.05 ms       22.1 ns/op
+AddRelation 覆盖目标(原地写行)                                          11.05 ms       22.1 ns/op
+TryGetRelationTarget 读目标                                         9.38 ms       18.8 ns/op
+AddRelation+RemoveRelation 往返迁移(2N 迁移)                       31712.09 ms    31712.1 ns/op
+GetEntitiesWithRelation 全命中(行过滤)                                 4.58 ms        9.2 ns/op
+GetEntitiesWithRelation 零命中(行扫描)                                 4.05 ms        8.1 ns/op
+
+--- 对照: 4 组件表上的组件操作 (N=1,000,000) ---
+对照 SetComponent<C1> 原地写                                         21.55 ms       21.5 ns/op
+对照 GetComponent<C1> 读                                           20.14 ms       20.1 ns/op
+对照 Add+RemoveComponent 往返迁移(2N)                               6570.31 ms     3285.2 ns/op
+
+完成。
+
+

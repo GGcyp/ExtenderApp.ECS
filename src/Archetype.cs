@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Archetypes;
 using ExtenderApp.ECS.Components;
@@ -36,14 +37,14 @@ namespace ExtenderApp.ECS
         internal ArchetypeEntitySegmentInfoList Entities => _chunkManager.Entities;
 
         /// <summary>
-        /// 当前 Archetype 中的关系对列表（仅在存在关系时初始化）。每个关系对包含一个关系类型和一个目标 Archetype 的引用，用于快速查询和更新实体之间的关系。
-        /// </summary>
-        private readonly List<RelationPair>? _relations;
-
-        /// <summary>
         /// 当前 Archetype 的关系掩码。
         /// </summary>
         private RelationMask relationMask;
+
+        /// <summary>
+        /// 关系目标列在块管理器中的起始列索引。 关系目标以行内列存储（每关系类型一列，元素类型为 <see cref="Entity" />），位于组件列之后。
+        /// </summary>
+        private readonly int _relationColumnStart;
 
         /// <summary>
         /// 获取当前 Archetype 的组件掩码只读引用。
@@ -71,14 +72,9 @@ namespace ExtenderApp.ECS
         public int ChunkCount => Entities.Count;
 
         /// <summary>
-        /// 当前 Archetype 的关系对只读视图。
-        /// </summary>
-        public IReadOnlyList<RelationPair>? Relations => _relations;
-
-        /// <summary>
         /// 初始化 <see cref="Archetype" /> 的新实例。
         /// </summary>
-        /// <param name="providers"> 按组件编码位置排列的块提供器数组。 </param>
+        /// <param name="providers"> 按列排列的块提供器数组（组件列在前，关系目标列在后）。 </param>
         /// <param name="componentTypes"> 当前 Archetype 对应的组件掩码。 </param>
         /// <param name="relationTypes"> 当前 Archetype 对应的关系掩码。 </param>
         /// <param name="structureVersionManager"> 结构版本管理器。 </param>
@@ -88,92 +84,76 @@ namespace ExtenderApp.ECS
             _chunkManager = new(providers, structureVersionManager);
             componentMask = componentTypes;
             relationMask = relationTypes;
-
-            if (!relationTypes.IsEmpty)
-                _relations = new();
+            _relationColumnStart = componentTypes.ComponentCount;
         }
 
         #region Relation
 
         /// <summary>
-        /// 添加关系对。 添加前会校验关系类型是否在当前 <see cref="RelationTypes" /> 掩码中。
+        /// 读取指定实体行上某关系类型的目标实体。 目标值以行内列存储，同表内不同实体的目标互不影响。
         /// </summary>
-        /// <param name="relationPair"> 关系对。 </param>
-        /// <returns> 添加（或覆盖）成功返回 true；关系类型不在掩码中返回 false。 </returns>
-        public bool TryAddRelation(RelationPair relationPair)
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <param name="globalIndex"> 实体在 Archetype 内的全局索引。 </param>
+        /// <param name="target"> 输出目标实体。 </param>
+        /// <returns> 关系类型存在且读取成功返回 true；否则返回 false。 </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetRelationTarget(RelationType relationType, int globalIndex, out Entity target)
         {
-            if (!relationMask.On(relationPair.RelationType) || _relations == null)
+            target = default;
+            if (!relationMask.On(relationType))
                 return false;
 
-            if (_relations.Contains(relationPair))
-                return true;
+            int columnIndex = _relationColumnStart + GetRelationColumnOffset(relationType);
+            if (!_chunkManager.TryFindChunkForGlobalIndex(columnIndex, globalIndex, out var chunk, out int localIndex) ||
+                chunk is not ArchetypeChunk<Entity> typedChunk)
+                return false;
 
-            _relations.Add(relationPair);
+            target = typedChunk.GetComponent(localIndex);
             return true;
         }
 
         /// <summary>
-        /// 添加关系对（失败抛异常）。
-        /// </summary>
-        /// <param name="relationPair"> 关系对。 </param>
-        public void AddRelation(RelationPair relationPair)
-        {
-            if (!TryAddRelation(relationPair))
-                throw new InvalidOperationException($"关系类型 {relationPair.RelationType} 不在当前 Archetype 的 RelationMask 中。");
-        }
-
-        /// <summary>
-        /// 按关系类型与目标实体添加关系。
+        /// 写入指定实体行上某关系类型的目标实体（原地改写，零迁移）。
         /// </summary>
         /// <param name="relationType"> 关系类型。 </param>
+        /// <param name="globalIndex"> 实体在 Archetype 内的全局索引。 </param>
         /// <param name="target"> 目标实体。 </param>
-        public void AddRelation(RelationType relationType, Entity target)
-            => AddRelation(RelationPair.Create(relationType, target));
-
-        /// <summary>
-        /// 查询指定关系类型的关系对。
-        /// </summary>
-        /// <param name="relationType"> 关系类型。 </param>
-        /// <param name="relationPair"> 输出关系对。 </param>
-        /// <returns> 找到返回 true；否则返回 false。 </returns>
-        public bool TryGetRelation(RelationType relationType, out RelationPair relationPair)
+        /// <returns> 关系类型存在且写入成功返回 true；否则返回 false。 </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TrySetRelationTarget(RelationType relationType, int globalIndex, Entity target)
         {
-            relationPair = default;
-            if (!relationMask.On(relationType) || _relations == null)
+            if (!relationMask.On(relationType))
                 return false;
 
-            for (int i = 0; i < _relations.Count; i++)
-            {
-                if (_relations[i].RelationType == relationType)
-                {
-                    relationPair = _relations[i];
-                    return true;
-                }
-            }
+            int columnIndex = _relationColumnStart + GetRelationColumnOffset(relationType);
+            if (!_chunkManager.TryFindChunkForGlobalIndex(columnIndex, globalIndex, out var chunk, out int localIndex) ||
+                chunk is not ArchetypeChunk<Entity> typedChunk)
+                return false;
 
-            return false;
+            typedChunk.SetComponent(localIndex, target);
+            typedChunk.Version = _svManager.StructureVersion;
+            return true;
         }
 
         /// <summary>
-        /// 删除指定关系类型的关系对。
+        /// 计算关系类型在关系列区中的列偏移（掩码中低于该位的已设置位数）。
         /// </summary>
-        /// <param name="relationType"> 关系类型。 </param>
-        /// <returns> 删除成功返回 true；不存在返回 false。 </returns>
-        public bool RemoveRelation(RelationType relationType)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int GetRelationColumnOffset(RelationType relationType)
+            => BitOperations.PopCount(relationMask.RawValue & ((1UL << relationType.TypeIndex) - 1));
+
+        /// <summary>
+        /// 按全局索引获取行上的实体句柄。
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetEntityAt(int globalIndex, out Entity entity)
         {
-            if (!relationMask.On(relationType) || _relations == null)
+            entity = default;
+            if (!_chunkManager.Entities.TryFindLocalIndexForGlobalIndex(globalIndex, out int localIndex, out int chunkIndex))
                 return false;
 
-            for (int i = 0; i < _relations.Count; i++)
-            {
-                if (_relations[i].RelationType == relationType)
-                {
-                    _relations.RemoveAt(i);
-                    return true;
-                }
-            }
-
-            return false;
+            entity = _chunkManager.Entities.Span[chunkIndex].Entities[localIndex];
+            return true;
         }
 
         #endregion Relation
@@ -500,10 +480,12 @@ namespace ExtenderApp.ECS
             if (newArchetype == null)
                 return false;
 
-            var sameTypeCount = ComponentMask.GetSameTypeCount(newArchetype.ComponentMask);
+            // 组件交集 + 关系交集（关系目标列随实体迁移，交集为零时无需列拷贝）
+            int relationIntersectCount = BitOperations.PopCount(relationMask.RawValue & newArchetype.relationMask.RawValue);
+            var sameTypeCount = ComponentMask.GetSameTypeCount(newArchetype.ComponentMask) + relationIntersectCount;
             if (sameTypeCount == 0)
             {
-                // 没有共同组件也需要从旧 Archetype 移除，否则会残留
+                // 没有共同列也需要从旧 Archetype 移除，否则会残留
                 TryRemoveEntity(globalIndex, out changedEntity);
                 return true;
             }
@@ -559,6 +541,20 @@ namespace ExtenderApp.ECS
                 }
 
                 oldColumnIndex++;
+            }
+
+            // 关系目标列映射：新旧表掩码共同位上的关系列按位序对齐拷贝
+            int oldRelationColumnIndex = _relationColumnStart;
+            foreach (var relationType in relationMask)
+            {
+                if (newArchetype.relationMask.On(relationType))
+                {
+                    newIndexSpan[copiedCount] = newArchetype._relationColumnStart + newArchetype.GetRelationColumnOffset(relationType);
+                    oldIndexSpan[copiedCount] = oldRelationColumnIndex;
+                    copiedCount++;
+                }
+
+                oldRelationColumnIndex++;
             }
 
             if (_chunkManager.TryCopyToAndRemove(

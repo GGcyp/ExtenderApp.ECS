@@ -145,6 +145,38 @@ world.DestroySystems();
 结构性变更应写入 `SystemUpdateContext.CommandBuffer`，由框架在回放阶段应用。详细约定见接口 XML 注释与 `test/ECSTest` 中的示例（如 `PositionParallelAccumulator`）。
 
 
+---
+
+## 关系（Relation）
+
+实体间的关系以「**关系类型标记 + 目标实体**」表达：关系类型是空结构体（如 `public struct OwnedBy { }`），目标实体以**行内列**存储——每关系类型一列，同一 Archetype 内不同实体可持有不同目标。
+
+```csharp
+public struct OwnedBy { }   // 关系类型标记（空结构体）
+
+world.AddRelation<OwnedBy>(item, player);                       // 建立关系（同类型覆盖目标，原地写行，零迁移）
+world.RemoveRelation<OwnedBy>(item);                             // 移除关系类型位
+world.TryGetRelationTarget<OwnedBy>(item, out var owner);        // 读目标（悬挂目标需自行校验 IsAlive）
+foreach (var item in world.GetEntitiesWithRelation<OwnedBy>(player)) { }  // 按目标查询（类型位筛表 + 行内过滤）
+foreach (var child in world.GetChildren(player)) { }             // 零堆子实体枚举（任一关系类型目标指向 player）
+world.DestroyEntity(player, cascade: true);                      // 级联删除子实体（默认 false 不级联）
+```
+
+### 语义约定
+
+- **一对一覆盖**：同一关系类型重复 `AddRelation` 覆盖目标值（原地写行，零迁移）；新增/移除关系类型位才触发 Archetype 迁移。
+- **悬挂惰性**：目标实体销毁后关系值不清除；读取/查询结果用 `World.EManager.IsAlive` 校验。`DestroyEntity(deadTarget, cascade: true)` 可清理仍指向它的悬挂实体。
+- **级联删除**：`cascade: true` 时先删自身再递归删子实体，互指环天然终止（无防环集合）；对已销毁实体调用会清理其悬挂子实体。
+- **遍历约定**：枚举器遍历期间不可执行结构变更（实体增删/迁移）。
+- **限制**：关系类型上限 63（索引 0 保留给 Empty）；不支持关系携带数据、多目标 1:N（可用组件或中间实体表达）。
+
+### 已知事项
+
+- 关系目标列复用组件块机制，`Entity` 类型会被注册进组件注册表（占一个索引，无功能影响）。
+- `World.CreateEntity(Entity[])` 需显式 `AsSpan()` 才是批量创建，数组直接传参会命中泛型单组件重载（把数组当组件）。
+- 并行系统暂不支持通过命令缓冲修改关系，关系操作需在主线程直接调用。
+
+
 ## 更多说明
 
 - 共享组件（SharedComponent）与 ECS 实体组件（Entity Component）的**类型不能相同**：同一个 `T` 不允许同时作为共享组件与实体组件使用。

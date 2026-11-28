@@ -1,4 +1,4 @@
-﻿using ExtenderApp.ECS.Abstract;
+using ExtenderApp.ECS.Abstract;
 
 namespace ExtenderApp.ECS.Entities
 {
@@ -18,9 +18,14 @@ namespace ExtenderApp.ECS.Entities
         public static RelationType RegisterRelationType<T>() where T : struct => new(RelationTypeCache<T>.Instance);
 
         /// <summary>
-        /// 按索引获取关系类型。
+        /// 按索引获取关系类型（索引从 1 开始，0 为 <see cref="RelationType.Empty" />）。 索引越界时返回 <see cref="RelationType.Empty" />，避免损坏的打包值导致越界异常。
         /// </summary>
-        public static RelationType GetRelationType(int index) => new(relationTypes[index]);
+        public static RelationType GetRelationType(int index)
+        {
+            if (index <= 0 || index > relationTypes.Count)
+                return new(RelationTypeCache.Empty);
+            return new(relationTypes[index - 1]);
+        }
 
         /// <summary>
         /// 关系类型缓存抽象基类。
@@ -59,8 +64,13 @@ namespace ExtenderApp.ECS.Entities
 
             public RelationTypeCache()
             {
-                index = (ushort)relationTypes.Count;
+                // 索引从 1 开始分配（0 保留给 Empty），与 ComponentRegistry 语义对齐；
+                // RelationMask 为 64 位位图，位 0..63 可用，因此真实类型最多 63 个（索引 1..63）。
+                if (relationTypes.Count >= CurrentMaxRelationTypes - 1)
+                    throw new InvalidOperationException($"关系类型数量已超出上限 {CurrentMaxRelationTypes - 1}，无法注册 {typeof(T).Name}。");
+
                 relationTypes.Add(this);
+                index = (ushort)relationTypes.Count;
             }
         }
     }

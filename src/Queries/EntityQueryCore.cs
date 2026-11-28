@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using ExtenderApp.ECS.Accessors;
 using ExtenderApp.ECS.Archetypes;
+using ExtenderApp.ECS.Entities;
 using ExtenderApp.ECS.Worlds;
 
 namespace ExtenderApp.ECS.Queries
@@ -210,6 +211,19 @@ namespace ExtenderApp.ECS.Queries
                 return false;
 
             return true;
+        }
+
+        /// <summary>
+        /// 获取按关系目标过滤的实体枚举器：遍历当前匹配 Archetype 链表的所有行，仅产出指定关系类型下目标实体与 <paramref name="target" /> 相等的实体。
+        /// </summary>
+        /// <param name="relationType"> 关系类型。 </param>
+        /// <param name="target"> 目标实体。 </param>
+        /// <returns> 按目标过滤后的实体枚举器。 </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal RelationTargetEntityEnumerator GetRelationTargetEntityEnumerator(RelationType relationType, Entity target)
+        {
+            EnsureMatches();
+            return new(head, relationType, target);
         }
     }
 }

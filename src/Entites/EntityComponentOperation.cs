@@ -383,23 +383,33 @@ namespace ExtenderApp.ECS.Entities
 
             if (newMask.IsEmpty)
             {
-                if (currentArchetype?.TryRemoveEntity(currentArchetypeIndex, out var changedEntity) == true &&
-                    !changedEntity.IsEmpty)
+                if (archetype.RelationTypes.IsEmpty)
                 {
-                    Entities.TryChangedArchetypeIndex(changedEntity, currentArchetypeIndex);
+                    if (currentArchetype?.TryRemoveEntity(currentArchetypeIndex, out var changedEntity) == true &&
+                        !changedEntity.IsEmpty)
+                    {
+                        Entities.TryChangedArchetypeIndex(changedEntity, currentArchetypeIndex);
+                    }
+                    ChangedArchetype(null, -1); // 无组件 Archetype 视为 null
+                    return this;
                 }
-                ChangedArchetype(null, -1); // 无组件 Archetype 视为 null
+
+                // 修复：组件清空但关系仍存在时，迁移到纯关系 Archetype，避免静默丢失关系
+                Archetype relationOnlyArchetype = BuildArchetype(newMask, archetype.RelationTypes);
+                var relationOnlyIndex = relationOnlyArchetype.AddEntity(_entity);
+                ChangedArchetype(relationOnlyArchetype, relationOnlyIndex);
                 return this;
             }
 
-            Archetype newArchetype = Components.GetOrCreateArchetype(newMask);
+            // 修复：迁移时携带关系掩码，避免 RemoveComponent 静默丢失关系
+            Archetype newArchetype = BuildArchetype(newMask, archetype.RelationTypes);
             var newIndex = newArchetype.AddEntity(_entity);
             ChangedArchetype(newArchetype, newIndex);
             return this;
         }
 
         /// <summary>
-        /// 向实体添加关系。 若当前 Archetype 已包含该关系类型，则直接覆盖目标实体； 否则会迁移到包含该关系类型的新 Archetype。
+        /// 向实体添加或覆盖关系目标。 关系目标以行内列存储：当前 Archetype 已包含该关系类型时原地改写目标（零迁移），否则迁移到包含该关系类型的新 Archetype。
         /// </summary>
         /// <param name="relationType"> 关系类型。 </param>
         /// <param name="target"> 目标实体。 </param>
@@ -415,13 +425,14 @@ namespace ExtenderApp.ECS.Entities
                 var newArchetype = BuildArchetype(default, relationMask);
                 var newIndex = newArchetype.AddEntity(_entity);
                 ChangedArchetype(newArchetype, newIndex);
-                newArchetype.AddRelation(relationType, target);
+                newArchetype.TrySetRelationTarget(relationType, newIndex, target);
                 return this;
             }
 
             if (archetype.RelationTypes.On(relationType))
             {
-                archetype.AddRelation(relationType, target);
+                // 原地改写目标值：同表内其他实体的关系目标不受影响
+                archetype.TrySetRelationTarget(relationType, archetypeIndex, target);
                 return this;
             }
 
@@ -431,7 +442,7 @@ namespace ExtenderApp.ECS.Entities
             var migratedArchetype = BuildArchetype(archetype.ComponentMask, newRelationMask);
             var migratedIndex = migratedArchetype.AddEntity(_entity);
             ChangedArchetype(migratedArchetype, migratedIndex);
-            migratedArchetype.AddRelation(relationType, target);
+            migratedArchetype.TrySetRelationTarget(relationType, migratedIndex, target);
             return this;
         }
 
