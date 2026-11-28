@@ -26,6 +26,11 @@ namespace ExtenderApp.ECS.Commands
         private readonly EntityQueryManager _entityQueryManager;
         private readonly EntityCommandStorage _storage;
 
+        /// <summary>
+        /// 所属世界（用于回放关系命令时复用主线程公共 API 路径）。
+        /// </summary>
+        private readonly World _world;
+
         // 用于临时收集待回放的 chunk
         private readonly List<CommandBufferChunk> _tempList;
 
@@ -38,12 +43,15 @@ namespace ExtenderApp.ECS.Commands
         /// <param name="storage">命令缓冲存储（线程安全写入端）。</param>
         /// <param name="entityManager">实体管理器。</param>
         /// <param name="archetypeManager">Archetype 管理器。</param>
-        public EntityCommandReader(EntityCommandStorage storage, EntityManager entityManager, ArchetypeManager archetypeManager, EntityQueryManager entityQueryManager)
+        /// <param name="entityQueryManager">查询管理器。</param>
+        /// <param name="world">所属世界（关系命令回放复用其公共 API 路径）。</param>
+        public EntityCommandReader(EntityCommandStorage storage, EntityManager entityManager, ArchetypeManager archetypeManager, EntityQueryManager entityQueryManager, World world)
         {
             _storage = storage;
             _entityManager = entityManager;
             _archetypeManager = archetypeManager;
             _entityQueryManager = entityQueryManager;
+            _world = world;
 
             _tempList = new(MaxCommandDataSize);
             _virtualToRealities = new(MaxCommandDataSize);
@@ -187,10 +195,62 @@ namespace ExtenderApp.ECS.Commands
                             break;
                         }
 
+                    case EntityCommandType.AddRelation:
+                        {
+                            if (offset + sizeof(ushort) + entitySize > span.Length)
+                                return;
+
+                            ushort typeIndex = MemoryMarshal.Read<ushort>(span.Slice(offset, sizeof(ushort)));
+                            offset += sizeof(ushort);
+
+                            Entity relationTarget = MemoryMarshal.Read<Entity>(span.Slice(offset, entitySize));
+                            offset += entitySize;
+
+                            ApplyAddRelation(target, typeIndex, relationTarget);
+                            break;
+                        }
+
+                    case EntityCommandType.RemoveRelation:
+                        {
+                            if (offset + sizeof(ushort) > span.Length)
+                                return;
+
+                            ushort typeIndex = MemoryMarshal.Read<ushort>(span.Slice(offset, sizeof(ushort)));
+                            offset += sizeof(ushort);
+
+                            ApplyRemoveRelation(target, typeIndex);
+                            break;
+                        }
+
                     default:
                         return;
                 }
             }
+        }
+
+        /// <summary>
+        /// 回放添加关系命令：解析虚拟实体后复用主线程 <see cref="World.AddRelation" /> 路径（含同类型原地写行、类型位迁移等完整语义）。
+        /// </summary>
+        private void ApplyAddRelation(Entity target, ushort relationTypeIndex, Entity relationTarget)
+        {
+            if (target.IsVirtual && !TryAccessRealityEntity(target, out target, true))
+                return;
+
+            if (relationTarget.IsVirtual && !TryAccessRealityEntity(relationTarget, out relationTarget, true))
+                return;
+
+            _world.AddRelation(target, RelationType.GetCommandType(relationTypeIndex), relationTarget);
+        }
+
+        /// <summary>
+        /// 回放移除关系命令：解析虚拟实体后复用主线程 <see cref="World.RemoveRelation" /> 路径。
+        /// </summary>
+        private void ApplyRemoveRelation(Entity target, ushort relationTypeIndex)
+        {
+            if (target.IsVirtual && !TryAccessRealityEntity(target, out target))
+                return;
+
+            _world.RemoveRelation(target, RelationType.GetCommandType(relationTypeIndex));
         }
 
         /// <summary>

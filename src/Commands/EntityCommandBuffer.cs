@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using ExtenderApp.ECS.Entities;
 using ExtenderApp.ECS.Queries;
 
 namespace ExtenderApp.ECS.Commands
@@ -113,6 +114,40 @@ namespace ExtenderApp.ECS.Commands
         }
 
         /// <summary>
+        /// 写入添加关系命令（线程安全）。 实体字段为操作实体，数据区为 2 字节关系类型索引 + 8 字节目标实体；回放时操作实体与目标实体中的虚拟实体都会被解析为真实实体。
+        /// </summary>
+        public void AddRelation(Entity entity, RelationType relationType, Entity target)
+        {
+            if (entity.IsEmpty)
+                return;
+
+            WriteAddRelationCommand(entity, relationType.TypeIndex, target);
+        }
+
+        /// <summary>
+        /// 写入添加泛型关系命令（线程安全）。
+        /// </summary>
+        public void AddRelation<T>(Entity entity, Entity target) where T : struct
+            => AddRelation(entity, RelationType.Create<T>(), target);
+
+        /// <summary>
+        /// 写入移除关系命令（线程安全）。 数据区为 2 字节关系类型索引。
+        /// </summary>
+        public void RemoveRelation(Entity entity, RelationType relationType)
+        {
+            if (entity.IsEmpty)
+                return;
+
+            WriteTypeCommand(EntityCommandType.RemoveRelation, entity, relationType.TypeIndex);
+        }
+
+        /// <summary>
+        /// 写入移除泛型关系命令（线程安全）。
+        /// </summary>
+        public void RemoveRelation<T>(Entity entity) where T : struct
+            => RemoveRelation(entity, RelationType.Create<T>());
+
+        /// <summary>
         /// 写入按查询删除实体的命令的序列化格式说明（回放端应按此格式解析）：
         /// 数据区布局（按字节顺序）：
         /// - Query: <see cref="ComponentMask"/>（表示主查询掩码，非空）
@@ -172,6 +207,26 @@ namespace ExtenderApp.ECS.Commands
         }
 
         #region Write
+
+        /// <summary>
+        /// 向当前活动段写入添加关系命令：head + 操作实体 + 2 字节关系类型索引 + 8 字节目标实体。
+        /// </summary>
+        private void WriteAddRelationCommand(Entity target, ushort relationTypeIndex, Entity relationTarget)
+        {
+            int headSize = Marshal.SizeOf<EntityCommandHead>();
+            int entitySize = Unsafe.SizeOf<Entity>();
+            int dataLength = 2 + entitySize; // typeIndex + targetEntity
+            ushort dataLenByte = (ushort)dataLength;
+            int required = headSize + entitySize + dataLength;
+
+            var seg = _storage.GetBufferChunk(required, out int offset);
+            var span = new Span<byte>(seg.Ptr, seg.Capacity);
+            EntityCommandHead head = new(EntityCommandType.AddRelation, dataLenByte);
+            MemoryMarshal.Write(span.Slice(offset, headSize), in head);
+            MemoryMarshal.Write(span.Slice(offset + headSize, entitySize), in target);
+            MemoryMarshal.Write(span.Slice(offset + headSize + entitySize, 2), in relationTypeIndex);
+            MemoryMarshal.Write(span.Slice(offset + headSize + entitySize + 2, entitySize), in relationTarget);
+        }
 
         /// <summary>
         /// 向当前活动段写入仅目标 id 的命令（例如 Destroy）。当当前段空间不足时尝试 CAS 替换段并重试。

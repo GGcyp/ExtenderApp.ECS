@@ -1,4 +1,4 @@
-﻿namespace ExtenderApp.ECS.Commands
+namespace ExtenderApp.ECS.Commands
 {
     /// <summary>
     /// 延迟实体命令缓冲（EntityCommandBuffer）所使用的命令类型枚举。
@@ -40,6 +40,16 @@
         /// 切换组件命令：TargetId 字段为实体占位符或真实实体 ID（由上层定义编码策略），ComponentTypeIndex 字段为组件类型的内部索引，数据字段指向组件数据。回放时会根据实体当前是否具有该组件来决定是添加还是设置。
         /// </summary>
         ModifyComponent,
+
+        /// <summary>
+        /// 添加关系命令：实体字段为操作实体，数据区为 2 字节关系类型索引 + 8 字节目标实体。
+        /// </summary>
+        AddRelation,
+
+        /// <summary>
+        /// 移除关系命令：实体字段为操作实体，数据区为 2 字节关系类型索引。
+        /// </summary>
+        RemoveRelation,
 
         // 以后可扩展更多类型：CopyComponent、Instantiate、AddSharedComponent 等
     }

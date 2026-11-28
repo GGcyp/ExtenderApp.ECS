@@ -70,7 +70,7 @@ namespace ExtenderApp.ECS
 
             ECStorage = new();
             CommandBuffer = new(ECStorage);
-            CommandReader = new EntityCommandReader(ECStorage, EManager, AManager, EQManager);
+            CommandReader = new EntityCommandReader(ECStorage, EManager, AManager, EQManager, this);
 
             bool parallelWorkers = options.ParallelJobs == WorldParallelJobsMode.PerWorldWorkers;
             PJManager = new ParallelJobManager(parallelWorkers);

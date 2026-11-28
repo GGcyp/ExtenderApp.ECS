@@ -174,7 +174,7 @@ world.DestroyEntity(player, cascade: true);                      // 级联删除
 
 - 关系目标列复用组件块机制，`Entity` 类型会被注册进组件注册表（占一个索引，无功能影响）。
 - `World.CreateEntity(Entity[])` 需显式 `AsSpan()` 才是批量创建，数组直接传参会命中泛型单组件重载（把数组当组件）。
-- 并行系统暂不支持通过命令缓冲修改关系，关系操作需在主线程直接调用。
+- 并行系统可通过命令缓冲修改关系（`world.CommandBuffer.AddRelation` / `RemoveRelation`，回放时虚拟实体自动解析为真实实体）；主线程场景直接调用 World 方法即可。
 
 
 ## 更多说明

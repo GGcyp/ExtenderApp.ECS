@@ -216,6 +216,50 @@ public sealed class WorldRelationTests
     }
 
     [Fact]
+    public void CommandBuffer_AddRemoveRelation_PlaybackApplies()
+    {
+        using var world = new World();
+        var child = world.CreateEntity();
+        var parent = world.CreateEntity();
+
+        world.CommandBuffer.AddRelation<TestChildOf>(child, parent);
+        world.PlaybackRecordedCommands();
+
+        Assert.True(world.TryGetRelationTarget<TestChildOf>(child, out var target));
+        Assert.Equal(parent, target);
+
+        world.CommandBuffer.RemoveRelation<TestChildOf>(child);
+        world.PlaybackRecordedCommands();
+
+        Assert.False(world.TryGetRelationTarget<TestChildOf>(child, out _));
+    }
+
+    [Fact]
+    public void CommandBuffer_AddRelation_VirtualChild_ResolvesToRealEntity()
+    {
+        using var world = new World();
+        var parent = world.CreateEntity();
+
+        // 虚拟实体（负 Id）由命令缓冲创建，回放时解析为真实实体
+        var virtualChild = world.CommandBuffer.CreateEntity();
+        world.CommandBuffer.AddRelation<TestChildOf>(virtualChild, parent);
+        world.PlaybackRecordedCommands();
+
+        int count = 0;
+        Entity resolvedChild = default;
+        foreach (var entity in world.QueryBuilder().WithRelation<TestChildOf>().Build())
+        {
+            count++;
+            resolvedChild = entity;
+        }
+
+        Assert.Equal(1, count);
+        Assert.False(resolvedChild.IsVirtual);
+        Assert.True(world.TryGetRelationTarget<TestChildOf>(resolvedChild, out var target));
+        Assert.Equal(parent, target);
+    }
+
+    [Fact]
     public void GetEntitiesWithRelation_QueryThenDestroyHalf_QueryShrinks()
     {
         using var world = new World();
